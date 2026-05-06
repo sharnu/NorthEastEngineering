@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -85,6 +85,16 @@ export interface StationTechnicianDto {
 @Injectable({ providedIn: 'root' })
 export class KanbanService {
   private http = inject(HttpClient);
+
+  // Signal store — callers (board component, future SignalR listener) read from here.
+  // Call refresh() to fetch and commit a new snapshot.
+  readonly boardSignal = signal<KanbanBoardDto | null>(null);
+
+  // Fetches the board and updates boardSignal. Called by the board component's
+  // polling loop and will be called by the SignalR KanbanUpdated listener (E25).
+  refresh(stationId?: number): void {
+    this.getBoard(stationId).subscribe(board => this.boardSignal.set(board));
+  }
 
   getBoard(stationId?: number): Observable<KanbanBoardDto> {
     const url = stationId ? `/api/kanban?stationId=${stationId}` : '/api/kanban';

@@ -94,4 +94,13 @@ describe('KanbanService', () => {
     req.flush({ stations: [] });
     expect(req.request.method).toBe('GET');
   });
+
+  it('refresh() updates boardSignal with fetched board', () => {
+    expect(service.boardSignal()).toBeNull();
+    service.refresh();
+    const req = httpMock.expectOne('/api/kanban');
+    req.flush(FIXTURE_BOARD);
+    expect(service.boardSignal()).not.toBeNull();
+    expect(service.boardSignal()!.stations.length).toBe(2);
+  });
 });

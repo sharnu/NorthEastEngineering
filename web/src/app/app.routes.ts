@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { isDevMode } from '@angular/core';
 import { authGuard, roleGuard } from './core/auth.guard';
 import { adminGuard } from './core/admin.guard';
 // Drafter shell + children loaded lazily
@@ -73,6 +74,11 @@ export const routes: Routes = [
       },
     ],
   },
+  // Dev-only preview routes (stripped from production builds)
+  ...(isDevMode() ? [{
+    path: '_dev/station-card',
+    loadComponent: () => import('./kanban/station-card-dev.component').then(m => m.StationCardDevComponent),
+  }] : []),
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: '**', redirectTo: 'login' },
 ];
