@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -76,4 +78,61 @@ public class FlowDefinitionEntityTests(ApiFixture fixture)
         Assert.NotNull(step);
         Assert.True(step.IsOptional);
     }
+
+    // ── E21-S5: materialisation copies body_type and flow_track ──────────────
+
+    [Fact]
+    public async Task CreateRo_DfeTt67f_BodyTypeIsTautlinerAndChassisTaskIsChassisTrack()
+    {
+        // Arrange: look up the DFE customer id seeded in 002_seed_data.sql
+        await using var db = fixture.CreateDbContext();
+        var dfeCustomerId = await db.Customers
+            .Where(c => c.Code == "DFE")
+            .Select(c => c.Id)
+            .FirstAsync();
+
+        // Act: create an RO via the API using the DFE-TT67F tautliner template
+        var salesUserId = new Guid("11111111-1111-1111-1111-111111111111");
+        var client = fixture.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", fixture.GenerateToken(salesUserId, "SALES"));
+
+        var response = await client.PostAsJsonAsync("/api/repair-orders", new
+        {
+            CustomerId   = dfeCustomerId,
+            JobTypeId    = 1,
+            TemplateCode = "DFE-TT67F",
+            Rego         = "TT-FLOWTEST",
+            Make         = "Vawdrey",
+            Model        = "TT67F",
+            Priority     = 3,
+            RequiredDate = DateTimeOffset.UtcNow.AddMonths(3),
+        });
+
+        response.EnsureSuccessStatusCode();
+        var created = await response.Content.ReadFromJsonAsync<CreateRoResult>();
+        Assert.NotNull(created);
+
+        // Assert: body_type propagated from template_version to repair_order
+        await using var db2 = fixture.CreateDbContext();
+        var ro = await db2.RepairOrders
+            .FirstAsync(r => r.Id == created!.RoId);
+
+        Assert.Equal("TAUTLINER", ro.BodyType);
+
+        // Assert: the chassis-prep task (station 50) carries flow_track = CHASSIS
+        var tasks = await db2.JobTasks
+            .Where(t => t.RoId == created!.RoId)
+            .ToListAsync();
+
+        var chassisTask = tasks.FirstOrDefault(t => t.StationId == 50);
+        Assert.NotNull(chassisTask);
+        Assert.Equal("CHASSIS", chassisTask.FlowTrack);
+
+        // All other tasks on this body-only template should be BODY track
+        var nonChassisStations = tasks.Where(t => t.StationId != 50);
+        Assert.All(nonChassisStations, t => Assert.Equal("BODY", t.FlowTrack));
+    }
+
+    private record CreateRoResult(Guid RoId, string RoNumber, int TasksCreated);
 }

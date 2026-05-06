@@ -8,6 +8,7 @@ public class RepairOrder
     public string TemplateCode { get; set; } = string.Empty;
     public Guid TemplateVersionId { get; set; }
     public short JobTypeId { get; set; }
+    public string? BodyType { get; set; }
 
     // Vehicle identifiers
     public string? Vin { get; set; }
@@ -37,8 +38,6 @@ public class RepairOrder
     public DateTimeOffset? ExpectedInDate { get; set; }
     public DateTimeOffset? RequiredDate { get; set; }
     public DateOnly? DeliveryDate { get; set; }
-
-    public string? BodyType { get; set; }
 
     public string Status { get; set; } = "DRAFT";
     public string DraftingStatus { get; set; } = "NOT_STARTED";
@@ -75,14 +74,13 @@ public class JobTask
     public short OperationId { get; set; }
     public string OperationName { get; set; } = string.Empty;
     public short StationId { get; set; }
+    public string FlowTrack { get; set; } = "BODY";
     public Guid? AssignedToUserId { get; set; }
     public Guid? AssignedByUserId { get; set; }
     public DateTimeOffset? AssignedAt { get; set; }
 
     public decimal EstimatedHours { get; set; }
     public decimal ActualHours { get; set; }
-
-    public string FlowTrack { get; set; } = "BODY";
 
     public string Status { get; set; } = "PENDING";
     public DateTimeOffset? StartedAt { get; set; }

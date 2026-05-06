@@ -153,9 +153,14 @@ INSERT INTO flow_definitions (body_type, track, station_id, sort_order, is_optio
 ON CONFLICT (body_type, track, sort_order) DO NOTHING;
 
 -- -------------------------------------------------------------------------
--- View for flow visualisation (E25). Joins flow_definitions → stations → kanban_stages.
--- Stations 70 and 90 share the same id as stages 70/90 (FITOUT / FINAL_QC)
--- which carry is_merge_point; all other stations get is_merge_point = FALSE.
+-- View for flow visualisation (E25).
+-- Stations 70 (FINAL_FITMENT) and 90 (COMPLIANCE_QC) share integer IDs with
+-- their corresponding kanban_stages, so the LEFT JOIN correctly surfaces
+-- is_merge_point for exactly those two convergence stations.
+-- stage_id / stage_code are intentionally omitted: the ID coincidence makes
+-- them misleading for every non-merge station (e.g. station 10 → stage
+-- "JOB_RECEIVED"). Consumers that need stage context should join kanban_stages
+-- independently via ro_kanban_state.
 -- -------------------------------------------------------------------------
 CREATE OR REPLACE VIEW v_flow_steps AS
 SELECT
@@ -163,12 +168,10 @@ SELECT
     fd.track,
     fd.sort_order,
     fd.station_id,
-    s.code          AS station_code,
-    s.name          AS station_name,
-    ks.id           AS stage_id,
-    ks.code         AS stage_code,
-    COALESCE(ks.is_merge_point, FALSE) AS is_merge_point,
+    s.code                              AS station_code,
+    s.name                              AS station_name,
+    COALESCE(ks.is_merge_point, FALSE)  AS is_merge_point,
     fd.is_optional
 FROM flow_definitions fd
-JOIN stations         s  ON s.id  = fd.station_id
+JOIN stations          s  ON s.id = fd.station_id
 LEFT JOIN kanban_stages ks ON ks.id = s.id;
