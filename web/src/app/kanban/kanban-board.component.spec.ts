@@ -1,15 +1,39 @@
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 
 import { KanbanBoardComponent } from './kanban-board.component';
-import { KanbanService, KanbanBoardDto } from './kanban.service';
+import { KanbanService, KanbanBoardDto, KanbanCardDto } from './kanban.service';
 import { AuthService } from '../core/auth.service';
 
 const MOCK_USER = {
   id: '11111111-1111-1111-1111-111111111111',
   fullName: 'Test Supervisor',
   roles: ['SUPERVISOR'],
+};
+
+const MOCK_CARD: KanbanCardDto = {
+  roId: 'aaaaaaaa-0000-0000-0000-000000000001',
+  roNumber: 'RO00001',
+  customerName: 'DFE',
+  priority: 2,
+  requiredDate: null,
+  bodyType: 'TIPPER_CS',
+  track: 'BODY',
+  stationId: 20,
+  stationCode: 'FAB_LINE',
+  stationName: 'Fab Line',
+  gateState: 'IN_PROGRESS',
+  gateReason: null,
+  estimatedHours: 14,
+  actualHours: 0,
+  totalTasks: 4,
+  completedTasks: 0,
+  sourcePdfUrl: null,
+  hasManualOverride: false,
+  tasks: [],
 };
 
 const MOCK_BOARD: KanbanBoardDto = {
@@ -19,14 +43,14 @@ const MOCK_BOARD: KanbanBoardDto = {
       stationCode: 'PAINT',
       stationName: 'Paint',
       ownerName: null,
-      tasks: [],
+      cards: [],
     },
     {
       stationId: 20,
       stationCode: 'FAB_LINE',
       stationName: 'Fab Line',
       ownerName: 'Peter Rogers',
-      tasks: [],
+      cards: [],
     },
   ],
 };
@@ -45,12 +69,15 @@ describe('KanbanBoardComponent', () => {
       imports: [KanbanBoardComponent],
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: KanbanService, useValue: buildSvc(getBoardSpy) },
         {
           provide: AuthService,
           useValue: {
             user: () => MOCK_USER,
             logout: jasmine.createSpy(),
+            isAuthenticated: jasmine.createSpy().and.returnValue(true),
           },
         },
       ],
@@ -68,8 +95,8 @@ describe('KanbanBoardComponent', () => {
   it('calls getBoard() a second time after 30 seconds', fakeAsync(() => {
     const fixture = TestBed.createComponent(KanbanBoardComponent);
     fixture.detectChanges();
-    tick(0);                  // initial emission
-    tick(30_000);             // first 30s interval
+    tick(0);
+    tick(30_000);
     expect(getBoardSpy).toHaveBeenCalledTimes(2);
     fixture.destroy();
   }));
@@ -96,6 +123,33 @@ describe('KanbanBoardComponent', () => {
     tick(0);
 
     expect(getBoardSpy).toHaveBeenCalledWith(20);
+    fixture.destroy();
+  }));
+
+  it('renders one station-card per card in station.cards', fakeAsync(() => {
+    const boardWithCards: KanbanBoardDto = {
+      stations: [
+        {
+          stationId: 20,
+          stationCode: 'FAB_LINE',
+          stationName: 'Fab Line',
+          ownerName: null,
+          cards: [
+            MOCK_CARD,
+            { ...MOCK_CARD, roId: 'aaaaaaaa-0000-0000-0000-000000000002', roNumber: 'RO00002' },
+          ],
+        },
+      ],
+    };
+    getBoardSpy.and.returnValue(of(boardWithCards));
+
+    const fixture = TestBed.createComponent(KanbanBoardComponent);
+    fixture.detectChanges();
+    tick(0);
+    fixture.detectChanges();
+
+    const cards = fixture.nativeElement.querySelectorAll('app-station-card');
+    expect(cards.length).toBe(2);
     fixture.destroy();
   }));
 });

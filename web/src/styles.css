@@ -16,6 +16,9 @@
   --warn: #b45309;
   --bad: #b91c1c;
   --info: #1d4ed8;
+  --track-body: #1d4ed8;
+  --track-chassis: #b45309;
+  --track-subframe: #7c3aed;
   --display: 'Fraunces', Georgia, serif;
   --sans: 'Inter', -apple-system, sans-serif;
   --mono: 'JetBrains Mono', monospace;

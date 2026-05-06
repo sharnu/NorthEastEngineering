@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Nee.Api.Domain;
 using Xunit;
 
 namespace Nee.Api.Tests;
@@ -40,7 +41,7 @@ public class KanbanEndpointTests(ApiFixture fixture)
         {
             s.StationId.Should().BeGreaterThan(0);
             s.StationName.Should().NotBeNullOrEmpty();
-            s.Tasks.Should().NotBeNull();
+            s.Cards.Should().NotBeNull();
         });
     }
 
@@ -90,16 +91,19 @@ public class KanbanEndpointTests(ApiFixture fixture)
         var board = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
         var fabLine = board!.Stations.First(s => s.StationId == FabLineStationId);
 
-        // TP42N has ops 20 (MFR_BASE), 24 (MFR_HEADBOARD), 25 (MFR_DROPSIDES), 31 (FAB_LINE_ASSY) at station 20
-        fabLine.Tasks.Should().HaveCountGreaterThanOrEqualTo(4,
+        // TP42N has 4 ops at FAB_LINE; they should all appear inside one card's task list
+        var allTasks = fabLine.Cards.SelectMany(c => c.Tasks).ToList();
+        allTasks.Should().HaveCountGreaterThanOrEqualTo(4,
             "TP42N template has 4 operations at FAB_LINE");
-        fabLine.Tasks.Should().AllSatisfy(t =>
+        allTasks.Should().AllSatisfy(t =>
         {
-            t.RoNumber.Should().MatchRegex(@"^RO\d{5}$");
             t.OperationName.Should().NotBeNullOrEmpty();
             t.EstimatedHours.Should().BeGreaterThan(0);
             t.Status.Should().Be("PENDING");
         });
+
+        // Each card carries the RO number
+        fabLine.Cards.Should().AllSatisfy(c => c.RoNumber.Should().MatchRegex(@"^RO\d{5}$"));
     }
 
     // ── Technician assignment ─────────────────────────────────────────────────
@@ -107,7 +111,6 @@ public class KanbanEndpointTests(ApiFixture fixture)
     [Fact]
     public async Task AssignTechnician_ValidUser_Returns204AndUpdatesAssignee()
     {
-        // Create an RO to get tasks
         var salesClient = AuthClient(SalesUserId, "SALES");
         var customers   = await salesClient.GetFromJsonAsync<CustomerItem[]>("/api/customers");
         var customerId  = customers!.First().Id;
@@ -121,12 +124,10 @@ public class KanbanEndpointTests(ApiFixture fixture)
             Priority     = 2,
         });
 
-        // Get a FAB_LINE task
         var board   = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
         var fabLine = board!.Stations.First(s => s.StationId == FabLineStationId);
-        var taskId  = fabLine.Tasks.First().Id;
+        var taskId  = fabLine.Cards.First().Tasks.First().Id;
 
-        // Assign Peter Rogers (rostered to station 20)
         var supClient  = AuthClient(SupervisorUserId, "SUPERVISOR");
         var assignResp = await supClient.PutAsJsonAsync(
             $"/api/job-tasks/{taskId}/assign",
@@ -134,10 +135,9 @@ public class KanbanEndpointTests(ApiFixture fixture)
 
         assignResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Verify the board shows the assignment
         var updatedBoard   = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
         var updatedFabLine = updatedBoard!.Stations.First(s => s.StationId == FabLineStationId);
-        var updatedTask    = updatedFabLine.Tasks.First(t => t.Id == taskId);
+        var updatedTask    = updatedFabLine.Cards.SelectMany(c => c.Tasks).First(t => t.Id == taskId);
 
         updatedTask.AssignedToName.Should().Be("Peter Rogers");
         updatedTask.Status.Should().Be("ASSIGNED");
@@ -161,9 +161,8 @@ public class KanbanEndpointTests(ApiFixture fixture)
 
         var board   = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
         var fabLine = board!.Stations.First(s => s.StationId == FabLineStationId);
-        var taskId  = fabLine.Tasks.First().Id;
+        var taskId  = fabLine.Cards.First().Tasks.First().Id;
 
-        // Try to assign the supervisor (not rostered to any station)
         var supClient  = AuthClient(SupervisorUserId, "SUPERVISOR");
         var assignResp = await supClient.PutAsJsonAsync(
             $"/api/job-tasks/{taskId}/assign",
@@ -190,25 +189,22 @@ public class KanbanEndpointTests(ApiFixture fixture)
 
         var board   = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
         var fabLine = board!.Stations.First(s => s.StationId == FabLineStationId);
-        var taskId  = fabLine.Tasks.First().Id;
+        var taskId  = fabLine.Cards.First().Tasks.First().Id;
 
         var supClient = AuthClient(SupervisorUserId, "SUPERVISOR");
 
-        // Assign first
         await supClient.PutAsJsonAsync($"/api/job-tasks/{taskId}/assign", new { UserId = PeterRogersId });
 
-        // Then unassign
         var unassignResp = await supClient.PutAsJsonAsync(
             $"/api/job-tasks/{taskId}/assign",
             new { UserId = (Guid?)null });
 
         unassignResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Verify cleared
         var updatedBoard = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
         var updatedTask  = updatedBoard!.Stations
             .First(s => s.StationId == FabLineStationId)
-            .Tasks.First(t => t.Id == taskId);
+            .Cards.SelectMany(c => c.Tasks).First(t => t.Id == taskId);
 
         updatedTask.AssignedToName.Should().BeNull();
         updatedTask.Status.Should().Be("PENDING");
@@ -240,6 +236,99 @@ public class KanbanEndpointTests(ApiFixture fixture)
         techs!.Should().Contain(t => t.FullName == "Peter Rogers" && t.IsPrimary);
     }
 
+    // ── E22-S1: grouped card shape ────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetBoard_GroupsByRoAndStation()
+    {
+        var salesClient = AuthClient(SalesUserId, "SALES");
+        var customers   = await salesClient.GetFromJsonAsync<CustomerItem[]>("/api/customers");
+        var customerId  = customers!.First().Id;
+
+        // Two ROs from the same template → two separate cards at FAB_LINE
+        await salesClient.PostAsJsonAsync("/api/repair-orders", new
+        {
+            CustomerId = customerId, JobTypeId = 1, TemplateCode = "TP42N",
+            Rego = "GRP001", Priority = 2,
+        });
+        await salesClient.PostAsJsonAsync("/api/repair-orders", new
+        {
+            CustomerId = customerId, JobTypeId = 1, TemplateCode = "TP42N",
+            Rego = "GRP002", Priority = 2,
+        });
+
+        var board   = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
+        var fabLine = board!.Stations.First(s => s.StationId == FabLineStationId);
+
+        fabLine.Cards.Should().HaveCountGreaterThanOrEqualTo(2,
+            "each RO yields its own card at the same station");
+
+        var roIds = fabLine.Cards.Select(c => c.RoId).Distinct().ToList();
+        roIds.Should().HaveCountGreaterThanOrEqualTo(2,
+            "cards from different ROs must have distinct RoIds");
+    }
+
+    [Fact]
+    public async Task GetBoard_IncludesPdfUrl()
+    {
+        var salesClient = AuthClient(SalesUserId, "SALES");
+        var customers   = await salesClient.GetFromJsonAsync<CustomerItem[]>("/api/customers");
+        var customerId  = customers!.First().Id;
+
+        var createResp = await salesClient.PostAsJsonAsync("/api/repair-orders", new
+        {
+            CustomerId = customerId, JobTypeId = 1, TemplateCode = "TP42N",
+            Rego = "PDF001", Priority = 2,
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<CreateRoResult>();
+
+        await using var db = fixture.CreateDbContext();
+        db.Attachments.Add(new Attachment
+        {
+            Id            = Guid.NewGuid(),
+            EntityType    = "RepairOrder",
+            EntityId      = created!.RoId,
+            Category      = "SOURCE_PDF",
+            FileName      = "source.pdf",
+            ContentType   = "application/pdf",
+            SizeBytes     = 1024,
+            BlobContainer = "uploads",
+            BlobPath      = "test/source.pdf",
+            UploadedBy    = SalesUserId,
+            UploadedAt    = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var board   = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
+        var fabLine = board!.Stations.First(s => s.StationId == FabLineStationId);
+        var card    = fabLine.Cards.First(c => c.RoId == created.RoId);
+
+        card.SourcePdfUrl.Should().Be("/uploads/test/source.pdf");
+    }
+
+    [Fact]
+    public async Task GetBoard_TrackFieldReflectsTasks()
+    {
+        var salesClient = AuthClient(SalesUserId, "SALES");
+        var customers   = await salesClient.GetFromJsonAsync<CustomerItem[]>("/api/customers");
+        var customerId  = customers!.First().Id;
+
+        await salesClient.PostAsJsonAsync("/api/repair-orders", new
+        {
+            CustomerId = customerId, JobTypeId = 1, TemplateCode = "TP42N",
+            Rego = "TRK001", Priority = 2,
+        });
+
+        var board   = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
+        var fabLine = board!.Stations.First(s => s.StationId == FabLineStationId);
+        var card    = fabLine.Cards.First(c => c.Tasks.Any(t => t.Status == "PENDING"));
+
+        // All FAB_LINE ops on a tipper are BODY track; card must reflect that
+        card.Tasks.Should().AllSatisfy(t => t.FlowTrack.Should().Be("BODY"));
+        card.Track.Should().Be("BODY");
+    }
+
     // ── Response DTOs ─────────────────────────────────────────────────────────
 
     private record KanbanBoardResponse(KanbanStationItem[] Stations);
@@ -249,12 +338,31 @@ public class KanbanEndpointTests(ApiFixture fixture)
         string StationCode,
         string StationName,
         string? OwnerName,
-        KanbanTaskItem[] Tasks);
+        KanbanCardItem[] Cards);
 
-    private record KanbanTaskItem(
-        Guid Id,
+    private record KanbanCardItem(
         Guid RoId,
         string RoNumber,
+        string CustomerName,
+        short Priority,
+        DateTimeOffset? RequiredDate,
+        string? BodyType,
+        string Track,
+        short StationId,
+        string StationCode,
+        string StationName,
+        string GateState,
+        string? GateReason,
+        decimal EstimatedHours,
+        decimal ActualHours,
+        int TotalTasks,
+        int CompletedTasks,
+        string? SourcePdfUrl,
+        bool HasManualOverride,
+        KanbanCardTaskItem[] Tasks);
+
+    private record KanbanCardTaskItem(
+        Guid Id,
         int Sequence,
         string JobCodeLine,
         string OperationName,
@@ -263,10 +371,10 @@ public class KanbanEndpointTests(ApiFixture fixture)
         decimal EstimatedHours,
         decimal ActualHours,
         string Status,
-        int Priority,
-        string CustomerName,
-        DateTimeOffset? RequiredDate);
+        string FlowTrack,
+        string? Notes);
 
     private record StationTechnicianItem(Guid UserId, string FullName, bool IsPrimary, int SkillLevel);
     private record CustomerItem(Guid Id, string Code, string Name);
+    private record CreateRoResult(Guid RoId, string RoNumber, int TasksCreated);
 }

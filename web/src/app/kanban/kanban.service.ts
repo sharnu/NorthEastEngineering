@@ -2,6 +2,55 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+export interface KanbanCardTaskDto {
+  id: string;
+  sequence: number;
+  jobCodeLine: string;
+  operationName: string;
+  assignedToUserId: string | null;
+  assignedToName: string | null;
+  estimatedHours: number;
+  actualHours: number;
+  status: string;
+  flowTrack: string;
+  notes: string | null;
+}
+
+export interface KanbanCardDto {
+  roId: string;
+  roNumber: string;
+  customerName: string;
+  priority: number;
+  requiredDate: string | null;
+  bodyType: string | null;
+  track: string;
+  stationId: number;
+  stationCode: string;
+  stationName: string;
+  gateState: string;
+  gateReason: string | null;
+  estimatedHours: number;
+  actualHours: number;
+  totalTasks: number;
+  completedTasks: number;
+  sourcePdfUrl: string | null;
+  hasManualOverride: boolean;
+  tasks: KanbanCardTaskDto[];
+}
+
+export interface KanbanStationDto {
+  stationId: number;
+  stationCode: string;
+  stationName: string;
+  ownerName: string | null;
+  cards: KanbanCardDto[];
+}
+
+export interface KanbanBoardDto {
+  stations: KanbanStationDto[];
+}
+
+// Kept for task-drawer.component.ts (E23-S3 will migrate it to KanbanCardDto)
 export interface KanbanTaskDto {
   id: string;
   roId: string;
@@ -24,18 +73,6 @@ export interface KanbanTaskDto {
   overrideAt: string | null;
   overrideReason: string | null;
   overrideByName: string | null;
-}
-
-export interface KanbanStationDto {
-  stationId: number;
-  stationCode: string;
-  stationName: string;
-  ownerName: string | null;
-  tasks: KanbanTaskDto[];
-}
-
-export interface KanbanBoardDto {
-  stations: KanbanStationDto[];
 }
 
 export interface StationTechnicianDto {

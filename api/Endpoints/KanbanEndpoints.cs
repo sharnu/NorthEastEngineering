@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Nee.Api.Data;
 using Nee.Api.Domain.Events;
+using Nee.Api.Services;
 
 namespace Nee.Api.Endpoints;
 
@@ -12,13 +13,11 @@ public static class KanbanEndpoints
         var grp = app.MapGroup("/api/kanban").RequireAuthorization().WithTags("Kanban");
 
         // GET /api/kanban[?stationId=20]
-        grp.MapGet("/", async (short? stationId, NeeDbContext db, CancellationToken ct) =>
+        grp.MapGet("/", async (short? stationId, NeeDbContext db, IGateEvaluator gateEvaluator, CancellationToken ct) =>
         {
             var excludedStatuses = new[] { "COMPLETED", "CANCELLED" };
 
-            // Load stations ordered by sort_order, filtered if stationId provided
-            var stationsQuery = db.Stations
-                .Where(s => s.IsActive);
+            var stationsQuery = db.Stations.Where(s => s.IsActive);
             if (stationId.HasValue)
                 stationsQuery = stationsQuery.Where(s => s.Id == stationId.Value);
 
@@ -33,108 +32,143 @@ public static class KanbanEndpoints
                 })
                 .ToListAsync(ct);
 
-            // Load all relevant tasks in one query, group in memory
             var stationIds = stations.Select(s => s.Id).ToList();
 
+            // Load all tasks for these stations (include completed for progress display)
             var tasks = await db.JobTasks
-                .Where(t => stationIds.Contains(t.StationId)
-                         && !excludedStatuses.Contains(t.Status))
+                .Where(t => stationIds.Contains(t.StationId))
                 .Select(t => new
                 {
                     t.Id,
                     t.RoId,
-                    RoNumber        = t.RepairOrder.RoNumber,
+                    RoNumber     = t.RepairOrder.RoNumber,
                     t.Sequence,
                     t.JobCodeLine,
                     t.OperationName,
                     t.StationId,
-                    StationName     = t.Station.Name,
+                    t.FlowTrack,
                     t.AssignedToUserId,
-                    AssignedToName  = t.AssignedToUser != null ? t.AssignedToUser.FullName : null,
+                    AssignedToName = t.AssignedToUser != null ? t.AssignedToUser.FullName : null,
                     t.EstimatedHours,
                     t.ActualHours,
                     t.Status,
-                    Priority        = (int)t.RepairOrder.Priority,
-                    CustomerName    = t.RepairOrder.Customer.Name,
+                    Priority     = (short)t.RepairOrder.Priority,
+                    CustomerName = t.RepairOrder.Customer.Name,
+                    BodyType     = t.RepairOrder.BodyType,
                     t.RepairOrder.RequiredDate,
                     t.Notes,
                 })
                 .ToListAsync(ct);
 
-            var tasksByStation = tasks
-                .GroupBy(t => t.StationId)
-                .ToDictionary(g => g.Key, g => g
-                    .OrderBy(t => t.Priority)
-                    .ThenBy(t => t.RequiredDate == null ? 1 : 0)
-                    .ThenBy(t => t.RequiredDate)
-                    .ThenBy(t => t.Sequence)
-                    .ToList());
-
-            // Fetch override markers for all ROs present on the board
-            var boardRoIds = tasks.Select(t => t.RoId).Distinct().ToList();
-            var overrideStates = await db.RoKanbanStates
-                .Where(s => boardRoIds.Contains(s.RoId) && s.LastOverrideAt != null)
-                .Select(s => new { s.RoId, s.LastOverrideAt, s.LastOverrideReason, s.LastOverrideBy })
-                .ToListAsync(ct);
-
-            var overrideUserIds = overrideStates
-                .Where(s => s.LastOverrideBy.HasValue)
-                .Select(s => s.LastOverrideBy!.Value)
-                .Distinct()
-                .ToList();
-            var overrideUsers = overrideUserIds.Count > 0
-                ? await db.Users
-                    .Where(u => overrideUserIds.Contains(u.Id))
-                    .ToDictionaryAsync(u => u.Id, u => u.FullName, ct)
-                : new Dictionary<Guid, string>();
-
-            var overrideByRo = overrideStates.ToDictionary(
-                s => s.RoId,
-                s => new
+            // Group by (RoId, StationId); discard groups where every task is done
+            var groups = tasks
+                .GroupBy(t => new { t.RoId, t.StationId })
+                .Where(g => g.Any(t => !excludedStatuses.Contains(t.Status)))
+                .Select(g =>
                 {
-                    s.LastOverrideAt,
-                    s.LastOverrideReason,
-                    OverrideByName = s.LastOverrideBy.HasValue && overrideUsers.TryGetValue(s.LastOverrideBy.Value, out var n) ? n : null,
-                });
+                    var ordered = g.OrderBy(t => t.Sequence).ToList();
+                    var first   = ordered[0];
+                    return new
+                    {
+                        RoId         = g.Key.RoId,
+                        StationId    = g.Key.StationId,
+                        Tasks        = ordered,
+                        Priority     = first.Priority,
+                        RequiredDate = first.RequiredDate,
+                        RoNumber     = first.RoNumber,
+                    };
+                })
+                .ToList();
+
+            var boardRoIds = groups.Select(g => g.RoId).Distinct().ToList();
+
+            // Override markers — only need the presence flag per RO
+            var overrideRoIds = boardRoIds.Count > 0
+                ? (await db.RoKanbanStates
+                    .Where(s => boardRoIds.Contains(s.RoId) && s.LastOverrideAt != null)
+                    .Select(s => s.RoId)
+                    .ToListAsync(ct)).ToHashSet()
+                : new HashSet<Guid>();
+
+            // Source PDF attachments (one per RO, first wins on duplicates)
+            var pdfByRo = boardRoIds.Count > 0
+                ? (await db.Attachments
+                    .Where(a => boardRoIds.Contains(a.EntityId)
+                             && a.EntityType == "RepairOrder"
+                             && a.Category   == "SOURCE_PDF")
+                    .Select(a => new { a.EntityId, a.BlobPath })
+                    .ToListAsync(ct))
+                    .GroupBy(a => a.EntityId)
+                    .ToDictionary(g => g.Key, g => $"/uploads/{g.First().BlobPath}")
+                : new Dictionary<Guid, string>();
 
             var result = new
             {
-                Stations = stations.Select(s => new
+                Stations = stations.Select(s =>
                 {
-                    StationId   = s.Id,
-                    StationCode = s.Code,
-                    StationName = s.Name,
-                    s.OwnerName,
-                    Tasks = tasksByStation.TryGetValue(s.Id, out var stTasks)
-                        ? stTasks.Select(t =>
+                    var cards = groups
+                        .Where(g => g.StationId == s.Id)
+                        .OrderBy(g => g.Priority)
+                        .ThenBy(g => g.RequiredDate ?? DateTimeOffset.MaxValue)
+                        .ThenBy(g => g.RoNumber)
+                        .Select(g =>
                         {
-                            overrideByRo.TryGetValue(t.RoId, out var ov);
-                            return new
-                            {
-                                t.Id,
-                                t.RoId,
-                                t.RoNumber,
-                                t.Sequence,
-                                t.JobCodeLine,
-                                t.OperationName,
-                                t.AssignedToUserId,
-                                t.AssignedToName,
-                                t.EstimatedHours,
-                                t.ActualHours,
-                                t.Status,
-                                t.Priority,
-                                t.CustomerName,
-                                t.RequiredDate,
-                                t.StationId,
-                                t.StationName,
-                                t.Notes,
-                                HasManualOverride = ov != null,
-                                OverrideAt        = ov?.LastOverrideAt,
-                                OverrideReason    = ov?.LastOverrideReason,
-                                OverrideByName    = ov?.OverrideByName,
-                            };
+                            var taskList = g.Tasks;
+                            var first    = taskList[0];
+                            var roId     = g.RoId;
+                            var sid      = (short)g.StationId;
+
+                            var tracks = taskList.Select(t => t.FlowTrack).Distinct().ToList();
+                            var track  = tracks.Count == 1 ? tracks[0] : "MIXED";
+
+                            var (gateState, gateReason) = gateEvaluator.Evaluate(roId, sid);
+
+                            pdfByRo.TryGetValue(roId, out var sourcePdfUrl);
+
+                            return new KanbanCardDto(
+                                RoId:             roId,
+                                RoNumber:         first.RoNumber,
+                                CustomerName:     first.CustomerName,
+                                Priority:         first.Priority,
+                                RequiredDate:     first.RequiredDate,
+                                BodyType:         first.BodyType,
+                                Track:            track,
+                                StationId:        sid,
+                                StationCode:      s.Code,
+                                StationName:      s.Name,
+                                GateState:        gateState,
+                                GateReason:       gateReason,
+                                EstimatedHours:   taskList.Sum(t => t.EstimatedHours),
+                                ActualHours:      taskList.Sum(t => t.ActualHours),
+                                TotalTasks:       taskList.Count,
+                                CompletedTasks:   taskList.Count(t => t.Status == "COMPLETED"),
+                                SourcePdfUrl:     sourcePdfUrl,
+                                HasManualOverride: overrideRoIds.Contains(roId),
+                                Tasks: taskList.Select(t => new KanbanCardTaskDto(
+                                    Id:              t.Id,
+                                    Sequence:        t.Sequence,
+                                    JobCodeLine:     t.JobCodeLine,
+                                    OperationName:   t.OperationName,
+                                    AssignedToUserId: t.AssignedToUserId,
+                                    AssignedToName:  t.AssignedToName,
+                                    EstimatedHours:  t.EstimatedHours,
+                                    ActualHours:     t.ActualHours,
+                                    Status:          t.Status,
+                                    FlowTrack:       t.FlowTrack,
+                                    Notes:           t.Notes
+                                )).ToArray()
+                            );
                         })
-                        : [],
+                        .ToArray();
+
+                    return new
+                    {
+                        StationId   = s.Id,
+                        StationCode = s.Code,
+                        StationName = s.Name,
+                        s.OwnerName,
+                        Cards = cards,
+                    };
                 }),
             };
 
@@ -194,7 +228,6 @@ public static class KanbanEndpoints
 
             var userId = GetKanbanCallerId(principal);
 
-            // Store marker so the board can show the ⚠ badge without querying domain_events
             state.LastOverrideAt     = DateTimeOffset.UtcNow;
             state.LastOverrideReason = req.Reason.Trim();
             state.LastOverrideBy     = userId;
@@ -214,5 +247,39 @@ public static class KanbanEndpoints
         return Guid.TryParse(sub, out var g) ? g : null;
     }
 }
+
+public record KanbanCardTaskDto(
+    Guid Id,
+    int Sequence,
+    string JobCodeLine,
+    string OperationName,
+    Guid? AssignedToUserId,
+    string? AssignedToName,
+    decimal EstimatedHours,
+    decimal ActualHours,
+    string Status,
+    string FlowTrack,
+    string? Notes);
+
+public record KanbanCardDto(
+    Guid RoId,
+    string RoNumber,
+    string CustomerName,
+    short Priority,
+    DateTimeOffset? RequiredDate,
+    string? BodyType,
+    string Track,
+    short StationId,
+    string StationCode,
+    string StationName,
+    string GateState,
+    string? GateReason,
+    decimal EstimatedHours,
+    decimal ActualHours,
+    int TotalTasks,
+    int CompletedTasks,
+    string? SourcePdfUrl,
+    bool HasManualOverride,
+    KanbanCardTaskDto[] Tasks);
 
 public record OverrideStageRequest(short StageId, string Reason);

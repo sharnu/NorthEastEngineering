@@ -52,6 +52,7 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddSingleton<PdfParserService>();
 builder.Services.AddScoped<PdfScoringService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IGateEvaluator, StubGateEvaluator>();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
