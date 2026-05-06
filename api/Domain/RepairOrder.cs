@@ -38,6 +38,8 @@ public class RepairOrder
     public DateTimeOffset? RequiredDate { get; set; }
     public DateOnly? DeliveryDate { get; set; }
 
+    public string? BodyType { get; set; }
+
     public string Status { get; set; } = "DRAFT";
     public string DraftingStatus { get; set; } = "NOT_STARTED";
     public Guid? DraftedBy { get; set; }
@@ -79,6 +81,8 @@ public class JobTask
 
     public decimal EstimatedHours { get; set; }
     public decimal ActualHours { get; set; }
+
+    public string FlowTrack { get; set; } = "BODY";
 
     public string Status { get; set; } = "PENDING";
     public DateTimeOffset? StartedAt { get; set; }

@@ -48,6 +48,9 @@ public class NeeDbContext : DbContext
     // Attachments
     public DbSet<Attachment> Attachments => Set<Attachment>();
 
+    // Flow definitions
+    public DbSet<FlowDefinition> FlowDefinitions => Set<FlowDefinition>();
+
     // Scheduling
     public DbSet<ChassisInventory> ChassisInventory => Set<ChassisInventory>();
     public DbSet<CustomerApproval> CustomerApprovals => Set<CustomerApproval>();
@@ -300,6 +303,16 @@ public class NeeDbContext : DbContext
             b.HasKey(x => x.Id);
             b.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
             b.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
+        });
+
+        // --- Flow definitions ---
+        mb.Entity<FlowDefinition>(b =>
+        {
+            b.ToTable("flow_definitions");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.BodyType, x.Track, x.SortOrder }).IsUnique();
+            b.HasIndex(x => new { x.BodyType, x.Track, x.StationId }).IsUnique();
+            b.HasOne(x => x.Station).WithMany().HasForeignKey(x => x.StationId);
         });
 
         // --- Scheduling ---

@@ -54,6 +54,7 @@ public class KanbanStage
     public string Name { get; set; } = string.Empty;
     public short SortOrder { get; set; }
     public bool IsTerminal { get; set; }
+    public bool IsMergePoint { get; set; }
 }
 
 public class RoKanbanState

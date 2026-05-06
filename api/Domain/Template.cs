@@ -28,6 +28,7 @@ public class TemplateVersion
     public DateTimeOffset EffectiveFrom { get; set; }
     public DateTimeOffset? SupersededAt { get; set; }
     public decimal TotalEstimatedHours { get; set; }
+    public string? BodyType { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 
     public JobCodeTemplate Template { get; set; } = null!;
@@ -42,6 +43,7 @@ public class TemplateOperation
     public short OperationId { get; set; }
     public decimal EstimatedHours { get; set; }
     public short? StationIdOverride { get; set; }
+    public string FlowTrack { get; set; } = "BODY";
     public string? Notes { get; set; }
 
     public TemplateVersion TemplateVersion { get; set; } = null!;
