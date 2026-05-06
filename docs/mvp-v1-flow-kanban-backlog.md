@@ -45,7 +45,7 @@ Same conventions as Phase 1 (`docs/backlog.md`) and Phase 2 (`docs/phase2-backlo
 
 ---
 
-## The 6 epics, sequenced by dependency
+## The 8 epics, sequenced by dependency
 
 | # | Epic | Priority | Owner | Days | Dependencies | Stories |
 |---|---|---|---|---|---|---|
@@ -55,8 +55,10 @@ Same conventions as Phase 1 (`docs/backlog.md`) and Phase 2 (`docs/phase2-backlo
 | E24 | Auto stage advance + gating | **P0** | Dev B | 3–6 | E21, E5 | 5 |
 | E25 | Operational flow visualisation | **P1** | Dev A | 6–7 | E21, E22 | 3 |
 | E26 | Rollout, parity, decommission | **P0** | Both | 7–9 | E22, E24 | 3 |
+| E27 | Weekly chassis Excel intake | **P1** | Dev B | 7–8 | E21, E10 | 5 |
+| E28 | Auto-allocation suggestions | **P1** | Dev B | 9 | E27, E10 | 2 |
 
-**Total: ~25 stories · ~80 hours · ~10 person-days.** Two devs × 10 days × ~2.5 stories/day each.
+**Total: ~32 stories · ~104 hours · ~13 person-days.** The chassis-intake epics (E27, E28) are explicitly P1 stretch — drop without remorse if E26 rollout slips. Promote E27 to P0 only if the workshop genuinely cannot operate without weekly Excel ingestion in this MVP.
 
 ---
 
@@ -64,13 +66,14 @@ Same conventions as Phase 1 (`docs/backlog.md`) and Phase 2 (`docs/phase2-backlo
 
 **Dev A — board & visualisation:** Schema (paired day 0), grouped kanban API + UI, PDF preview drawer, flow ribbon, decommission cleanup.
 
-**Dev B — gating & lifecycle:** Schema (paired day 0), backfill, template materialisation update, gate computation, auto-advance event handler, force-advance escape hatch.
+**Dev B — gating & lifecycle:** Schema (paired day 0), backfill, template materialisation update, gate computation, auto-advance event handler, force-advance escape hatch. Picks up E27 and E28 (chassis intake + allocation) as P1 stretch on days 7–9 only if E26 rollout is on track by EOD day 7.
 
-Day 0–1 they pair on E21 because the migration shape determines the projection shape, the gate algorithm, and the seed of `flow_definitions`. After that they work in parallel and meet at three integration points:
+Day 0–1 they pair on E21 because the migration shape determines the projection shape, the gate algorithm, and the seed of `flow_definitions`. After that they work in parallel and meet at four integration points:
 
 1. **E22-S1 ↔ E24-S1**: Dev A's grouped DTO must include the `gateState` field that Dev B computes. Agree on field names and enum values before either codes. See E22-S1's "Wire contract" below.
 2. **E24-S2 ↔ E22-S3**: Auto-advance must invalidate the kanban cache so the board refreshes within a SignalR push. Decide whether to push the whole grouped column or just the affected card.
 3. **E24-S3 ↔ E25-S1**: Merge-point semantics need a shared helper `FlowGraph.IsReadyAt(roId, stationId)` that both the gate computation and the flow visualisation call.
+4. **E27-S1 ↔ E21-S1**: Both add columns to `repair_orders`. E27 lands its `chassis_tag` and `colour` columns on top of E21's `body_type`. Migration numbers must be sequential — E27 starts at `022_chassis_match_fields.sql`.
 
 ---
 
@@ -1184,6 +1187,432 @@ Assert allOpen.Select(t => t.Id).All(id => grouped.Contains(id)) AND counts matc
 
 ---
 
+# Epic E27 — Weekly chassis Excel intake
+
+> **Priority:** P1 stretch · **Owner:** Dev B · **Days:** 7–8 · **Total estimate:** 16 hours
+
+The workshop receives a weekly Excel sheet of chassis on site (chassis number, body type, paint colour, tag/key number, arrival date). Today this lives in someone's inbox; the system has no way to ingest it. This epic adds the upload path, parses the sheet with ClosedXML, runs a dry-run diff against the live `chassis_inventory` table, and on commit upserts rows + tracks `last_seen_at` so chassis missing from successive sheets surface in an admin reconciliation tray. Pairs with E28 which uses this enriched data for auto-allocation.
+
+This epic depends on E21-S1 (`repair_orders.body_type`) — without it, the auto-allocation in E28 has nothing to match against.
+
+## Story E27-S1 — Migration `022_chassis_match_fields.sql` — schema enrichment (S, 2h)
+
+**As a developer**
+**I want** `chassis_inventory` enriched with `body_type`, `colour`, `tag_number`, `arrival_date`, `last_seen_at` and `repair_orders` extended with `chassis_tag`, `colour`
+**So that** the upload parser has columns to write to and the allocation algorithm has columns to match on
+
+### Acceptance criteria
+- New file `db/migrations/022_chassis_match_fields.sql`, idempotent
+- `chassis_inventory` gets:
+  - `body_type TEXT NULL` — values match `repair_orders.body_type` from E21
+  - `colour TEXT NULL`
+  - `tag_number TEXT NULL`
+  - `arrival_date DATE NULL` — distinct from existing `received_at TIMESTAMPTZ`; `arrival_date` is the day the chassis physically arrived per the supplier sheet, `received_at` stays for system-creation timestamp
+  - `last_seen_at TIMESTAMPTZ NULL` — touched on every weekly upload; null means never seen via upload (only manually entered)
+- `repair_orders` gets:
+  - `chassis_tag TEXT NULL` — pre-assignment hint; matched against `chassis_inventory.tag_number`
+  - `colour TEXT NULL` — paint colour for matching; today this is a UI-only field at `design/pitch-demo-reference.html:2339`, now persisted
+- Indexes:
+  - `CREATE INDEX ix_chassis_inventory_match ON chassis_inventory(body_type, status, arrival_date) WHERE status = 'AVAILABLE';`
+  - `CREATE INDEX ix_chassis_inventory_tag ON chassis_inventory(tag_number) WHERE tag_number IS NOT NULL;`
+- All existing chassis rows in seed data (`db/migrations/002_seed_data.sql` — find any `INSERT INTO chassis_inventory`) get a UPDATE to populate `body_type` from their `description` text via a CASE expression similar to the body-type backfill in `019_backfill_flow.sql`
+- Existing tests (`dotnet test`) green
+
+### Technical context
+- Don't make `body_type` NOT NULL yet — that's a P2 follow-up after one round of weekly uploads has filled it. The allocation algorithm tolerates null `body_type` (treats it as "match anything")
+- The partial indexes are deliberate — a full index on `body_type` would cover the rarely-queried ALLOCATED/DELIVERED rows
+- Don't drop `received_at`. Keep both columns; `arrival_date` is supplier-reported, `received_at` is system-recorded — they answer different questions
+
+### Done definition
+- `make reset` produces a DB with all six new columns
+- `\d chassis_inventory` shows the partial indexes
+- `SELECT body_type, COUNT(*) FROM chassis_inventory GROUP BY 1;` returns at least one non-null value (from the seed UPDATE)
+
+### Claude Code prompt
+```
+Create db/migrations/022_chassis_match_fields.sql, idempotent:
+
+1. ALTER TABLE chassis_inventory
+   ADD COLUMN IF NOT EXISTS body_type    TEXT NULL,
+   ADD COLUMN IF NOT EXISTS colour       TEXT NULL,
+   ADD COLUMN IF NOT EXISTS tag_number   TEXT NULL,
+   ADD COLUMN IF NOT EXISTS arrival_date DATE NULL,
+   ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ NULL;
+
+2. ALTER TABLE repair_orders
+   ADD COLUMN IF NOT EXISTS chassis_tag TEXT NULL,
+   ADD COLUMN IF NOT EXISTS colour      TEXT NULL;
+
+3. CREATE INDEX IF NOT EXISTS ix_chassis_inventory_match ON chassis_inventory(body_type, status, arrival_date) WHERE status = 'AVAILABLE';
+   CREATE INDEX IF NOT EXISTS ix_chassis_inventory_tag ON chassis_inventory(tag_number) WHERE tag_number IS NOT NULL;
+
+4. Backfill body_type for existing seeded rows using a CASE on description (mirror the mapping from 019_backfill_flow.sql).
+
+5. Update api/Domain/Production.cs ChassisInventory class with the five new properties; add chassis_tag and colour to api/Domain/RepairOrder.cs.
+
+Verify with the queries in the Done definition.
+```
+
+---
+
+## Story E27-S2 — ClosedXML reference + `chassis_stock_uploads` audit table (S, 2h)
+
+**As a developer**
+**I want** the ClosedXML library wired into the API and a `chassis_stock_uploads` table for audit
+**So that** every weekly intake has a permanent record of what was uploaded, when, by whom, and what changed
+
+### Acceptance criteria
+- `api/Nee.Api.csproj` references `ClosedXML` (latest stable, currently 0.105.x — pure C#, MIT, zero deps)
+- New file `db/migrations/023_chassis_stock_uploads.sql` creates:
+  ```sql
+  CREATE TABLE chassis_stock_uploads (
+      id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      uploaded_by              UUID NOT NULL REFERENCES users(id),
+      uploaded_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+      file_name                TEXT NOT NULL,
+      blob_path                TEXT NOT NULL,
+      row_count                INT NOT NULL DEFAULT 0,
+      inserted_count           INT NOT NULL DEFAULT 0,
+      updated_count            INT NOT NULL DEFAULT 0,
+      stale_after_count        INT NOT NULL DEFAULT 0,
+      status                   TEXT NOT NULL DEFAULT 'PARSED'
+                               CHECK (status IN ('PARSED','COMMITTED','REJECTED')),
+      parse_errors             JSONB NULL,
+      committed_at             TIMESTAMPTZ NULL
+  );
+  ALTER TABLE chassis_inventory ADD COLUMN IF NOT EXISTS source_upload_id UUID NULL REFERENCES chassis_stock_uploads(id);
+  ```
+- Domain entity `api/Domain/ChassisStockUpload.cs`; DbSet in `NeeDbContext.cs`
+- The xlsx blob lives at `{UploadsBasePath}/chassis-stock/{guid}.xlsx` — same on-disk pattern as `SalesPdfEndpoints.cs:40`
+
+### Technical context
+- ClosedXML uses OpenXML under the hood; no native dependencies; works on .NET 10
+- Keep the parsed errors as JSONB so we can render row-by-row error reports on retry without re-parsing
+- The `source_upload_id` on `chassis_inventory` is set by E27-S4 commit — null on rows entered manually before this epic shipped
+
+### Done definition
+- `dotnet build` passes with ClosedXML resolved
+- `make reset` creates `chassis_stock_uploads` with all columns and the FK
+- `INSERT INTO chassis_stock_uploads (uploaded_by, file_name, blob_path) VALUES (...)` succeeds in `psql`
+
+### Claude Code prompt
+```
+1. Add <PackageReference Include="ClosedXML" Version="0.105.*" /> to api/Nee.Api.csproj.
+
+2. Create db/migrations/023_chassis_stock_uploads.sql with the table + FK above, idempotent.
+
+3. New file api/Domain/ChassisStockUpload.cs with the entity (PascalCase properties).
+
+4. Wire DbSet<ChassisStockUpload> into NeeDbContext.cs and configure jsonb mapping for ParseErrors.
+
+5. dotnet test green.
+```
+
+---
+
+## Story E27-S3 — Upload + dry-run parse endpoint (M, 4h)
+
+**As an admin**
+**I want** to upload an xlsx file and see exactly what will change before I commit
+**So that** a malformed sheet doesn't quietly corrupt our chassis inventory
+
+### Acceptance criteria
+- New endpoint `POST /api/scheduling/chassis/upload-inventory` (ADMIN role only)
+- Accepts a multipart/form-data `file: IFormFile` (xlsx, max 5 MB)
+- Saves the file to `{UploadsBasePath}/chassis-stock/{guid}.xlsx`
+- Inserts a `chassis_stock_uploads` row with status `'PARSED'`
+- Parses the sheet with ClosedXML (first worksheet, row 1 is headers)
+- Header detection is **permissive** — case-insensitive, allowed aliases:
+  - `chassis_number` ← `chassis number`, `chassis no`, `chassis#`, `vin`
+  - `body_type` ← `body type`, `type`, `body`
+  - `colour` ← `colour`, `color`, `paint`
+  - `tag_number` ← `tag`, `tag no`, `tag number`, `key`, `key no`, `key number`
+  - `arrival_date` ← `arrival date`, `arrived`, `received`, `eta`
+- Returns a dry-run preview:
+  ```jsonc
+  {
+    "uploadId": "...",
+    "rowCount": 42,
+    "toInsert": [{ "chassisNumber": "...", "bodyType": "TIPPER_CS", ... }],
+    "toUpdate": [{ "chassisNumber": "...", "field": "colour", "from": "white", "to": "Arc White" }],
+    "wouldBeStale": [{ "chassisNumber": "...", "lastSeenWeeksAgo": 3 }],
+    "parseErrors": [{ "row": 17, "message": "missing chassis_number" }]
+  }
+  ```
+- "Insert" = chassis_number not in DB. "Update" = in DB and any of `body_type/colour/tag_number/arrival_date` differs. "Would be stale" = AVAILABLE chassis in DB whose `chassis_number` is missing from this sheet
+- No DB writes to `chassis_inventory` yet — the dry-run is read-only against the inventory table
+
+### Technical context
+- Use `IFormFile` + `IWebHostEnvironment` for the upload base path, following `SalesPdfEndpoints.cs:16-79`
+- Validate `file.ContentType` is `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` OR file extension is `.xlsx` (some browsers send octet-stream)
+- ClosedXML idiom: `using var workbook = new XLWorkbook(stream); var sheet = workbook.Worksheet(1); var rows = sheet.RangeUsed().RowsUsed();`
+- Skip empty rows; treat any row whose `chassis_number` cell is empty as a parse error
+- Parse `arrival_date` permissively — accept ISO `YYYY-MM-DD`, AU `DD/MM/YYYY`, and Excel serial dates (ClosedXML returns DateTime for date-formatted cells natively)
+- The endpoint is **idempotent** in the sense that re-uploading the same file produces the same dry-run; commit (S4) is what actually mutates
+
+### Done definition
+- Upload a sample sheet of 10 rows including 1 missing `chassis_number` and 1 unknown chassis: response shows 1 insert, 0 updates, 1 parse error, plus the would-be-stale list
+- The xlsx is saved to disk; `chassis_stock_uploads` row exists with status `'PARSED'`
+- Test `api.tests/ChassisStockUploadTests.cs::Upload_DryRun_ReturnsDiffWithoutMutating`
+
+### Claude Code prompt
+```
+Create new endpoint group api/Endpoints/ChassisStockEndpoints.cs (registered in Program.cs):
+
+POST /api/scheduling/chassis/upload-inventory:
+1. Require ADMIN role.
+2. Accept IFormFile, validate xlsx + size <= 5MB.
+3. Save to {UploadsBasePath}/chassis-stock/{guid}.xlsx (use IWebHostEnvironment).
+4. Open with ClosedXML, parse first sheet, detect headers permissively (header alias map at top of file).
+5. For each row, build a parsed DTO; collect parse errors.
+6. Compute diff vs db.ChassisInventory (toInsert/toUpdate/wouldBeStale).
+7. INSERT chassis_stock_uploads row with status='PARSED', file_name, blob_path, parse_errors as jsonb.
+8. Return the upload id + diff payload.
+
+Test:
+- Upload_DryRun_ReturnsDiffWithoutMutating — seed 3 chassis, upload sheet with 5 rows (2 match, 3 new, 1 missing from sheet). Assert diff counts.
+- Upload_BadHeaders_ReturnsParseErrors — sheet with no chassis_number column → returns parse_errors with diagnostic message.
+- Upload_NotAdmin_Returns403.
+```
+
+---
+
+## Story E27-S4 — Commit endpoint + last-seen tracking (M, 4h)
+
+**As an admin**
+**I want** to confirm the dry-run preview and have the system upsert chassis rows transactionally
+**So that** the inventory is brought up to date in one auditable step
+
+### Acceptance criteria
+- New endpoint `POST /api/scheduling/chassis/upload-inventory/{uploadId:guid}/commit` (ADMIN only)
+- Re-parses the saved xlsx (don't trust the client to send the diff back) and re-computes the diff
+- Wraps the following in a single EF transaction:
+  - INSERT new chassis rows with `status='AVAILABLE'`, `source_upload_id=uploadId`, `last_seen_at=now()`
+  - UPDATE existing chassis rows whose match-fields differ; always set `last_seen_at=now()`, `source_upload_id=uploadId`
+  - For chassis NOT in the sheet:
+    - If `status='AVAILABLE'` and `allocated_to_ro IS NULL`: leave alone but **don't** touch `last_seen_at` — admin reconciliation tray surfaces them via "last seen > 14 days ago"
+    - If `status='ALLOCATED'` and the allocated RO is `'COMPLETED'`: mark `status='DELIVERED'`, set `delivered_at = now()` (add column if not present)
+    - Else leave alone (still allocated to active work)
+  - UPDATE the `chassis_stock_uploads` row: `status='COMMITTED'`, `committed_at=now()`, `inserted_count`, `updated_count`, `stale_after_count`
+- Writes a `domain_events` row of type `ChassisStockReconciled` with payload summary
+- Already-committed uploads are rejected (status check at top); idempotent via that check, NOT via re-running
+
+### Technical context
+- "DELIVERED on auto-detect" is the conservative reading from earlier discussion: only mark gone-from-sheet chassis as DELIVERED if they were already ALLOCATED to a now-completed RO. Preserves manual reconciliation for the long tail
+- The `delivered_at` column may not exist — add it to the `022_chassis_match_fields.sql` migration if missing (or as a sub-migration `024_chassis_delivered_at.sql`)
+- Don't recompute what was already returned in the dry-run — the actual committed counts may differ if another admin uploaded between dry-run and commit. That's fine; the audit row records what *this* commit did
+
+### Done definition
+- Run dry-run via S3, then commit. Inventory reflects the changes. `chassis_stock_uploads.status='COMMITTED'` with non-zero counts
+- Re-attempting commit on the same `uploadId` returns 409 Conflict
+- Test `api.tests/ChassisStockUploadTests.cs::Commit_AppliesDiffAndAuditsCounts`
+
+### Claude Code prompt
+```
+POST /api/scheduling/chassis/upload-inventory/{uploadId:guid}/commit:
+
+1. Load upload row; reject if status != 'PARSED' (return 409).
+2. Re-open the xlsx from blob_path and re-parse (use the same parser as S3).
+3. In a single EF transaction:
+   - For each toInsert: insert ChassisInventory row (status='AVAILABLE', source_upload_id=upload.Id, last_seen_at=now).
+   - For each toUpdate: load existing row, update changed fields, last_seen_at=now, source_upload_id=upload.Id.
+   - For each AVAILABLE chassis missing from sheet AND allocated_to_ro IS NULL: no-op.
+   - For each ALLOCATED chassis missing from sheet whose linked RO is COMPLETED: status='DELIVERED', delivered_at=now.
+   - Update chassis_stock_uploads status='COMMITTED', counts.
+   - Insert domain_events row 'ChassisStockReconciled'.
+4. Save and commit.
+5. Return summary { inserted, updated, deliveredAuto, staleAfterUpload }.
+
+If 022 doesn't have delivered_at, add it via 024_chassis_delivered_at.sql.
+
+Tests:
+- Commit_AppliesDiffAndAuditsCounts.
+- Commit_TwiceReturns409.
+- Commit_AllocatedToCompletedRo_MarksDelivered.
+```
+
+---
+
+## Story E27-S5 — Admin upload UI with dry-run review (M, 4h)
+
+**As an admin**
+**I want** an Angular page where I drop the weekly xlsx, review the diff, and click Commit
+**So that** I never have to ssh anywhere or run SQL by hand
+
+### Acceptance criteria
+- New route `/admin/chassis-stock` (admin-only via the existing `adminGuard`)
+- Page layout: drop-zone at top, diff preview table after upload, errors panel, Commit button at bottom
+- Drop-zone: drag-drop or click-to-select; shows file name + size; "Parse" button kicks off the upload to S3
+- Diff preview: three collapsible sections — `Insert (n)` / `Update (n)` / `Would be stale (n)`. Each section a table with the rows. Updates show `field: from → to` per cell change
+- Errors panel: highlighted red, lists each parse error with row number and message
+- Commit button disabled while `parseErrors.length > 0` (admin must fix the sheet and re-upload). On commit, calls S4, shows a success toast with the four counts, and redirects to `/admin/chassis-stock/uploads` (the historical list — out of scope for this MVP, link is dead but page placeholder exists)
+- Mobile is **not supported** — admin uploads are desktop-only (no media query, fixed min-width 1024px)
+
+### Technical context
+- Reuse the upload-zone styling from `design/pitch-demo-reference.html:2402-2429` (the SalesPdfEndpoints upload UI)
+- Don't use Angular forms reactive — signal-based state is enough for a one-step flow
+- The diff arrays could be hundreds of rows — virtualise the table with `cdk-virtual-scroll-viewport` if available, otherwise just truncate at 100 rows per section with a "show all" toggle
+
+### Done definition
+- Click `Admin → Chassis stock`, drop a sample xlsx, see the diff render. Errors panel populated correctly when sheet is malformed
+- Click Commit, see toast, inventory updated in the dev DB
+- E2E test `web/e2e/chassis-stock-upload.spec.ts`: login as admin, upload sample, verify diff sections render
+
+### Claude Code prompt
+```
+Create web/src/app/admin/chassis-stock-upload.component.ts (standalone), routed at /admin/chassis-stock under the adminGuard.
+
+Template structure:
+- header
+- drop-zone (file: signal<File|null>)
+- "Parse" button → calls ChassisStockService.upload(file)
+- on success: render three sections (insert/update/stale) + errors panel
+- "Commit" button → calls ChassisStockService.commit(uploadId), toast on success
+
+Service: web/src/app/admin/chassis-stock.service.ts with upload() and commit() methods, signal-based state.
+
+Add web/e2e/chassis-stock-upload.spec.ts: login as supervisor (who has ADMIN role per E11-S1), drop a fixture xlsx, assert diff renders.
+```
+
+---
+
+# Epic E28 — Auto-allocation suggestions
+
+> **Priority:** P1 stretch · **Owner:** Dev B · **Days:** 9 · **Total estimate:** 8 hours
+
+E27 fills `chassis_inventory` with structured data; this epic uses it. When a supervisor opens an unscheduled RO, "Suggest chassis" returns a ranked top-3 by tag match, colour match, arrival-date proximity, and FIFO. The supervisor confirms one. The existing `POST /api/scheduling/chassis/{id}/allocate` does the binding — no parallel allocation path.
+
+## Story E28-S1 — `GET /api/scheduling/ros/{id}/chassis-suggestions` (M, 4h)
+
+**As a supervisor**
+**I want** an API that returns the three best-matching available chassis for an RO with a transparent score breakdown
+**So that** my allocation decision is auditable and not opaque
+
+### Acceptance criteria
+- New endpoint `GET /api/scheduling/ros/{id:guid}/chassis-suggestions` (SUPERVISOR or ADMIN)
+- Returns:
+  ```jsonc
+  {
+    "roId": "...",
+    "roBodyType": "TIPPER_CS",
+    "roColour": "Arc White",
+    "roChassisTag": "T-247",
+    "roRequiredDate": "2026-05-21",
+    "candidates": [
+      {
+        "chassisId": "...",
+        "chassisNumber": "...",
+        "bodyType": "TIPPER_CS",
+        "colour": "Arc White",
+        "tagNumber": "T-247",
+        "arrivalDate": "2026-04-30",
+        "score": 165,
+        "scoreBreakdown": { "tag": 100, "colour": 50, "proximity": 15, "fifoRank": 0 },
+        "reason": "Exact tag match, colour match, arrived 21 days ahead"
+      }
+    ]
+  }
+  ```
+- Algorithm — for each chassis where `status='AVAILABLE'`:
+  - **Body-type filter (hard)**: skip if `chassis.body_type IS NOT NULL AND chassis.body_type != ro.body_type`. Null body_type passes (treats unknown as compatible)
+  - **Tag score**: 100 if `chassis.tag_number = ro.chassis_tag` AND ro.chassis_tag is not null, else 0
+  - **Colour score**: 50 if case-insensitive equal, else 0
+  - **Proximity score**: `max(0, 30 - abs((chassis.arrival_date - ro.required_date).days))` — peaks at 30 when arrival aligns exactly with required date, decays linearly to 0 over 30 days
+  - **FIFO rank**: not a score but a tiebreaker — older `arrival_date` wins
+- Sort candidates by `score DESC, arrival_date ASC`. Return top 3
+- If fewer than 3 candidates pass the body-type filter, return what's available (could be 0). Empty array is a valid response
+
+### Technical context
+- Read-only — never mutates. Allocation happens via the existing `POST /api/scheduling/chassis/{chassisId}/allocate` (`SchedulingEndpoints.cs:122`)
+- Use the partial index from E27-S1 (`ix_chassis_inventory_match`) — query plan should hit it
+- The "reason" string is human-readable, generated server-side. Don't put templated literals in the frontend
+- Don't call this on every RO list render — it's a per-RO action triggered by the "Suggest chassis" button. Cheap enough to not need caching
+
+### Done definition
+- For an RO with body_type='TIPPER_CS' and a tag of 'T-247', returns at least one candidate (assuming the dev seed has matching chassis post-E27)
+- For an RO with no matching body_type chassis, returns `candidates: []`
+- Test cases:
+  - `Suggest_BodyTypeMismatch_ExcludesIncompatible`
+  - `Suggest_TagMatch_RanksFirst`
+  - `Suggest_NoTag_FallsBackToColourAndProximity`
+  - `Suggest_FifoTiebreaker_PrefersOldest`
+
+### Claude Code prompt
+```
+Add to api/Endpoints/SchedulingEndpoints.cs:
+
+GET /api/scheduling/ros/{id:guid}/chassis-suggestions:
+1. Require SUPERVISOR or ADMIN role.
+2. Load RO with body_type, colour, chassis_tag, required_date.
+3. var candidates = await db.ChassisInventory
+       .Where(c => c.Status == "AVAILABLE"
+                && (c.BodyType == null || c.BodyType == ro.BodyType))
+       .OrderBy(c => c.ArrivalDate) // FIFO baseline
+       .ToListAsync();
+4. Score each in C# (not in SQL — readability over cleverness):
+   var scored = candidates.Select(c => new { c, score = ScoreChassis(c, ro) });
+5. Sort by score desc, arrival_date asc; take 3.
+6. Project to suggestion DTO with breakdown + human reason.
+
+Helper ScoreChassis(c, ro):
+   tag      = (ro.ChassisTag != null && c.TagNumber == ro.ChassisTag) ? 100 : 0;
+   colour   = StringEqualsIgnoreCase(c.Colour, ro.Colour) ? 50 : 0;
+   proximity = Math.Max(0, 30 - Math.Abs((c.ArrivalDate - ro.RequiredDate).Days));
+   return tag + colour + proximity;
+
+Tests in api.tests/ChassisSuggestionTests.cs:
+- Suggest_BodyTypeMismatch_ExcludesIncompatible
+- Suggest_TagMatch_RanksFirst
+- Suggest_NoTag_FallsBackToColourAndProximity
+- Suggest_FifoTiebreaker_PrefersOldest
+```
+
+---
+
+## Story E28-S2 — "Suggest chassis" UI on the scheduling backlog (M, 4h)
+
+**As a supervisor**
+**I want** a button on each unscheduled RO that opens a modal showing the three best chassis with score breakdown and lets me allocate one
+**So that** I don't have to scan the whole stock list to find the right match
+
+### Acceptance criteria
+- On the scheduling backlog at `web/src/app/admin/scheduling.component.ts` (or wherever the existing `sched-table` lives — check `design/pitch-demo-reference.html:2700-2769`), the chassis-gate cell for ROs without a chassis allocated gains a `Suggest →` button alongside the existing red "✗ No chassis allocated" pill
+- Clicking opens a modal showing the three candidates as cards, each with:
+  - chassis number (mono font)
+  - body type, colour, tag, arrival date
+  - score badge (colour-coded: ≥100 green, 50–99 amber, <50 grey)
+  - score breakdown row (`tag 100 · colour 50 · proximity 15`)
+  - human reason line
+  - "Allocate" button per card
+- "Allocate" calls `POST /api/scheduling/chassis/{chassisId}/allocate { roId }`. On success, modal closes, the gate cell flips to green, a toast confirms with chassis number
+- If `candidates: []`: modal shows "No matching chassis in stock — adjust the tag or upload this week's stock sheet" with a link to `/admin/chassis-stock`
+- Modal is keyboard-dismissible (Escape)
+
+### Technical context
+- The existing scheduling backlog already calls `GET /api/scheduling/backlog` (`SchedulingEndpoints.cs:16`). Don't refetch the whole backlog on allocate — just patch the row's gate state in the signal store
+- The score badge uses the same colour vocabulary as the existing `gate good/warn/bad` classes — see `design/pitch-demo-reference.html:1538-1544`
+- Don't auto-allocate when there's only one candidate — always show the modal. The point is to make the supervisor consciously confirm
+
+### Done definition
+- For an RO with the chassis gate red, click `Suggest →`: modal opens within ~300 ms with three cards
+- Click `Allocate` on the top card: modal closes, the row's chassis gate turns green, toast appears
+- `npx playwright test web/e2e/chassis-suggestion.spec.ts` passes
+
+### Claude Code prompt
+```
+1. Add SchedulingService.suggestChassis(roId) and allocateChassis(chassisId, roId) to web/src/app/admin/scheduling.service.ts.
+
+2. New component web/src/app/admin/chassis-suggest-modal.component.ts (standalone). Inputs: roId, open (signal<bool>). Output: allocated (chassisId).
+
+3. Wire the modal into the existing scheduling.component.ts: when chassis gate is red, render a "Suggest →" button beside it.
+
+4. Style the candidate cards to match the existing gate-pill palette (good/warn/bad).
+
+5. E2E spec at web/e2e/chassis-suggestion.spec.ts: login as supervisor, navigate to scheduling, click Suggest, click Allocate, assert gate flips to green.
+```
+
+---
+
 # Cut list (explicit non-goals for this MVP)
 
 These are tempting but **out of scope**. They land in MVP v2 if the v1 demo lands well.
@@ -1195,6 +1624,9 @@ These are tempting but **out of scope**. They land in MVP v2 if the v1 demo land
 - **Custom flow definitions per RO** — body-type-derived flow is good enough. Per-RO bespoke flows are a long-tail edge case.
 - **Mobile redesign of the grouped board** — the technician view (E5, E19) keeps its existing per-task focus. The grouped kanban is supervisor-facing, desktop-only.
 - **PDF annotations / inline comments** — view-only iframe is enough. Linking comments to a PDF region is a separate animal.
+- **Bulk auto-allocate across the entire backlog** (E28 follow-up) — supervisor clicks "auto-allocate all" and the system binds chassis for every ready RO. Tempting but error-prone; keep allocation per-RO and supervisor-confirmed in this MVP.
+- **Chassis stock historical browsing** — the `/admin/chassis-stock/uploads` route in E27-S5 is a dead link in this MVP. Listing past uploads + their commit summaries is one screen of work; defer to v2.
+- **Strict Excel schema validation** — the parser in E27-S3 is permissive by design. A "schema lock" mode that rejects sheets with unknown columns is a v2 concern.
 
 # Risk log
 
@@ -1204,7 +1636,10 @@ These are tempting but **out of scope**. They land in MVP v2 if the v1 demo land
 | Auto-advance fires twice for a single task completion (race condition) | Low | E24-S2 idempotency check on `current_stage_id`; transaction wraps both writes |
 | The wide drawer + iframe is visually cramped on 13" laptops | Medium | The `min(96vw, 1080px)` width keeps it usable; supervisors mostly use larger screens; degrade to stacked layout below 1100px (P1 polish, in E25 if time) |
 | Backfill (E21-S4) misclassifies a body type for an existing RO with an unusual template code | Low | The `BODY_SWAP` fallback is safe — single linear flow, no merge | 
-| The CITEXT email column quirk (CLAUDE.md) bites the new `body_type` projection | Low | `body_type` is plain TEXT, not CITEXT; no risk | 
+| The CITEXT email column quirk (CLAUDE.md) bites the new `body_type` projection | Low | `body_type` is plain TEXT, not CITEXT; no risk |
+| Weekly Excel sheet headers drift (`Tag` becomes `Key #`) and parser misses a column | Medium | E27-S3's permissive header alias map handles known synonyms; unknown headers surface as parse errors; admin fixes the sheet and re-uploads — no silent loss |
+| Two admins commit the same upload concurrently | Low | E27-S4 idempotent guard via `chassis_stock_uploads.status` — second commit returns 409 |
+| Auto-allocation suggests a chassis already physically claimed for another RO not yet in the system | Medium | E28 always shows top 3 with score breakdown and requires supervisor click — no silent allocation; staleness exposed via E27-S4's `last_seen_at` reconciliation tray (P1) |
 
 # Glossary additions for `docs/glossary.md`
 
@@ -1213,3 +1648,6 @@ These are tempting but **out of scope**. They land in MVP v2 if the v1 demo land
 - **Gate state** — the readiness of a grouped (RO, station) card: READY, IN_PROGRESS, COMPLETE, or GATED.
 - **Force advance** — supervisor escape hatch that bypasses the gate, requires a written reason, audited via `domain_events`.
 - **Flow definition** — the canonical per-(body_type, track) ordered sequence of stations, seeded once from the operations PDF and lookup-only at runtime.
+- **Chassis stock upload** — a weekly xlsx the workshop manager drops into the system listing every chassis on site with its body type, paint colour, tag/key number, and arrival date. Drives auto-allocation suggestions.
+- **Chassis tag** — a physical label the workshop attaches to a chassis on arrival; recorded on the RO at sales time as `chassis_tag` so the system can match RO ↔ chassis without relying on chassis_number alone.
+- **Allocation score** — a transparent integer combining tag match (100), colour match (50), and arrival-vs-required-date proximity (0–30), with FIFO arrival_date as tiebreaker. Returned with breakdown in E28-S1.
