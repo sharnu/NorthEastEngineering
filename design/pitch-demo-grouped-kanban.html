@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEE — Grouped Kanban · Flow-Aware Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0e0f;
+    --ink-2: #1a1f21;
+    --ink-3: #2a3033;
+    --paper: #f5f2ea;
+    --paper-2: #ebe7dc;
+    --paper-3: #ddd7c8;
+    --rule: rgba(10,14,15,0.12);
+    --rule-strong: rgba(10,14,15,0.22);
+    --accent: #c2410c;
+    --good: #15803d;
+    --warn: #b45309;
+    --bad: #b91c1c;
+    --info: #1d4ed8;
+    --track-body: #1d4ed8;
+    --track-chassis: #b45309;
+    --track-subframe: #7c3aed;
+    --display: 'Fraunces', Georgia, serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(194,65,12,0.04), transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(29,78,216,0.03), transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== TOP BAR ===== */
+  .scene-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .scene-bar-inner {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+  }
+  .brand small {
+    font-family: var(--sans);
+    font-weight: 400;
+    color: rgba(245,242,234,0.55);
+    font-size: 11px;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .filter-row {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 11px;
+    color: rgba(245,242,234,0.6);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .pill-btn {
+    background: rgba(245,242,234,0.08);
+    color: var(--paper);
+    border: 0.5px solid rgba(245,242,234,0.15);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-family: var(--sans);
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .pill-btn.active { background: var(--paper); color: var(--ink); }
+
+  /* ===== STAGE WRAPPER ===== */
+  .stage {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .scene-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 0.5px solid var(--rule);
+  }
+  .scene-title {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 28px;
+    letter-spacing: -0.015em;
+  }
+  .scene-narrative {
+    font-size: 13px;
+    color: var(--ink-3);
+    margin-top: 4px;
+    max-width: 720px;
+  }
+  .scene-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ===== FLOW RIBBON (operational flow visualisation) ===== */
+  .flow-ribbon {
+    background: white;
+    border: 0.5px solid var(--rule);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .flow-ribbon-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .flow-ribbon-title {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+  }
+  .flow-ribbon-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .flow-tracks {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    row-gap: 10px;
+    column-gap: 14px;
+    align-items: center;
+  }
+  .flow-track-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+    color: var(--ink-3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .flow-track-label::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .flow-track-label.body::before { background: var(--track-body); }
+  .flow-track-label.chassis::before { background: var(--track-chassis); }
+  .flow-track-label.subframe::before { background: var(--track-subframe); }
+  .flow-track-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .flow-step {
+    background: var(--paper);
+    border: 0.5px solid var(--rule);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    color: var(--ink-2);
+    white-space: nowrap;
+    position: relative;
+  }
+  .flow-step.done {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: var(--good);
+  }
+  .flow-step.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+  .flow-step.blocked {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: var(--bad);
+  }
+  .flow-arrow {
+    color: var(--ink-3);
+    font-family: var(--mono);
+    font-size: 10px;
+  }
+  .flow-merge {
+    background: var(--accent);
+    color: white;
+    border: 0.5px solid var(--accent);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    position: relative;
+  }
+  .flow-merge::before {
+    content: '⇉';
+    margin-right: 5px;
+  }
+
+  /* ===== KANBAN BOARD ===== */
+  .kanban-board {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+  .kanban-col {
+    background: var(--paper-2);
+    border-radius: 12px;
+    padding: 10px;
+    min-height: 580px;
+  }
+  .kanban-col-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+  .kanban-col-name {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .kanban-col-meta {
+    font-size: 10px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+  .kanban-col.merge {
+    background: linear-gradient(180deg, #fff1ec 0%, var(--paper-2) 24%);
+    border: 0.5px solid #fbcfb6;
+  }
+  .kanban-col.merge .kanban-col-name::after {
+    content: '⇉';
+    margin-left: 6px;
+    color: var(--accent);
+    font-weight: 400;
+  }
+
+  /* ===== STATION CARD (the new grouped card) ===== */
+  .stn-card {
+    background: white;
+    border: 0.5px solid var(--rule);
+    border-radius: 10px;
+    padding: 0;
+    margin-bottom: 8px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.15s ease;
+    position: relative;
+  }
+  .stn-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(10,14,15,0.06);
+  }
+  .stn-card.gated {
+    border-style: dashed;
+    border-color: var(--rule-strong);
+    background: repeating-linear-gradient(
+      45deg,
+      white,
+      white 8px,
+      #faf7ee 8px,
+      #faf7ee 14px
+    );
+  }
+  .stn-card.ready {
+    border-color: var(--good);
+    box-shadow: inset 3px 0 0 var(--good);
+  }
+  .stn-card.complete {
+    background: #f0fdf4;
+    border-color: #86efac;
+  }
+  .stn-card-track {
+    height: 3px;
+    background: var(--ink-3);
+  }
+  .stn-card-track.body { background: var(--track-body); }
+  .stn-card-track.chassis { background: var(--track-chassis); }
+  .stn-card-track.subframe { background: var(--track-subframe); }
+  .stn-card-track.split {
+    background: linear-gradient(90deg, var(--track-body) 50%, var(--track-chassis) 50%);
+  }
+
+  .stn-card-head {
+    padding: 10px 12px 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .stn-card-ro {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .stn-card-ro small {
+    display: block;
+    font-family: var(--sans);
+    font-weight: 400;
+    color: var(--ink-3);
+    font-size: 10.5px;
+    margin-top: 2px;
+  }
+  .stn-card-body-type {
+    background: var(--paper-2);
+    color: var(--ink-3);
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 9.5px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    align-self: flex-start;
+  }
+
+  .stn-card-progress {
+    padding: 4px 12px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+  .stn-card-progress strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .stn-progress-bar {
+    height: 3px;
+    background: var(--paper-3);
+    margin: 0 12px;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .stn-progress-fill {
+    height: 100%;
+    background: var(--info);
+    transition: width 0.4s ease;
+  }
+  .stn-progress-fill.complete { background: var(--good); }
+  .stn-progress-fill.warn { background: var(--warn); }
+
+  .stn-tasks-mini {
+    padding: 8px 12px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .stn-task-mini {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    color: var(--ink-2);
+  }
+  .stn-task-mini .check {
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    flex-shrink: 0;
+  }
+  .stn-task-mini.done .check {
+    background: var(--good);
+    border-color: var(--good);
+  }
+  .stn-task-mini.progress .check {
+    border-color: var(--info);
+    background: white;
+    position: relative;
+  }
+  .stn-task-mini.progress .check::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--info);
+    border-radius: 1px;
+  }
+  .stn-task-mini.done {
+    color: var(--ink-3);
+    text-decoration: line-through;
+    text-decoration-thickness: 0.5px;
+  }
+  .stn-task-mini-hours {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-3);
+  }
+
+  .stn-card-foot {
+    border-top: 0.5px solid var(--rule);
+    padding: 7px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--paper);
+  }
+  .stn-card.complete .stn-card-foot {
+    background: rgba(220,252,231,0.4);
+  }
+  .stn-pdf-btn {
+    background: white;
+    color: var(--ink-2);
+    border: 0.5px solid var(--rule-strong);
+    border-radius: 5px;
+    padding: 4px 8px 4px 6px;
+    font-size: 10.5px;
+    font-family: var(--sans);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+  }
+  .stn-pdf-btn:hover { background: var(--paper-2); border-color: var(--accent); color: var(--accent); }
+  .stn-pdf-btn svg { width: 11px; height: 11px; }
+  .stn-gate-pill {
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 3px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-family: var(--mono);
+  }
+  .stn-gate-pill.ready { background: #dcfce7; color: var(--good); }
+  .stn-gate-pill.gated { background: var(--paper-3); color: var(--ink-3); }
+  .stn-gate-pill.advance { background: var(--accent); color: white; cursor: pointer; }
+  .stn-gate-pill.in-progress { background: #dbeafe; color: var(--info); }
+
+  /* Tooltip on gated card */
+  .stn-gate-tip {
+    position: absolute;
+    top: 100%;
+    right: 8px;
+    margin-top: 4px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+    width: 200px;
+    z-index: 50;
+    display: none;
+    box-shadow: 0 4px 12px rgba(10,14,15,0.2);
+  }
+  .stn-card.gated:hover .stn-gate-tip { display: block; }
+
+  /* ===== DRAWER (RO + PDF preview) ===== */
+  .drawer-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,14,15,0.4);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .drawer-bg.show { display: flex; }
+  .drawer {
+    background: var(--paper);
+    width: 1080px;
+    max-width: 96vw;
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 1.05fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "head head"
+      "tasks pdf"
+      "foot foot";
+    animation: slideIn 0.32s ease;
+  }
+  @keyframes slideIn {
+    from { transform: translateX(40px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .drawer-head {
+    grid-area: head;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+  }
+  .drawer-head-left { display: flex; align-items: baseline; gap: 12px; }
+  .drawer-head-ro {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.015em;
+  }
+  .drawer-head-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: rgba(245,242,234,0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .drawer-close {
+    background: rgba(245,242,234,0.08);
+    border: 0.5px solid rgba(245,242,234,0.2);
+    color: var(--paper);
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .drawer-tasks {
+    grid-area: tasks;
+    overflow-y: auto;
+    padding: 22px 24px;
+  }
+  .drawer-section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+  }
+  .drawer-station-title {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .drawer-station-meta {
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-bottom: 18px;
+  }
+
+  .gate-banner {
+    background: white;
+    border-left: 3px solid var(--good);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+  }
+  .gate-banner.gated { border-left-color: var(--warn); background: #fff8ef; }
+  .gate-banner.complete { border-left-color: var(--good); background: #f0fdf4; }
+  .gate-banner-title {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .gate-banner-detail {
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .gate-banner-detail code {
+    background: var(--paper-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .task-list-full {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 22px;
+  }
+  .task-row {
+    background: white;
+    border: 0.5px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 24px 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .task-row.done {
+    background: rgba(220,252,231,0.35);
+    border-color: #bbf7d0;
+  }
+  .task-row.progress {
+    background: rgba(219,234,254,0.4);
+    border-color: #93c5fd;
+  }
+  .task-row-check {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 11px;
+  }
+  .task-row.done .task-row-check {
+    background: var(--good);
+    border-color: var(--good);
+  }
+  .task-row.progress .task-row-check {
+    background: var(--info);
+    border-color: var(--info);
+  }
+  .task-row-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .task-row-name {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .task-row.done .task-row-name { text-decoration: line-through; color: var(--ink-3); text-decoration-thickness: 0.5px; }
+  .task-row-meta {
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+  .task-row-hours {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-align: right;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+  .task-row-track {
+    font-size: 9.5px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .task-row-track.body { background: rgba(29,78,216,0.12); color: var(--track-body); }
+  .task-row-track.chassis { background: rgba(180,83,9,0.12); color: var(--track-chassis); }
+  .task-row-track.subframe { background: rgba(124,58,237,0.12); color: var(--track-subframe); }
+
+  /* PDF preview */
+  .drawer-pdf {
+    grid-area: pdf;
+    background: #f7f4ec;
+    padding: 22px 24px;
+    overflow-y: auto;
+    border-left: 0.5px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+  }
+  .pdf-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .pdf-head-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .pdf-head-actions { display: flex; gap: 6px; }
+  .pdf-head-btn {
+    background: white;
+    border: 0.5px solid var(--rule);
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: var(--sans);
+    cursor: pointer;
+    color: var(--ink-2);
+  }
+  .pdf-head-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .pdf-page {
+    flex: 1;
+    background: white;
+    padding: 22px 28px;
+    border: 0.5px solid var(--rule);
+    border-radius: 8px;
+    font-family: 'Helvetica', Arial, sans-serif;
+    font-size: 10px;
+    color: #222;
+    overflow-y: auto;
+  }
+  .pdf-marker {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: #b5b1a3;
+    margin-bottom: 10px;
+    letter-spacing: 0.1em;
+  }
+  .pdf-h-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    margin-bottom: 14px;
+  }
+  .pdf-h-table td {
+    padding: 4px 6px;
+    border: 0.5px solid #e0ddd2;
+    vertical-align: top;
+  }
+  .pdf-h-table .lbl {
+    color: #666;
+    background: #faf8f0;
+    width: 64px;
+  }
+  .pdf-h-table .val { font-weight: 500; }
+  .pdf-section { margin-bottom: 14px; }
+  .pdf-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #444;
+    border-bottom: 0.5px solid #ccc;
+    padding-bottom: 3px;
+  }
+  .pdf-line {
+    display: grid;
+    grid-template-columns: 110px 1fr 40px;
+    gap: 8px;
+    padding: 4px 6px;
+    font-size: 9.5px;
+    border-bottom: 0.5px solid #f0eee5;
+  }
+  .pdf-code { font-family: var(--mono); font-weight: 500; color: #333; }
+  .pdf-detail { color: #555; }
+  .pdf-hrs {
+    text-align: right;
+    color: var(--accent);
+    font-weight: 600;
+    font-family: var(--mono);
+  }
+
+  /* Drawer foot */
+  .drawer-foot {
+    grid-area: foot;
+    border-top: 0.5px solid var(--rule);
+    background: white;
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .advance-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 22px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--sans);
+  }
+  .advance-btn:hover { background: #9a3412; }
+  .advance-btn:disabled {
+    background: var(--paper-3);
+    color: var(--ink-3);
+    cursor: not-allowed;
+  }
+  .advance-hint {
+    font-size: 12px;
+    color: var(--ink-3);
+    max-width: 480px;
+  }
+  .advance-hint code {
+    font-family: var(--mono);
+    background: var(--paper-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ===== LEGEND ===== */
+  .legend {
+    margin-top: 18px;
+    padding: 12px 16px;
+    background: white;
+    border: 0.5px solid var(--rule);
+    border-radius: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 0.5px solid var(--rule-strong);
+  }
+  .legend-swatch.ready { background: white; box-shadow: inset 3px 0 0 var(--good); border-color: var(--good); }
+  .legend-swatch.gated {
+    background: repeating-linear-gradient(45deg, white, white 4px, #faf7ee 4px, #faf7ee 7px);
+    border-style: dashed;
+  }
+  .legend-swatch.complete { background: #f0fdf4; border-color: #86efac; }
+  .legend-track-body { background: var(--track-body); }
+  .legend-track-chassis { background: var(--track-chassis); }
+  .legend-track-subframe { background: var(--track-subframe); }
+
+</style>
+</head>
+<body>
+
+<div class="scene-bar">
+  <div class="scene-bar-inner">
+    <div class="brand">North East Engineering <small>Grouped Kanban · Flow-aware cards · v2 design</small></div>
+    <div class="filter-row">
+      <span>RO scope:</span>
+      <button class="pill-btn">All</button>
+      <button class="pill-btn active">Tipper C/S</button>
+      <button class="pill-btn">Tray / Tautliner</button>
+      <button class="pill-btn">Pantech</button>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+
+  <div class="scene-header">
+    <div>
+      <div class="scene-title">Station kanban · grouped by RO</div>
+      <div class="scene-narrative">One card per RO at a station. Inside the card are all that station's tasks for that RO. Cards advance only when their tasks are complete — and at merge points (Final Fitment, Final QC), the chassis and body tracks must both arrive.</div>
+    </div>
+    <div class="scene-meta">v2 design · 2026-05-06</div>
+  </div>
+
+  <!-- ============ FLOW RIBBON ============ -->
+  <div class="flow-ribbon">
+    <div class="flow-ribbon-head">
+      <div class="flow-ribbon-title">RO99001 · Direct Freight · Tipper C/S · Isuzu FRR</div>
+      <div class="flow-ribbon-meta">Body & Chassis run in parallel · merge at Body Fitout B1</div>
+    </div>
+    <div class="flow-tracks">
+      <div class="flow-track-label body">Body</div>
+      <div class="flow-track-row">
+        <span class="flow-step done">Robotic fab</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step active">Paint &amp; panel</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">Body fitout (B1)</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">Final fitment (B2)</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-merge">Final QC</span>
+      </div>
+
+      <div class="flow-track-label chassis">Chassis</div>
+      <div class="flow-track-row">
+        <span class="flow-step done">Chassis prep (B3)</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step active">HYVA hydraulics</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">Final fitment (B2)</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-merge">Final QC</span>
+      </div>
+
+      <div class="flow-track-label subframe">Subframe</div>
+      <div class="flow-track-row">
+        <span class="flow-step done">Subframe build</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step done">Paint &amp; panel</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">HYVA fit</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">Final fitment (B2)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ KANBAN BOARD ============ -->
+  <div class="kanban-board">
+
+    <!-- Column 1: Robotic fab / Production -->
+    <div class="kanban-col">
+      <div class="kanban-col-head">
+        <span class="kanban-col-name">Robotic fab</span>
+        <span class="kanban-col-meta">Kai · 2</span>
+      </div>
+
+      <!-- Card: RO99005 — TT67F single-track tray, in progress -->
+      <div class="stn-card" onclick="openDrawer('ro99005')">
+        <div class="stn-card-track body"></div>
+        <div class="stn-card-head">
+          <div class="stn-card-ro">RO99005<small>DFE · DFE-TT67F · Tautliner</small></div>
+          <span class="stn-card-body-type">TAUT</span>
+        </div>
+        <div class="stn-card-progress"><span><strong>2</strong>/4 tasks · <strong>9.5</strong>/14.0 h</span><span>Body</span></div>
+        <div class="stn-progress-bar"><div class="stn-progress-fill" style="width: 50%;"></div></div>
+        <div class="stn-tasks-mini">
+          <div class="stn-task-mini done"><span class="check">✓</span><span>CNC + base</span><span class="stn-task-mini-hours">5.5h</span></div>
+          <div class="stn-task-mini done"><span class="check">✓</span><span>Mfr headboard</span><span class="stn-task-mini-hours">2.5h</span></div>
+          <div class="stn-task-mini progress"><span class="check"></span><span>Mfr dropsides</span><span class="stn-task-mini-hours">1.5/4.0h</span></div>
+          <div class="stn-task-mini"><span class="check"></span><span>Fab line assy</span><span class="stn-task-mini-hours">2.0h</span></div>
+        </div>
+        <div class="stn-card-foot">
+          <button class="stn-pdf-btn" onclick="event.stopPropagation();openDrawer('ro99005');">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V3a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke-linejoin="round"/><path d="M10 2v3h3"/></svg>
+            View PDF
+          </button>
+          <span class="stn-gate-pill in-progress">In progress</span>
+        </div>
+      </div>
+
+      <!-- Card: RO99001 body track — done at this column, ready -->
+      <div class="stn-card complete">
+        <div class="stn-card-track body"></div>
+        <div class="stn-card-head">
+          <div class="stn-card-ro">RO99001<small>DFE · TP42N · Tipper C/S</small></div>
+          <span class="stn-card-body-type">TPR-CS</span>
+        </div>
+        <div class="stn-card-progress"><span><strong>3</strong>/3 tasks · <strong>14.5</strong>/14.5 h</span><span>Body</span></div>
+        <div class="stn-progress-bar"><div class="stn-progress-fill complete" style="width: 100%;"></div></div>
+        <div class="stn-tasks-mini">
+          <div class="stn-task-mini done"><span class="check">✓</span><span>CNC + base</span><span class="stn-task-mini-hours">5.5h</span></div>
+          <div class="stn-task-mini done"><span class="check">✓</span><span>Mfr dropsides</span><span class="stn-task-mini-hours">5.0h</span></div>
+          <div class="stn-task-mini done"><span class="check">✓</span><span>Fab line assy</span><span class="stn-task-mini-hours">4.0h</span></div>
+        </div>
+        <div class="stn-card-foot">
+          <button class="stn-pdf-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V3a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke-linejoin="round"/><path d="M10 2v3h3"/></svg>View PDF</button>
+          <span class="stn-gate-pill advance">Advance →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2: Paint & panel -->
+    <div class="kanban-col">
+      <div class="kanban-col-head">
+        <span class="kanban-col-name">Paint &amp; panel</span>
+        <span class="kanban-col-meta">Scott · 3</span>
+      </div>
+
+      <!-- Card: RO99001 body track at paint, in progress -->
+      <div class="stn-card" onclick="openDrawer('ro99001-paint')">
+        <div class="stn-card-track body"></div>
+        <div class="stn-card-head">
+          <div class="stn-card-ro">RO99001<small>DFE · TP42N · Tipper C/S</small></div>
+          <span class="stn-card-body-type">TPR-CS</span>
+        </div>
+        <div class="stn-card-progress"><span><strong>2</strong>/4 tasks · <strong>10.0</strong>/19.5 h</span><span>Body</span></div>
+        <div class="stn-progress-bar"><div class="stn-progress-fill" style="width: 51%;"></div></div>
+        <div class="stn-tasks-mini">
+          <div class="stn-task-mini done"><span class="check">✓</span><span>Paint prep &amp; rub</span><span class="stn-task-mini-hours">5.0h</span></div>
+          <div class="stn-task-mini done"><span class="check">✓</span><span>Prime &amp; seal</span><span class="stn-task-mini-hours">5.0h</span></div>
+          <div class="stn-task-mini progress"><span class="check"></span><span>Final paint</span><span class="stn-task-mini-hours">3.0/4.0h</span></div>
+          <div class="stn-task-mini"><span class="check"></span><span>Underside black</span><span class="stn-task-mini-hours">1.5h</span></div>
+        </div>
+        <div class="stn-card-foot">
+          <button class="stn-pdf-btn" onclick="event.stopPropagation();openDrawer('ro99001-paint');">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V3a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke-linejoin="round"/><path d="M10 2v3h3"/></svg>View PDF
+          </button>
+          <span class="stn-gate-pill in-progress">In progress</span>
+        </div>
+      </div>
+
+      <!-- Card: RO99012 hospital ish, paint overrun -->
+      <div class="stn-card">
+        <div class="stn-card-track body"></div>
+        <div class="stn-card-head">
+          <div class="stn-card-ro">RO99012<small>Fulton Hogan · DP67F</small></div>
+          <span class="stn-card-body-type">PNT-AL</span>
+        </div>
+        <div class="stn-card-progress"><span><strong>1</strong>/3 tasks · <strong>6.0</strong>/13.5 h</span><span style="color:var(--bad)">+1.5h variance</span></div>
+        <div class="stn-progress-bar"><div class="stn-progress-fill warn" style="width: 44%;"></div></div>
+        <div class="stn-tasks-mini">
+          <div class="stn-task-mini progress"><span class="check"></span><span>Paint prep &amp; rub</span><span class="stn-task-mini-hours">6.0/4.5h</span></div>
+          <div class="stn-task-mini"><span class="check"></span><span>Prime &amp; seal</span><span class="stn-task-mini-hours">5.0h</span></div>
+          <div class="stn-task-mini"><span class="check"></span><span>Final paint</span><span class="stn-task-mini-hours">4.0h</span></div>
+        </div>
+        <div class="stn-card-foot">
+          <button class="stn-pdf-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V3a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke-linejoin="round"/><path d="M10 2v3h3"/></svg>View PDF</button>
+          <span class="stn-gate-pill in-progress">Overrun</span>
+        </div>
+      </div>
+
+      <!-- Card: RO99001 subframe track — same RO different track -->
+      <div class="stn-card complete">
+        <div class="stn-card-track subframe"></div>
+        <div class="stn-card-head">
+          <div class="stn-card-ro">RO99001<small>DFE · TP42N · subframe</small></div>
+          <span class="stn-card-body-type">TPR-CS</span>
+        </div>
+        <div class="stn-card-progress"><span><strong>1</strong>/1 task · <strong>2.0</strong>/2.0 h</span><span>Subframe</span></div>
+        <div class="stn-progress-bar"><div class="stn-progress-fill complete" style="width: 100%;"></div></div>
+        <div class="stn-tasks-mini">
+          <div class="stn-task-mini done"><span class="check">✓</span><span>Paint subframe</span><span class="stn-task-mini-hours">2.0h</span></div>
+        </div>
+        <div class="stn-card-foot">
+          <button class="stn-pdf-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V3a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke-linejoin="round"/><path d="M10 2v3h3"/></svg>View PDF</button>
+          <span class="stn-gate-pill advance">Advance →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 3: Chassis prep -->
+    <div class="kanban-col">
+      <div class="kanban-col-head">
+        <span class="kanban-col-name">Chassis prep B3</span>
+        <span class="kanban-col-meta">Shanks · 1</span>
+      </div>
+
+      <!-- RO99001 chassis track — already done (shown for context) -->
+      <div class="stn-card complete">
+        <div class="stn-card-track chassis"></div>
+        <div class="stn-card-head">
+          <div class="stn-card-ro">RO99001<small>DFE · TP42N · chassis</small></div>
+          <span class="stn-card-body-type">TPR-CS</span>
+        </div>
+        <div class="stn-card-progress"><span><strong>2</strong>/2 tasks · <strong>8.0</strong>/8.0 h</span><span>Chassis</span></div>
+        <div class="stn-progress-bar"><div class="stn-progress-fill complete" style="width: 100%;"></div></div>
+        <div class="stn-tasks-mini">
+          <div class="stn-task-mini done"><span class="check">✓</span><span>Strip &amp; clean</span><span class="stn-task-mini-hours">3.0h</span></div>
+          <div class="stn-task-mini done"><span class="check">✓</span><span>Drill subframe holes</span><span class="stn-task-mini-hours">5.0h</span></div>
+        </div>
+        <div class="stn-card-foot">
+          <button class="stn-pdf-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V3a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke-linejoin="round"/><path d="M10 2v3h3"/></svg>View PDF</button>
+          <span class="stn-gate-pill ready">Done · advanced</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 4: HYVA hydraulics -->
+    <div class="kanban-col">
+      <div class="kanban-col-head">
+        <span class="kanban-col-name">HYVA hyd.</span>
+        <span class="kanban-col-meta">Daniel G · 1</span>
+      </div>
+
+      <!-- RO99001 chassis at HYVA, in progress -->
+      <div class="stn-card ready">
+        <div class="stn-card-track chassis"></div>
+        <div class="stn-card-head">
+          <div class="stn-card-ro">RO99001<small>DFE · TP42N · chassis</small></div>
+          <span class="stn-card-body-type">TPR-CS</span>
+        </div>
+        <div class="stn-card-progress"><span><strong>0</strong>/2 tasks · <strong>0</strong>/8.5 h</span><span>Chassis</span></div>
+        <div class="stn-progress-bar"><div class="stn-progress-fill" style="width: 0%;"></div></div>
+        <div class="stn-tasks-mini">
+          <div class="stn-task-mini"><span class="check"></span><span>Fit subframe to chassis</span><span class="stn-task-mini-hours">5.0h</span></div>
+          <div class="stn-task-mini"><span class="check"></span><span>Hoist &amp; tipper hyd</span><span class="stn-task-mini-hours">3.5h</span></div>
+        </div>
+        <div class="stn-card-foot">
+          <button class="stn-pdf-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V3a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke-linejoin="round"/><path d="M10 2v3h3"/></svg>View PDF</button>
+          <span class="stn-gate-pill ready">Ready</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 5: Body fitout B1 (merge point in PDF) -->
+    <div class="kanban-col merge">
+      <div class="kanban-col-head">
+        <span class="kanban-col-name">Body fitout B1</span>
+        <span class="kanban-col-meta">Shanks · 1</span>
+      </div>
+
+      <!-- Card: RO99005 already arrived at body fitout (single track tautliner) -->
+      <div class="stn-card" onclick="openDrawer('ro99005-fitout')">
+        <div class="stn-card-track body"></div>
+        <div class="stn-card-head">
+          <div class="stn-card-ro">RO99005<small>DFE · DFE-TT67F · Tautliner</small></div>
+          <span class="stn-card-body-type">TAUT</span>
+        </div>
+        <div class="stn-card-progress"><span><strong>1</strong>/2 tasks · <strong>3.5</strong>/5.5 h</span><span>Body</span></div>
+        <div class="stn-progress-bar"><div class="stn-progress-fill" style="width: 64%;"></div></div>
+        <div class="stn-tasks-mini">
+          <div class="stn-task-mini progress"><span class="check"></span><span>Body fitout</span><span class="stn-task-mini-hours">3.5/4.0h</span></div>
+          <div class="stn-task-mini"><span class="check"></span><span>Curtain &amp; gate fit</span><span class="stn-task-mini-hours">1.5h</span></div>
+        </div>
+        <div class="stn-card-foot">
+          <button class="stn-pdf-btn" onclick="event.stopPropagation();openDrawer('ro99005-fitout');">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V3a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke-linejoin="round"/><path d="M10 2v3h3"/></svg>View PDF
+          </button>
+          <span class="stn-gate-pill in-progress">In progress</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 6: Final QC (merge point) -->
+    <div class="kanban-col merge">
+      <div class="kanban-col-head">
+        <span class="kanban-col-name">Final QC</span>
+        <span class="kanban-col-meta">Sammy · 1</span>
+      </div>
+
+      <!-- Card: RO99003 — gated because chassis track not yet arrived -->
+      <div class="stn-card gated" onclick="openDrawer('ro99003-qc')">
+        <div class="stn-card-track split"></div>
+        <div class="stn-card-head">
+          <div class="stn-card-ro">RO99003<small>City of Marion · CH29N · Tipper C/S</small></div>
+          <span class="stn-card-body-type">TPR-CS</span>
+        </div>
+        <div class="stn-card-progress"><span><strong>0</strong>/3 tasks · <strong>0</strong>/3.5 h</span><span style="color: var(--warn);">⚠ Gated · chassis track</span></div>
+        <div class="stn-progress-bar"><div class="stn-progress-fill" style="width: 0%;"></div></div>
+        <div class="stn-tasks-mini">
+          <div class="stn-task-mini"><span class="check"></span><span>Compliance check</span><span class="stn-task-mini-hours">1.5h</span></div>
+          <div class="stn-task-mini"><span class="check"></span><span>Blue plate</span><span class="stn-task-mini-hours">1.0h</span></div>
+          <div class="stn-task-mini"><span class="check"></span><span>Sign-off</span><span class="stn-task-mini-hours">1.0h</span></div>
+        </div>
+        <div class="stn-card-foot">
+          <button class="stn-pdf-btn" onclick="event.stopPropagation();openDrawer('ro99003-qc');">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V3a1 1 0 011-1h6l3 3v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke-linejoin="round"/><path d="M10 2v3h3"/></svg>View PDF
+          </button>
+          <span class="stn-gate-pill gated">Gated</span>
+        </div>
+        <div class="stn-gate-tip">
+          Body track is at Final QC, but the <strong>chassis</strong> track is still at HYVA. Both tracks must arrive before this card can start.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /kanban-board -->
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch ready"></span> Ready — all upstream tasks complete</div>
+    <div class="legend-item"><span class="legend-swatch gated"></span> Gated — waiting on another track</div>
+    <div class="legend-item"><span class="legend-swatch complete"></span> Complete — ready to advance</div>
+    <div class="legend-item"><span class="legend-swatch legend-track-body"></span> Body track</div>
+    <div class="legend-item"><span class="legend-swatch legend-track-chassis"></span> Chassis track</div>
+    <div class="legend-item"><span class="legend-swatch legend-track-subframe"></span> Subframe track</div>
+  </div>
+
+</div><!-- /stage -->
+
+<!-- ============ DRAWER (RO + grouped tasks + PDF preview) ============ -->
+<div class="drawer-bg" id="drawer-bg" onclick="closeDrawer(event)">
+  <div class="drawer" onclick="event.stopPropagation()">
+    <div class="drawer-head">
+      <div class="drawer-head-left">
+        <div class="drawer-head-ro" id="d-ro">RO99001</div>
+        <div class="drawer-head-meta" id="d-meta">DFE · TP42N · Tipper C/S · Isuzu FRR · Due 3 May</div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()">×</button>
+    </div>
+
+    <div class="drawer-tasks">
+      <div class="drawer-section-label">Station</div>
+      <div class="drawer-station-title" id="d-station">Paint &amp; panel · body track</div>
+      <div class="drawer-station-meta" id="d-station-meta">Scott · station 50 · 4 tasks · 19.5 h estimated</div>
+
+      <div class="gate-banner gated" id="d-gate-banner">
+        <div class="gate-banner-title">Gated — body track not yet complete</div>
+        <div class="gate-banner-detail">Card cannot advance to <code>Body fitout B1</code> until all 4 paint tasks on the <strong>body</strong> track are <code>COMPLETED</code>. <code>Underside black</code> hasn't started.</div>
+      </div>
+
+      <div class="drawer-section-label">Tasks at this station for RO99001</div>
+      <div class="task-list-full">
+        <div class="task-row done">
+          <div class="task-row-check">✓</div>
+          <div class="task-row-body">
+            <div class="task-row-name">Paint prep &amp; rub</div>
+            <div class="task-row-meta">Kane B · seq 06 · est 4.5 h · actual 5.0 h</div>
+          </div>
+          <div class="task-row-track body">Body</div>
+          <div class="task-row-hours">5.0 / 4.5 h</div>
+        </div>
+        <div class="task-row done">
+          <div class="task-row-check">✓</div>
+          <div class="task-row-body">
+            <div class="task-row-name">Prime &amp; seal</div>
+            <div class="task-row-meta">Hercy O · seq 07 · est 5.0 h · actual 5.0 h</div>
+          </div>
+          <div class="task-row-track body">Body</div>
+          <div class="task-row-hours">5.0 / 5.0 h</div>
+        </div>
+        <div class="task-row progress">
+          <div class="task-row-check">▶</div>
+          <div class="task-row-body">
+            <div class="task-row-name">Final paint</div>
+            <div class="task-row-meta">Hercy O · seq 08 · est 4.0 h · clocked 3.0 h</div>
+          </div>
+          <div class="task-row-track body">Body</div>
+          <div class="task-row-hours">3.0 / 4.0 h</div>
+        </div>
+        <div class="task-row">
+          <div class="task-row-check"></div>
+          <div class="task-row-body">
+            <div class="task-row-name">Underside black</div>
+            <div class="task-row-meta">Unassigned · seq 09 · est 1.5 h</div>
+          </div>
+          <div class="task-row-track body">Body</div>
+          <div class="task-row-hours">— / 1.5 h</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-pdf">
+      <div class="pdf-head">
+        <span class="pdf-head-name" id="d-pdf-name">RO_99001_DFE_TP42N.pdf</span>
+        <div class="pdf-head-actions">
+          <button class="pdf-head-btn">↗ Open in tab</button>
+          <button class="pdf-head-btn">⤓ Download</button>
+        </div>
+      </div>
+      <div class="pdf-page">
+        <div class="pdf-marker">REPAIR ORDER · NEE · DOCUMENT COPY</div>
+        <table class="pdf-h-table">
+          <tr><td class="lbl">Customer</td><td class="val">DIRECT FREIGHT EXPRESS</td><td class="lbl">RO #</td><td class="val">99001</td></tr>
+          <tr><td class="lbl">Rego</td><td class="val">C03672</td><td class="lbl">VIN</td><td class="val">JALFRR90NN7004213</td></tr>
+          <tr><td class="lbl">Make</td><td class="val">ISUZU FRR 110-240 AMT LWB</td><td class="lbl">Required</td><td class="val">03/05/2026</td></tr>
+          <tr><td class="lbl">Body type</td><td class="val">3-WAY TIPPER · CAB/CHASSIS</td><td class="lbl">Total est.</td><td class="val">66.0 hrs</td></tr>
+        </table>
+
+        <div class="pdf-section">
+          <div class="pdf-section-title">Job lines · body track</div>
+          <div class="pdf-line"><span class="pdf-code">TP42N-CNC</span><span class="pdf-detail">MATERIAL PROCESSING/CNC</span><span class="pdf-hrs">5.5</span></div>
+          <div class="pdf-line"><span class="pdf-code">TP42N-Mfg DS</span><span class="pdf-detail">DROPSIDES + TAILGATE</span><span class="pdf-hrs">5.0</span></div>
+          <div class="pdf-line"><span class="pdf-code">TP42N-Fab ASSY</span><span class="pdf-detail">FABRICATION LINE ASSY</span><span class="pdf-hrs">4.0</span></div>
+          <div class="pdf-line" style="background: #fffbe9;"><span class="pdf-code">TP42N-RUB</span><span class="pdf-detail">PAINT PREP &amp; RUB</span><span class="pdf-hrs">4.5</span></div>
+          <div class="pdf-line" style="background: #fffbe9;"><span class="pdf-code">TP42N-SEAL</span><span class="pdf-detail">PRIME, SEAL</span><span class="pdf-hrs">5.0</span></div>
+          <div class="pdf-line" style="background: #fffbe9;"><span class="pdf-code">TP42N-PAINT</span><span class="pdf-detail">FINAL PAINT</span><span class="pdf-hrs">4.0</span></div>
+          <div class="pdf-line" style="background: #fffbe9;"><span class="pdf-code">TP42N-BLACK</span><span class="pdf-detail">UNDERSIDE BLACK</span><span class="pdf-hrs">1.5</span></div>
+          <div class="pdf-line"><span class="pdf-code">TP42N-FO</span><span class="pdf-detail">BODY FITOUT</span><span class="pdf-hrs">1.5</span></div>
+        </div>
+
+        <div class="pdf-section">
+          <div class="pdf-section-title">Job lines · chassis track</div>
+          <div class="pdf-line"><span class="pdf-code">TP42N-CHA</span><span class="pdf-detail">CHASSIS PREP B3 · STRIP &amp; CLEAN</span><span class="pdf-hrs">3.0</span></div>
+          <div class="pdf-line"><span class="pdf-code">TP42N-DRL</span><span class="pdf-detail">DRILL SUBFRAME HOLES</span><span class="pdf-hrs">5.0</span></div>
+          <div class="pdf-line"><span class="pdf-code">TP42N-SUB</span><span class="pdf-detail">FIT SUBFRAME TO CHASSIS</span><span class="pdf-hrs">5.0</span></div>
+          <div class="pdf-line"><span class="pdf-code">TP42N-HYV</span><span class="pdf-detail">HOIST &amp; TIPPER HYDRAULICS</span><span class="pdf-hrs">3.5</span></div>
+        </div>
+
+        <div class="pdf-section">
+          <div class="pdf-section-title">Job lines · subframe track</div>
+          <div class="pdf-line"><span class="pdf-code">TP42N-SBP</span><span class="pdf-detail">PAINT SUBFRAME (Adam)</span><span class="pdf-hrs">2.0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-foot">
+      <span class="advance-hint">Card advances to <code>Body fitout B1</code> automatically when all body-track tasks here complete. Supervisor can force-advance with reason.</span>
+      <button class="advance-btn" disabled>Advance · 1 task pending</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openDrawer(id) {
+    // In a real app, fetch grouped card detail by RO+station id.
+    // Demo: just toggle the drawer with the static content.
+    document.getElementById('drawer-bg').classList.add('show');
+  }
+  function closeDrawer(evt) {
+    if (evt && evt.target.closest('.drawer') && !evt.target.classList.contains('drawer-close')) return;
+    document.getElementById('drawer-bg').classList.remove('show');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+</script>
+</body>
+</html>
