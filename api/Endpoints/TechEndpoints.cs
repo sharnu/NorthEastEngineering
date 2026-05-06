@@ -1,0 +1,633 @@
+using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Nee.Api.Data;
+using Nee.Api.Domain;
+using Nee.Api.Services;
+
+namespace Nee.Api.Endpoints;
+
+public static class TechEndpoints
+{
+    public static void MapTechEndpoints(this WebApplication app)
+    {
+        var tech = app.MapGroup("/api/tech/tasks").RequireAuthorization().WithTags("Tech");
+        var variance = app.MapGroup("/api").RequireAuthorization().WithTags("Tech");
+
+        // ── GET /api/tech/tasks ───────────────────────────────────────────────
+        tech.MapGet("/", async (ClaimsPrincipal principal, NeeDbContext db, CancellationToken ct) =>
+        {
+            var currentUserId = GetUserId(principal);
+
+            var activeStatuses = new[] { "ASSIGNED", "IN_PROGRESS", "PAUSED" };
+
+            var tasks = await db.JobTasks
+                .Where(t => t.AssignedToUserId == currentUserId && activeStatuses.Contains(t.Status))
+                .Select(t => new
+                {
+                    t.Id,
+                    t.RoId,
+                    RoNumber        = t.RepairOrder.RoNumber,
+                    t.Sequence,
+                    t.OperationName,
+                    StationName     = t.Station.Name,
+                    t.EstimatedHours,
+                    t.ActualHours,
+                    t.Status,
+                    Priority        = (int)t.RepairOrder.Priority,
+                    CustomerName    = t.RepairOrder.Customer.Name,
+                    RequiredDate    = t.RepairOrder.RequiredDate,
+                    ClockedInSince  = db.TimeEntries
+                        .Where(te => te.TaskId == t.Id && te.UserId == currentUserId && te.ClockOut == null)
+                        .Select(te => (DateTimeOffset?)te.ClockIn)
+                        .FirstOrDefault(),
+                })
+                .ToListAsync(ct);
+
+            var ordered = tasks
+                .OrderBy(t => t.Status switch
+                {
+                    "IN_PROGRESS" => 1,
+                    "PAUSED"      => 2,
+                    _             => 3,
+                })
+                .ThenBy(t => t.Priority)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.RoId,
+                    t.RoNumber,
+                    t.Sequence,
+                    t.OperationName,
+                    t.StationName,
+                    t.EstimatedHours,
+                    t.ActualHours,
+                    t.Status,
+                    t.Priority,
+                    t.CustomerName,
+                    t.RequiredDate,
+                    t.ClockedInSince,
+                });
+
+            return Results.Ok(ordered);
+        });
+
+        // ── GET /api/tech/tasks/{id} ──────────────────────────────────────────
+        tech.MapGet("/{id:guid}", async (Guid id, ClaimsPrincipal principal, NeeDbContext db, CancellationToken ct) =>
+        {
+            var currentUserId = GetUserId(principal);
+
+            var task = await db.JobTasks
+                .Where(t => t.Id == id)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.RoId,
+                    RoNumber        = t.RepairOrder.RoNumber,
+                    t.Sequence,
+                    t.OperationId,
+                    t.OperationName,
+                    t.JobCodeLine,
+                    StationName     = t.Station.Name,
+                    t.EstimatedHours,
+                    t.ActualHours,
+                    t.Status,
+                    Priority        = (int)t.RepairOrder.Priority,
+                    CustomerName    = t.RepairOrder.Customer.Name,
+                    RequiredDate    = t.RepairOrder.RequiredDate,
+                    t.Notes,
+                    t.AssignedToUserId,
+                    Ro = new
+                    {
+                        CustomerName = t.RepairOrder.Customer.Name,
+                        t.RepairOrder.Rego,
+                        t.RepairOrder.Make,
+                        t.RepairOrder.Model,
+                        t.RepairOrder.PaintColour,
+                        t.RepairOrder.RequiredDate,
+                    },
+                    TimeEntries = db.TimeEntries
+                        .Where(te => te.TaskId == id && te.ClockOut != null)
+                        .OrderBy(te => te.ClockIn)
+                        .Select(te => new
+                        {
+                            te.Id,
+                            te.ClockIn,
+                            te.ClockOut,
+                            te.DurationMinutes,
+                            te.ActivityType,
+                        })
+                        .ToList(),
+                    ClockedInSince = db.TimeEntries
+                        .Where(te => te.TaskId == id && te.ClockOut == null)
+                        .Select(te => (DateTimeOffset?)te.ClockIn)
+                        .FirstOrDefault(),
+                })
+                .FirstOrDefaultAsync(ct);
+
+            if (task is null) return Results.NotFound();
+            if (task.AssignedToUserId != currentUserId) return Results.Forbid();
+
+            return Results.Ok(task);
+        });
+
+        // ── POST /api/tech/tasks/{id}/clock-in ───────────────────────────────
+        tech.MapPost("/{id:guid}/clock-in", async (Guid id, ClaimsPrincipal principal, NeeDbContext db, CancellationToken ct) =>
+        {
+            var currentUserId = GetUserId(principal);
+
+            var task = await db.JobTasks.FindAsync([id], ct);
+            if (task is null) return Results.NotFound();
+            if (task.AssignedToUserId != currentUserId) return Results.Forbid();
+
+            var terminalStatuses = new[] { "COMPLETED", "CANCELLED" };
+            if (terminalStatuses.Contains(task.Status))
+                return Results.BadRequest(new { message = "Task is already completed or cancelled." });
+
+            // Check no open entries for this user globally
+            var alreadyClockedIn = await db.TimeEntries
+                .AnyAsync(te => te.UserId == currentUserId && te.ClockOut == null, ct);
+            if (alreadyClockedIn)
+                return Results.Conflict(new { message = "You are already clocked in on another task." });
+
+            var now = DateTimeOffset.UtcNow;
+            var entry = new TimeEntry
+            {
+                TaskId       = id,
+                UserId       = currentUserId,
+                ClockIn      = now,
+                ActivityType = "WORK",
+            };
+            db.TimeEntries.Add(entry);
+
+            task.Status    = "IN_PROGRESS";
+            task.StartedAt ??= now;
+            task.UpdatedAt = now;
+
+            await db.SaveChangesAsync(ct);
+
+            return Results.Created($"/api/tech/tasks/{id}/clock-in", new
+            {
+                EntryId  = entry.Id,
+                ClockIn  = entry.ClockIn,
+            });
+        });
+
+        // ── POST /api/tech/tasks/{id}/clock-out ──────────────────────────────
+        tech.MapPost("/{id:guid}/clock-out", async (Guid id, ClaimsPrincipal principal, NeeDbContext db, CancellationToken ct) =>
+        {
+            var currentUserId = GetUserId(principal);
+
+            var task = await db.JobTasks.FindAsync([id], ct);
+            if (task is null) return Results.NotFound();
+            if (task.AssignedToUserId != currentUserId) return Results.Forbid();
+
+            var openEntry = await db.TimeEntries
+                .Where(te => te.TaskId == id && te.UserId == currentUserId && te.ClockOut == null)
+                .FirstOrDefaultAsync(ct);
+            if (openEntry is null)
+                return Results.NotFound(new { message = "No active time entry found for this task." });
+
+            openEntry.ClockOut = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+
+            // Reload to get the generated duration_minutes
+            await db.Entry(openEntry).ReloadAsync(ct);
+
+            // Recalculate actual_hours
+            var actualHours = await db.TimeEntries
+                .Where(te => te.TaskId == id && te.ClockOut != null)
+                .SumAsync(te => (decimal)(te.DurationMinutes ?? 0), ct) / 60m;
+            actualHours = Math.Round(actualHours, 2);
+
+            task.ActualHours = actualHours;
+            task.Status      = "PAUSED";
+            task.UpdatedAt   = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+
+            return Results.Ok(new
+            {
+                EntryId         = openEntry.Id,
+                ClockIn         = openEntry.ClockIn,
+                ClockOut        = openEntry.ClockOut,
+                DurationMinutes = openEntry.DurationMinutes,
+            });
+        });
+
+        // ── POST /api/tech/tasks/{id}/photos ─────────────────────────────────
+        tech.MapPost("/{id:guid}/photos", async (
+            Guid id,
+            IFormFile file,
+            ClaimsPrincipal principal,
+            NeeDbContext db,
+            IConfiguration config,
+            CancellationToken ct) =>
+        {
+            var currentUserId = GetUserId(principal);
+
+            var task = await db.JobTasks.FindAsync([id], ct);
+            if (task is null) return Results.NotFound();
+            if (task.AssignedToUserId != currentUserId) return Results.Forbid();
+
+            if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                return Results.BadRequest(new { message = "Only image files are accepted." });
+
+            if (file.Length > 10_485_760)
+                return Results.StatusCode(413);
+
+            var uploadsBaseRaw = config["Storage:UploadsBasePath"]
+                ?? Path.Combine(AppContext.BaseDirectory, "uploads");
+            var uploadsBase = Path.IsPathRooted(uploadsBaseRaw)
+                ? uploadsBaseRaw
+                : Path.GetFullPath(uploadsBaseRaw);
+
+            var taskDir = Path.Combine(uploadsBase, id.ToString());
+            Directory.CreateDirectory(taskDir);
+
+            var storedName = $"{Guid.NewGuid():N}_{file.FileName}";
+            var fullPath   = Path.Combine(taskDir, storedName);
+
+            await using (var fs = File.Create(fullPath))
+                await file.CopyToAsync(fs, ct);
+
+            var blobPath = $"{id}/{storedName}";
+            var now      = DateTimeOffset.UtcNow;
+
+            var attachment = new Attachment
+            {
+                EntityType    = "JobTask",
+                EntityId      = id,
+                Category      = "PHOTO",
+                FileName      = file.FileName,
+                ContentType   = file.ContentType,
+                SizeBytes     = file.Length,
+                BlobContainer = "local",
+                BlobPath      = blobPath,
+                UploadedBy    = currentUserId,
+                UploadedAt    = now,
+            };
+            db.Attachments.Add(attachment);
+            await db.SaveChangesAsync(ct);
+
+            return Results.Created($"/api/tech/tasks/{id}/photos/{attachment.Id}", new
+            {
+                AttachmentId = attachment.Id,
+                FileName     = attachment.FileName,
+                UploadedAt   = attachment.UploadedAt,
+            });
+        }).DisableAntiforgery();
+
+        // ── GET /api/tech/tasks/{id}/photos ──────────────────────────────────
+        tech.MapGet("/{id:guid}/photos", async (Guid id, NeeDbContext db, CancellationToken ct) =>
+        {
+            var photos = await db.Attachments
+                .Where(a => a.EntityType == "JobTask" && a.EntityId == id && a.Category == "PHOTO")
+                .OrderBy(a => a.UploadedAt)
+                .Select(a => new
+                {
+                    Id          = a.Id,
+                    FileName    = a.FileName,
+                    ContentType = a.ContentType,
+                    SizeBytes   = a.SizeBytes,
+                    UploadedAt  = a.UploadedAt,
+                    Url         = $"/uploads/{a.BlobPath}",
+                })
+                .ToListAsync(ct);
+
+            return Results.Ok(photos);
+        });
+
+        // ── POST /api/tech/tasks/{id}/complete ────────────────────────────────
+        tech.MapPost("/{id:guid}/complete", async (
+            Guid id,
+            CompleteTaskRequest req,
+            ClaimsPrincipal principal,
+            NeeDbContext db,
+            INotificationService notifications,
+            CancellationToken ct) =>
+        {
+            var currentUserId = GetUserId(principal);
+
+            var task = await db.JobTasks
+                .Include(t => t.RepairOrder)
+                .Include(t => t.Station)
+                .FirstOrDefaultAsync(t => t.Id == id, ct);
+            if (task is null) return Results.NotFound();
+            if (task.AssignedToUserId != currentUserId) return Results.Forbid();
+
+            var validStatuses = new[] { "IN_PROGRESS", "PAUSED" };
+            if (!validStatuses.Contains(task.Status))
+                return Results.BadRequest(new { message = $"Task cannot be completed from status '{task.Status}'." });
+
+            // Close any open time entry
+            var openEntry = await db.TimeEntries
+                .Where(te => te.TaskId == id && te.ClockOut == null)
+                .FirstOrDefaultAsync(ct);
+            if (openEntry is not null)
+            {
+                openEntry.ClockOut = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync(ct);
+                await db.Entry(openEntry).ReloadAsync(ct);
+            }
+
+            // Recalculate actual_hours from all closed entries
+            var actualHours = await db.TimeEntries
+                .Where(te => te.TaskId == id && te.ClockOut != null)
+                .SumAsync(te => (decimal)(te.DurationMinutes ?? 0), ct) / 60m;
+            actualHours = Math.Round(actualHours, 2);
+
+            var now = DateTimeOffset.UtcNow;
+
+            // Insert variance record
+            db.VarianceRecords.Add(new VarianceRecord
+            {
+                TaskId          = id,
+                EstimatedHours  = task.EstimatedHours,
+                ActualHours     = actualHours,
+                ReasonId        = req.VarianceReasonId,
+                Notes           = req.Notes,
+                RecordedBy      = currentUserId,
+                RecordedAt      = now,
+            });
+
+            // Update task
+            task.Status      = "COMPLETED";
+            task.CompletedAt = now;
+            task.ActualHours = actualHours;
+            task.UpdatedAt   = now;
+
+            var deltaHours = Math.Round(actualHours - task.EstimatedHours, 2);
+
+            // Insert domain event
+            var completedEvt = new DomainEvent
+            {
+                EventType     = "TaskCompleted",
+                AggregateType = "JobTask",
+                AggregateId   = id,
+                Payload       = JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    taskId        = id,
+                    roId          = task.RoId,
+                    roNumber      = task.RepairOrder.RoNumber,
+                    operationName = task.OperationName,
+                    stationId     = task.StationId,
+                    stationName   = task.Station.Name,
+                    actualHours,
+                    deltaHours,
+                    reasonId      = req.VarianceReasonId,
+                })),
+                UserId = currentUserId,
+            };
+            db.DomainEvents.Add(completedEvt);
+
+            await db.SaveChangesAsync(ct);
+
+            // Kanban stage advance
+            var allDone = await db.JobTasks
+                .Where(t => t.RoId == task.RoId && t.StationId == task.StationId)
+                .AllAsync(t => t.Status == "COMPLETED" || t.Status == "CANCELLED", ct);
+
+            if (allDone)
+            {
+                // Find next station with non-completed tasks
+                var currentSortOrder = (int)task.Station.SortOrder;
+
+                var nextStation = await db.JobTasks
+                    .Where(t => t.RoId == task.RoId
+                             && t.Station.SortOrder > currentSortOrder
+                             && t.Status != "COMPLETED"
+                             && t.Status != "CANCELLED")
+                    .OrderBy(t => t.Station.SortOrder)
+                    .Select(t => new { SortOrder = (int)t.Station.SortOrder })
+                    .FirstOrDefaultAsync(ct);
+
+                var newStageId = nextStation is not null
+                    ? StationSortOrderToKanbanStage(nextStation.SortOrder)
+                    : (short)99;
+
+                await db.Database.ExecuteSqlRawAsync(
+                    @"INSERT INTO ro_kanban_state (ro_id, current_stage_id)
+                      VALUES ({0}, {1})
+                      ON CONFLICT (ro_id) DO UPDATE
+                        SET current_stage_id = EXCLUDED.current_stage_id,
+                            updated_at = now()",
+                    task.RoId, newStageId);
+            }
+
+            // Load reason name
+            var reason = await db.VarianceReasons.FindAsync([req.VarianceReasonId], ct);
+
+            await notifications.FanOutAsync(completedEvt, ct);
+
+            return Results.Ok(new
+            {
+                TaskId      = id,
+                ActualHours = actualHours,
+                DeltaHours  = deltaHours,
+                ReasonName  = reason?.Name ?? string.Empty,
+            });
+        });
+
+        // ── POST /api/tech/tasks/{id}/block ───────────────────────────────────
+        tech.MapPost("/{id:guid}/block", async (
+            Guid id,
+            BlockTaskRequest req,
+            ClaimsPrincipal principal,
+            NeeDbContext db,
+            INotificationService notifications,
+            CancellationToken ct) =>
+        {
+            var currentUserId = GetUserId(principal);
+
+            if (string.IsNullOrWhiteSpace(req.Reason) || req.Reason.Trim().Length < 10)
+                return Results.BadRequest(new { message = "Reason must be at least 10 characters." });
+
+            var task = await db.JobTasks
+                .Include(t => t.RepairOrder)
+                .Include(t => t.Station)
+                .FirstOrDefaultAsync(t => t.Id == id, ct);
+            if (task is null) return Results.NotFound();
+            if (task.AssignedToUserId != currentUserId) return Results.Forbid();
+
+            var invalidStatuses = new[] { "COMPLETED", "CANCELLED", "BLOCKED" };
+            if (invalidStatuses.Contains(task.Status))
+                return Results.BadRequest(new { message = $"Task cannot be blocked from status '{task.Status}'." });
+
+            // Close open time entry if any
+            var openEntry = await db.TimeEntries
+                .Where(te => te.TaskId == id && te.ClockOut == null)
+                .FirstOrDefaultAsync(ct);
+            if (openEntry is not null)
+            {
+                openEntry.ClockOut = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync(ct);
+                await db.Entry(openEntry).ReloadAsync(ct);
+
+                var actualHours = await db.TimeEntries
+                    .Where(te => te.TaskId == id && te.ClockOut != null)
+                    .SumAsync(te => (decimal)(te.DurationMinutes ?? 0), ct) / 60m;
+                task.ActualHours = Math.Round(actualHours, 2);
+            }
+
+            // Read current kanban stage
+            var currentState = await db.RoKanbanStates
+                .Where(s => s.RoId == task.RoId)
+                .FirstOrDefaultAsync(ct);
+            short? previousStageId = currentState?.CurrentStageId;
+
+            var now = DateTimeOffset.UtcNow;
+            task.Status    = "BLOCKED";
+            task.UpdatedAt = now;
+
+            var ro = task.RepairOrder;
+            ro.Status                = "ON_HOLD";
+            // delivery_block_reason must be one of TBA, NO_CHASSIS, BOOK_IN, EXTERNAL_BB
+            ro.UpdatedAt             = now;
+
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE repair_orders SET delivery_block_reason = 'TBA' WHERE id = {0}",
+                task.RoId);
+
+            // UPSERT kanban state to HOSPITAL (95)
+            await db.Database.ExecuteSqlRawAsync(
+                @"INSERT INTO ro_kanban_state (ro_id, current_stage_id)
+                  VALUES ({0}, {1})
+                  ON CONFLICT (ro_id) DO UPDATE
+                    SET current_stage_id = EXCLUDED.current_stage_id,
+                        updated_at = now()",
+                task.RoId, (short)95);
+
+            var blockedEvt = new DomainEvent
+            {
+                EventType     = "TaskBlocked",
+                AggregateType = "JobTask",
+                AggregateId   = id,
+                Payload       = JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    taskId          = id,
+                    roId            = task.RoId,
+                    roNumber        = task.RepairOrder.RoNumber,
+                    operationName   = task.OperationName,
+                    stationId       = task.StationId,
+                    stationName     = task.Station.Name,
+                    reason          = req.Reason,
+                    blockedByUserId = currentUserId,
+                    previousStageId,
+                })),
+                UserId = currentUserId,
+            };
+            db.DomainEvents.Add(blockedEvt);
+
+            await db.SaveChangesAsync(ct);
+
+            await notifications.FanOutAsync(blockedEvt, ct);
+
+            return Results.Ok(new
+            {
+                TaskId    = id,
+                RoNumber  = task.RepairOrder.RoNumber,
+                BlockedAt = now,
+            });
+        });
+
+        // ── POST /api/tech/tasks/{id}/unblock ─────────────────────────────────
+        tech.MapPost("/{id:guid}/unblock", async (
+            Guid id,
+            ClaimsPrincipal principal,
+            NeeDbContext db,
+            CancellationToken ct) =>
+        {
+            var task = await db.JobTasks
+                .Include(t => t.RepairOrder)
+                .FirstOrDefaultAsync(t => t.Id == id, ct);
+            if (task is null) return Results.NotFound();
+
+            if (task.Status != "BLOCKED")
+                return Results.BadRequest(new { message = "Task is not blocked." });
+
+            // Read previousStageId from most recent TaskBlocked domain event
+            var blockEvent = await db.DomainEvents
+                .Where(e => e.AggregateId == id && e.EventType == "TaskBlocked")
+                .OrderByDescending(e => e.Id)
+                .FirstOrDefaultAsync(ct);
+
+            short previousStageId = 10;
+            if (blockEvent is not null)
+            {
+                var doc = blockEvent.Payload.RootElement;
+                if (doc.TryGetProperty("previousStageId", out var prop)
+                    && prop.ValueKind != JsonValueKind.Null)
+                    previousStageId = prop.GetInt16();
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            task.Status    = "PAUSED";
+            task.UpdatedAt = now;
+
+            var ro = task.RepairOrder;
+            ro.Status    = "IN_PROGRESS";
+            ro.UpdatedAt = now;
+
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE repair_orders SET delivery_block_reason = NULL WHERE id = {0}",
+                task.RoId);
+
+            await db.Database.ExecuteSqlRawAsync(
+                @"INSERT INTO ro_kanban_state (ro_id, current_stage_id)
+                  VALUES ({0}, {1})
+                  ON CONFLICT (ro_id) DO UPDATE
+                    SET current_stage_id = EXCLUDED.current_stage_id,
+                        updated_at = now()",
+                task.RoId, previousStageId);
+
+            await db.SaveChangesAsync(ct);
+
+            return Results.Ok();
+        })
+        .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "STATION_OWNER"));
+
+        // ── GET /api/variance-reasons ─────────────────────────────────────────
+        variance.MapGet("/variance-reasons", async (NeeDbContext db, CancellationToken ct) =>
+        {
+            var reasons = await db.VarianceReasons
+                .Where(r => r.IsActive)
+                .OrderBy(r => r.Id)
+                .Select(r => new
+                {
+                    r.Id,
+                    r.Code,
+                    r.Name,
+                    r.IsOverrun,
+                })
+                .ToListAsync(ct);
+
+            return Results.Ok(reasons);
+        });
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static Guid GetUserId(ClaimsPrincipal principal)
+    {
+        var sub = principal.FindFirstValue(ClaimTypes.NameIdentifier)
+               ?? principal.FindFirstValue("sub")
+               ?? throw new InvalidOperationException("No sub claim found in token.");
+        return Guid.Parse(sub);
+    }
+
+    private static short StationSortOrderToKanbanStage(int sortOrder) => sortOrder switch
+    {
+        <= 15 => 30,  // MAT_PROCESSING
+        <= 25 => 40,  // FABRICATION
+        <= 35 => 50,  // PAINTING
+        <= 65 => 60,  // AFTER_PAINT_HY
+        <= 75 => 70,  // FITOUT
+        <= 82 => 80,  // BODY_MOUNTING
+        <= 87 => 85,  // ACCESSORIES
+        <= 93 => 90,  // FINAL_QC
+        _     => 99,  // COMPLETE
+    };
+}
+
+public record CompleteTaskRequest(short VarianceReasonId, string? Notes);
+public record BlockTaskRequest(string Reason);

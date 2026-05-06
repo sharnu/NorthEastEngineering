@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nee-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nee
+      POSTGRES_USER: nee
+      POSTGRES_PASSWORD: nee_dev
+      # Required for the schema's CITEXT extension
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - nee-postgres-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nee -d nee"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Mailpit captures outbound email locally so the QC email feature (E6)
+  # has somewhere to send. Web UI at http://localhost:8025 to inspect mail.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: nee-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+
+volumes:
+  nee-postgres-data:
+    name: nee-postgres-data
