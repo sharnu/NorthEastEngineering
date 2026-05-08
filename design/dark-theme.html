@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEE Dark Theme — Design Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+/* ── LIGHT (current) ────────────────────────────────────────────────── */
+:root {
+  --ink:         #0a0e0f;
+  --ink-2:       #1a1f21;
+  --ink-3:       #4a5258;
+  --paper:       #f5f2ea;
+  --paper-2:     #ebe7dc;
+  --paper-3:     #ddd7c8;
+  --rule:        rgba(10,14,15,0.10);
+  --rule-strong: rgba(10,14,15,0.20);
+  --topbar-bg:   #0a0e0f;
+  --topbar-text: #f5f2ea;
+  --accent:      #c2410c;
+  --accent-dim:  rgba(194,65,12,0.12);
+  --good:        #15803d;
+  --good-dim:    rgba(21,128,61,0.12);
+  --warn:        #b45309;
+  --warn-dim:    rgba(180,83,9,0.12);
+  --bad:         #b91c1c;
+  --bad-dim:     rgba(185,28,28,0.12);
+  --info:        #1d4ed8;
+  --info-dim:    rgba(29,78,216,0.12);
+  --track-body:      #1d4ed8;
+  --track-chassis:   #b45309;
+  --track-subframe:  #7c3aed;
+  --shadow: 0 0 0 0.5px rgba(10,14,15,0.08), 0 2px 8px rgba(10,14,15,0.06);
+  --display: 'Fraunces', Georgia, serif;
+  --sans:    'Inter', -apple-system, sans-serif;
+  --mono:    'JetBrains Mono', monospace;
+}
+
+/* ── DARK (proposed) ────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --ink:         #e6e1d8;
+  --ink-2:       #b0a89e;
+  --ink-3:       #756e67;
+  --paper:       #111517;
+  --paper-2:     #181d1f;
+  --paper-3:     #1f2529;
+  --rule:        rgba(230,225,216,0.07);
+  --rule-strong: rgba(230,225,216,0.14);
+  --topbar-bg:   #0c0f11;
+  --topbar-text: #e6e1d8;
+  --accent:      #f0622a;
+  --accent-dim:  rgba(240,98,42,0.14);
+  --good:        #34d399;
+  --good-dim:    rgba(52,211,153,0.12);
+  --warn:        #fbbf24;
+  --warn-dim:    rgba(251,191,36,0.12);
+  --bad:         #f87171;
+  --bad-dim:     rgba(248,113,113,0.12);
+  --info:        #60a5fa;
+  --info-dim:    rgba(96,165,250,0.12);
+  --track-body:     #60a5fa;
+  --track-chassis:  #fbbf24;
+  --track-subframe: #a78bfa;
+  --shadow: 0 0 0 0.5px rgba(0,0,0,0.4), 0 2px 12px rgba(0,0,0,0.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--sans);
+  background: #0d0d0d;
+  color: #aaa;
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 0 0 64px;
+}
+
+/* ── PAGE CHROME ───────────────────────────────────────────────────── */
+.page-header {
+  position: sticky; top: 0; z-index: 100;
+  background: #0d0d0d;
+  border-bottom: 1px solid #1e1e1e;
+  padding: 14px 32px;
+  display: flex; align-items: center; gap: 20px;
+}
+.page-header h1 { font-size: 14px; font-weight: 600; color: #e0e0e0; font-family: var(--mono); }
+.page-header p  { font-size: 12px; color: #666; }
+.toggle-wrap { margin-left: auto; display: flex; gap: 8px; }
+.toggle-btn {
+  padding: 6px 14px; border-radius: 5px; border: 1px solid #333;
+  background: #1a1a1a; color: #aaa; font-size: 12px; font-family: var(--mono);
+  cursor: pointer; transition: all 0.15s;
+}
+.toggle-btn:hover { border-color: #555; color: #e0e0e0; }
+.toggle-btn.active { background: #e0e0e0; color: #0d0d0d; border-color: #e0e0e0; }
+
+.stage { max-width: 1200px; margin: 0 auto; padding: 40px 32px; display: flex; flex-direction: column; gap: 48px; }
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em;
+  color: #555; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: #1e1e1e; }
+
+/* ── THEME FRAME (contains the themed content) ──────────────────────── */
+.theme-frame {
+  background: var(--paper);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #1e1e1e, 0 8px 40px rgba(0,0,0,0.6);
+}
+
+/* ── TOKEN PALETTE ──────────────────────────────────────────────────── */
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 0.5px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.swatch {
+  background: var(--paper);
+  padding: 14px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.swatch-dot { width: 32px; height: 32px; border-radius: 6px; border: 0.5px solid var(--rule-strong); }
+.swatch-name { font-family: var(--mono); font-size: 10px; color: var(--ink-2); }
+.swatch-hex  { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+
+/* ── TOPBAR ─────────────────────────────────────────────────────────── */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 28px;
+  background: var(--topbar-bg);
+  color: var(--topbar-text);
+  border-bottom: 0.5px solid var(--rule);
+}
+.brand { display: flex; flex-direction: row; align-items: center; gap: 12px; }
+.brand-logo { height: 48px; width: auto; filter: brightness(0) invert(1); }
+.brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+               letter-spacing: 0.12em; color: rgba(230,225,216,0.45); }
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+.topbar-right .user-label { font-size: 12px; color: rgba(230,225,216,0.7); }
+.nav-link { font-size: 13px; color: rgba(230,225,216,0.7); cursor: pointer; }
+.topbar-right .btn-logout {
+  background: transparent; border: 0.5px solid rgba(230,225,216,0.25);
+  color: rgba(230,225,216,0.7); padding: 5px 12px; border-radius: 5px;
+  font-size: 12px; font-family: var(--sans); cursor: pointer;
+}
+
+/* ── PAGE CONTENT AREA ──────────────────────────────────────────────── */
+.page-content { padding: 24px 28px; background: var(--paper); }
+
+/* ── KPI CARDS ──────────────────────────────────────────────────────── */
+.kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.kpi-card {
+  flex: 1; min-width: 120px;
+  background: var(--paper-2);
+  border: 0.5px solid var(--rule);
+  border-radius: 10px; padding: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  box-shadow: var(--shadow);
+}
+.kpi-card.alert { border-color: var(--warn); background: var(--warn-dim); }
+.kpi-icon { font-size: 18px; }
+.kpi-value { font-family: var(--display); font-size: 28px; font-weight: 400;
+              color: var(--ink); letter-spacing: -0.02em; line-height: 1; }
+.kpi-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+              letter-spacing: 0.1em; color: var(--ink-3); }
+
+/* ── PANEL ──────────────────────────────────────────────────────────── */
+.panel {
+  background: var(--paper-2);
+  border: 0.5px solid var(--rule);
+  border-radius: 10px; padding: 20px;
+  box-shadow: var(--shadow);
+}
+.panel-title {
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--ink-3); margin-bottom: 16px;
+}
+
+/* ── TABLE ──────────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; margin-top: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3); font-weight: 500;
+  padding: 8px 12px; text-align: left;
+  border-bottom: 0.5px solid var(--rule-strong); white-space: nowrap;
+}
+tbody td {
+  padding: 11px 12px; color: var(--ink);
+  border-bottom: 0.5px solid var(--rule);
+}
+tbody tr:hover td { background: var(--paper-3); }
+tbody tr:last-child td { border-bottom: none; }
+
+/* ── BADGES / PILLS ─────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 4px;
+  font-family: var(--mono); font-size: 11px; font-weight: 500; white-space: nowrap;
+}
+.badge-good   { background: var(--good-dim);  color: var(--good);  }
+.badge-warn   { background: var(--warn-dim);  color: var(--warn);  }
+.badge-bad    { background: var(--bad-dim);   color: var(--bad);   }
+.badge-info   { background: var(--info-dim);  color: var(--info);  }
+.badge-muted  { background: var(--paper-3);   color: var(--ink-3); }
+.badge-accent { background: var(--accent-dim);color: var(--accent);}
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ── GATE DOTS ──────────────────────────────────────────────────────── */
+.gate-row { display: flex; gap: 6px; align-items: center; }
+.gate {
+  width: 22px; height: 22px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-family: var(--mono);
+}
+.gate-green { background: var(--good-dim); color: var(--good); }
+.gate-grey  { background: var(--paper-3);  color: var(--ink-3); }
+.gate-warn  { background: var(--warn-dim); color: var(--warn); }
+
+/* ── TRACK CHIPS ────────────────────────────────────────────────────── */
+.track-chip {
+  font-size: 10px; font-family: var(--mono); padding: 1px 6px;
+  border-radius: 3px; font-weight: 500;
+}
+.track-body      { background: rgba(96,165,250,0.12); color: var(--track-body); }
+.track-chassis   { background: rgba(251,191,36,0.12); color: var(--track-chassis); }
+.track-subframe  { background: rgba(167,139,250,0.12); color: var(--track-subframe); }
+[data-theme="dark"] .track-body     { background: rgba(96,165,250,0.14); }
+[data-theme="dark"] .track-chassis  { background: rgba(251,191,36,0.14); }
+[data-theme="dark"] .track-subframe { background: rgba(167,139,250,0.14); }
+
+/* ── KANBAN CARD ────────────────────────────────────────────────────── */
+.kanban-card {
+  background: var(--paper);
+  border: 0.5px solid var(--rule-strong);
+  border-radius: 8px; padding: 14px;
+  box-shadow: var(--shadow);
+  width: 260px; display: flex; flex-direction: column; gap: 10px;
+}
+.kanban-ro-num { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--ink); }
+.kanban-customer { font-size: 13px; color: var(--ink); font-weight: 500; }
+.kanban-meta { font-size: 11px; color: var(--ink-3); display: flex; gap: 8px; flex-wrap: wrap; }
+.kanban-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+.priority-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.p1 { background: var(--bad); }
+.p2 { background: var(--warn); }
+.p3 { background: var(--info); }
+
+/* ── CHASSIS SUGGESTION CARD ────────────────────────────────────────── */
+.suggest-card {
+  border: 0.5px solid var(--rule-strong);
+  border-radius: 8px; padding: 14px;
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--paper);
+}
+.suggest-top { display: flex; align-items: center; justify-content: space-between; }
+.chassis-num { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--ink); }
+.score-badge {
+  padding: 2px 8px; border-radius: 3px;
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+}
+.score-green { background: var(--good-dim);  color: var(--good);  }
+.score-amber { background: var(--warn-dim);  color: var(--warn);  }
+.score-grey  { background: var(--paper-3);   color: var(--ink-3); }
+.meta-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.meta { font-size: 11px; padding: 1px 6px; border-radius: 3px;
+        background: var(--paper-3); color: var(--ink-3); font-family: var(--mono); }
+.breakdown { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.reason { font-size: 12px; color: var(--ink); }
+.btn-allocate {
+  align-self: flex-end; padding: 6px 16px; border-radius: 6px;
+  border: none; font-size: 12px; font-weight: 500; cursor: pointer;
+  background: var(--accent); color: white; margin-top: 4px; font-family: var(--sans);
+}
+
+/* ── LOGIN CARD ─────────────────────────────────────────────────────── */
+.login-stage {
+  min-height: 300px; display: flex; align-items: center;
+  justify-content: center; padding: 32px;
+  background: var(--paper);
+}
+.login-card {
+  width: 100%; max-width: 380px;
+  background: var(--paper-2);
+  border: 0.5px solid var(--rule-strong);
+  border-radius: 16px; padding: 36px 32px;
+  box-shadow: var(--shadow);
+}
+.login-brand { display: flex; flex-direction: column; gap: 4px;
+               margin-bottom: 8px; padding-bottom: 24px; border-bottom: 0.5px solid var(--rule); }
+.login-logo  { height: 48px; width: auto; }
+.login-sub   { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+               letter-spacing: 0.12em; color: var(--ink-3); }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field label { font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+               letter-spacing: 0.08em; color: var(--ink-3); }
+.field input {
+  padding: 9px 11px; border: 0.5px solid var(--rule-strong);
+  border-radius: 6px; background: var(--paper-3);
+  color: var(--ink); font-size: 13px; font-family: var(--sans);
+  outline: none;
+}
+.field input:focus { border-color: var(--accent); background: var(--paper-2); }
+.btn-primary {
+  width: 100%; padding: 11px; background: var(--accent); color: white;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 500;
+  cursor: pointer; font-family: var(--sans); margin-top: 4px;
+}
+
+/* ── FORMS ──────────────────────────────────────────────────────────── */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-section { display: flex; flex-direction: column; gap: 12px; }
+.form-row { display: flex; gap: 10px; }
+.form-field { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.form-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+              letter-spacing: 0.08em; color: var(--ink-3); }
+.form-input {
+  padding: 8px 10px; border: 0.5px solid var(--rule-strong);
+  border-radius: 6px; background: var(--paper-3);
+  color: var(--ink); font-size: 13px; font-family: var(--sans);
+}
+.form-select {
+  padding: 8px 10px; border: 0.5px solid var(--rule-strong);
+  border-radius: 6px; background: var(--paper-3);
+  color: var(--ink); font-size: 13px; font-family: var(--sans);
+}
+.btn-row { display: flex; gap: 8px; margin-top: 4px; }
+.btn-secondary {
+  padding: 8px 16px; border: 0.5px solid var(--rule-strong);
+  border-radius: 6px; background: transparent; color: var(--ink-2);
+  font-size: 13px; font-family: var(--sans); cursor: pointer;
+}
+.btn-danger {
+  padding: 8px 16px; border: 0.5px solid var(--bad-dim);
+  border-radius: 6px; background: var(--bad-dim); color: var(--bad);
+  font-size: 13px; font-family: var(--sans); cursor: pointer;
+}
+
+/* ── CAPACITY BAR ───────────────────────────────────────────────────── */
+.bar-track {
+  height: 6px; background: var(--paper-3); border-radius: 3px;
+  overflow: hidden; flex: 1;
+}
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.bar-green  { background: var(--good); }
+.bar-amber  { background: var(--warn); }
+.bar-red    { background: var(--bad);  }
+
+/* ── TWO-COL ─────────────────────────────────────────────────────────── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* ── SECTION HEADER ─────────────────────────────────────────────────── */
+.sec-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.sec-title { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+             letter-spacing: 0.1em; color: var(--ink-3); }
+.sec-action { font-size: 12px; color: var(--accent); cursor: pointer; }
+
+/* ── SCROLLABLE KANBAN ──────────────────────────────────────────────── */
+.kanban-strip {
+  display: flex; gap: 12px; overflow-x: auto;
+  padding: 16px 28px 20px; background: var(--paper);
+  border-bottom: 0.5px solid var(--rule);
+}
+.kanban-col { flex-shrink: 0; width: 240px; display: flex; flex-direction: column; gap: 10px; }
+.kanban-col-header {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3); padding-bottom: 8px;
+  border-bottom: 2px solid var(--rule-strong);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.col-count {
+  background: var(--paper-3); color: var(--ink-3);
+  font-size: 10px; padding: 1px 6px; border-radius: 3px;
+}
+
+/* ── NOTIFICATION PANEL ─────────────────────────────────────────────── */
+.notif-list { display: flex; flex-direction: column; gap: 0; }
+.notif-item {
+  padding: 12px 16px; border-bottom: 0.5px solid var(--rule);
+  display: flex; flex-direction: column; gap: 3px; cursor: pointer;
+}
+.notif-item:hover { background: var(--paper-3); }
+.notif-item:last-child { border-bottom: none; }
+.notif-title { font-size: 13px; font-weight: 500; color: var(--ink); }
+.notif-body  { font-size: 12px; color: var(--ink-3); }
+.notif-time  { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-top: 2px; }
+.notif-dot   { width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+               flex-shrink: 0; margin-top: 5px; }
+.notif-row   { display: flex; gap: 10px; }
+
+/* ── COMPARE CONTAINER ──────────────────────────────────────────────── */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.compare-label {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: #555; margin-bottom: 8px;
+  text-align: center;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ── PAGE CHROME ──────────────────────────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <h1>NEE Dark Theme</h1>
+    <p>Design preview — not yet implemented in the app</p>
+  </div>
+  <div class="toggle-wrap">
+    <button class="toggle-btn" onclick="setTheme('light')">Light</button>
+    <button class="toggle-btn active" onclick="setTheme('dark')">Dark</button>
+  </div>
+</div>
+
+<div class="stage">
+
+  <!-- ── 1. TOKEN PALETTE ──────────────────────────────────────────── -->
+  <section>
+    <div class="section-label">01 — Token palette</div>
+    <div class="theme-frame" id="frame-palette">
+      <div style="padding:20px;">
+        <div class="palette-grid" id="swatches"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2. TOPBAR ─────────────────────────────────────────────────── -->
+  <section>
+    <div class="section-label">02 — Topbar</div>
+    <div class="theme-frame">
+      <div class="topbar">
+        <div class="brand">
+          <img class="brand-logo" src="../web/src/assets/nee-logo.png" alt="Northeast Engineering" />
+          <span class="brand-sub">Production Platform</span>
+        </div>
+        <div class="topbar-right">
+          <span class="user-label">Jake Fowler · <span style="opacity:.6">SUPERVISOR</span></span>
+          <a class="nav-link">Kanban Board</a>
+          <a class="nav-link">Archive</a>
+          <button class="btn-logout">Sign out</button>
+        </div>
+      </div>
+      <div class="page-content" style="padding:20px 28px 8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="font-family:var(--display);font-size:22px;font-weight:400;color:var(--ink);letter-spacing:-0.02em;">Supervisor Dashboard</div>
+          <div style="display:flex;gap:4px;">
+            <button style="padding:6px 14px;border-radius:5px;background:var(--accent);color:white;border:none;font-size:12px;font-family:var(--sans);cursor:pointer;">Overview</button>
+            <button style="padding:6px 14px;border-radius:5px;background:var(--paper-3);color:var(--ink-3);border:none;font-size:12px;font-family:var(--sans);cursor:pointer;">Reports</button>
+            <button style="padding:6px 14px;border-radius:5px;background:var(--paper-3);color:var(--ink-3);border:none;font-size:12px;font-family:var(--sans);cursor:pointer;">Scheduling</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 3. KPI CARDS ───────────────────────────────────────────────── -->
+  <section>
+    <div class="section-label">03 — KPI cards</div>
+    <div class="theme-frame">
+      <div class="page-content">
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-value">24</div>
+            <div class="kpi-label">Active ROs</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon">⚡</div>
+            <div class="kpi-value">78.4%</div>
+            <div class="kpi-label">Utilisation</div>
+          </div>
+          <div class="kpi-card alert">
+            <div class="kpi-icon">🏥</div>
+            <div class="kpi-value">3</div>
+            <div class="kpi-label">In Hospital</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-value">91.2%</div>
+            <div class="kpi-label">On Time</div>
+          </div>
+          <div class="kpi-card" style="border-color:var(--bad);background:var(--bad-dim);">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-value">2</div>
+            <div class="kpi-label">Overdue</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. BACKLOG TABLE ───────────────────────────────────────────── -->
+  <section>
+    <div class="section-label">04 — Scheduling backlog table</div>
+    <div class="theme-frame">
+      <div class="page-content">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>RO #</th>
+                <th>Customer</th>
+                <th>Template</th>
+                <th>Priority</th>
+                <th>Required</th>
+                <th>Start Week</th>
+                <th>Hours</th>
+                <th>Gates</th>
+                <th>Chassis</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span style="font-family:var(--mono);font-weight:600;">RO00041</span></td>
+                <td>DFE Transport</td>
+                <td><span style="font-family:var(--mono);font-size:12px;">TP42N</span></td>
+                <td><span class="badge badge-bad"><span class="dot"></span>P1</span></td>
+                <td style="font-family:var(--mono);font-size:12px;">12 Jun 26</td>
+                <td><span class="badge badge-good">21 Apr</span></td>
+                <td style="font-family:var(--mono);font-size:12px;">48.0h</td>
+                <td>
+                  <div class="gate-row">
+                    <div class="gate gate-green" title="Drafting">D</div>
+                    <div class="gate gate-green" title="Approved">A</div>
+                    <div class="gate gate-green" title="Chassis">C</div>
+                  </div>
+                </td>
+                <td><span style="font-family:var(--mono);font-size:11px;color:var(--good);">JALFVR34H6…</span></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:var(--mono);font-weight:600;">RO00042</span></td>
+                <td>Budget Trucks</td>
+                <td><span style="font-family:var(--mono);font-size:12px;">TL28F</span></td>
+                <td><span class="badge badge-warn"><span class="dot"></span>P2</span></td>
+                <td style="font-family:var(--mono);font-size:12px;">28 Jun 26</td>
+                <td><span class="badge badge-muted">Unscheduled</span></td>
+                <td style="font-family:var(--mono);font-size:12px;">36.5h</td>
+                <td>
+                  <div class="gate-row">
+                    <div class="gate gate-green" title="Drafting">D</div>
+                    <div class="gate gate-warn"  title="Approval pending">A</div>
+                    <div class="gate gate-grey"  title="No chassis">C</div>
+                  </div>
+                </td>
+                <td><button style="font-size:11px;padding:3px 10px;border-radius:4px;background:var(--accent-dim);color:var(--accent);border:0.5px solid var(--accent-dim);font-family:var(--mono);cursor:pointer;">Suggest →</button></td>
+              </tr>
+              <tr>
+                <td><span style="font-family:var(--mono);font-weight:600;">RO00043</span></td>
+                <td>Aldi Plumbing</td>
+                <td><span style="font-family:var(--mono);font-size:12px;">TP42N</span></td>
+                <td><span class="badge badge-info"><span class="dot"></span>P3</span></td>
+                <td style="font-family:var(--mono);font-size:12px;">15 Jul 26</td>
+                <td><span class="badge badge-muted">Unscheduled</span></td>
+                <td style="font-family:var(--mono);font-size:12px;">52.0h</td>
+                <td>
+                  <div class="gate-row">
+                    <div class="gate gate-grey" title="Drafting">D</div>
+                    <div class="gate gate-grey" title="Approval">A</div>
+                    <div class="gate gate-grey" title="Chassis">C</div>
+                  </div>
+                </td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 5. KANBAN CARDS ────────────────────────────────────────────── -->
+  <section>
+    <div class="section-label">05 — Kanban cards &amp; columns</div>
+    <div class="theme-frame">
+      <div class="kanban-strip">
+        <div class="kanban-col">
+          <div class="kanban-col-header">Body Build <span class="col-count">4</span></div>
+          <div class="kanban-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <span class="kanban-ro-num">RO00041</span>
+              <span class="priority-dot p1"></span>
+            </div>
+            <div class="kanban-customer">DFE Transport</div>
+            <div class="kanban-meta">
+              <span>TIPPER_CS</span>
+              <span>·</span>
+              <span>TP42N</span>
+              <span>·</span>
+              <span>48h</span>
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <span class="track-chip track-body">BODY</span>
+              <span class="track-chip track-chassis">CHASSIS</span>
+            </div>
+            <div class="kanban-footer">
+              <span class="badge badge-accent">BODY BUILD</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--ink-3);">12 Jun</span>
+            </div>
+          </div>
+          <div class="kanban-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <span class="kanban-ro-num">RO00044</span>
+              <span class="priority-dot p2"></span>
+            </div>
+            <div class="kanban-customer">City of Marion</div>
+            <div class="kanban-meta"><span>CHIPPER</span><span>·</span><span>CP10</span></div>
+            <div class="kanban-footer">
+              <span class="badge badge-accent">BODY BUILD</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--ink-3);">22 Jun</span>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-header">Electrical <span class="col-count">2</span></div>
+          <div class="kanban-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <span class="kanban-ro-num">RO00039</span>
+              <span class="priority-dot p1"></span>
+            </div>
+            <div class="kanban-customer">Budget Trucks</div>
+            <div class="kanban-meta"><span>TAUTLINER</span><span>·</span><span>36h</span></div>
+            <div class="kanban-footer">
+              <span class="badge badge-good">ELECTRICAL</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--ink-3);">05 Jun</span>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-header">Final QC <span class="col-count">1</span></div>
+          <div class="kanban-card" style="border-color:var(--good);background:var(--good-dim);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <span class="kanban-ro-num">RO00037</span>
+              <span class="priority-dot p3"></span>
+            </div>
+            <div class="kanban-customer">Wagga Motors</div>
+            <div class="kanban-meta"><span>CAB CHASSIS</span></div>
+            <div class="kanban-footer">
+              <span class="badge badge-good">FINAL QC</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--good);">Ready</span>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-header" style="border-bottom-color:var(--bad);">Hospital <span class="col-count" style="background:var(--bad-dim);color:var(--bad);">3</span></div>
+          <div class="kanban-card" style="border-color:var(--bad);background:var(--bad-dim);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <span class="kanban-ro-num">RO00040</span>
+              <span class="priority-dot p1"></span>
+            </div>
+            <div class="kanban-customer">Aldi Plumbing</div>
+            <div class="kanban-meta"><span>PANTECH</span><span>·</span><span>Parts delay</span></div>
+            <div class="kanban-footer">
+              <span class="badge badge-bad">HOSPITAL</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--bad);">Blocked</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 6. CHASSIS SUGGESTIONS ─────────────────────────────────────── -->
+  <section>
+    <div class="section-label">06 — Chassis suggestion modal</div>
+    <div class="theme-frame">
+      <div class="page-content">
+        <div style="background:var(--paper-2);border:0.5px solid var(--rule);border-radius:12px;width:440px;overflow:hidden;box-shadow:var(--shadow);">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:0.5px solid var(--rule);background:var(--paper-2);">
+            <span style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);">Chassis suggestions</span>
+            <button style="background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:14px;">✕</button>
+          </div>
+          <div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px;">
+            <div class="suggest-card">
+              <div class="suggest-top">
+                <span class="chassis-num">JALFVR34H67000006</span>
+                <span class="score-badge score-green">150</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta">TIPPER_CS</span>
+                <span class="meta">White</span>
+                <span class="meta">Tag: T-276</span>
+                <span class="meta">Arrived: 10 Dec 25</span>
+              </div>
+              <div class="breakdown">tag 100 · colour 50 · proximity 0</div>
+              <p class="reason">Exact tag match, colour match</p>
+              <button class="btn-allocate">Allocate</button>
+            </div>
+            <div class="suggest-card">
+              <div class="suggest-top">
+                <span class="chassis-num">LZZ8EXXC7SC707465</span>
+                <span class="score-badge score-amber">50</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta">TIPPER_CS</span>
+                <span class="meta">White</span>
+                <span class="meta">Tag: 83G</span>
+                <span class="meta">Arrived: 01 Oct 25</span>
+              </div>
+              <div class="breakdown">tag 0 · colour 50 · proximity 0</div>
+              <p class="reason">Colour match</p>
+              <button class="btn-allocate">Allocate</button>
+            </div>
+            <div class="suggest-card">
+              <div class="suggest-top">
+                <span class="chassis-num">JALFXZ77VS7000077</span>
+                <span class="score-badge score-grey">0</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta">Arrived: 20 Jan 26</span>
+              </div>
+              <div class="breakdown">tag 0 · colour 0 · proximity 0</div>
+              <p class="reason">Available chassis, no specific match</p>
+              <button class="btn-allocate">Allocate</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 7. LOGIN CARD ──────────────────────────────────────────────── -->
+  <section>
+    <div class="section-label">07 — Login page</div>
+    <div class="theme-frame">
+      <div class="login-stage">
+        <div class="login-card">
+          <div class="login-brand">
+            <img class="login-logo" src="../web/src/assets/nee-logo.png" alt="Northeast Engineering" id="login-logo" />
+            <span class="login-sub">Production Platform</span>
+          </div>
+          <div class="field">
+            <label>Username</label>
+            <input type="text" placeholder="supervisor" />
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" placeholder="••••••••" />
+          </div>
+          <button class="btn-primary">Sign in</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 8. FORM ELEMENTS ───────────────────────────────────────────── -->
+  <section>
+    <div class="section-label">08 — Form inputs &amp; buttons</div>
+    <div class="theme-frame">
+      <div class="page-content">
+        <div class="form-grid">
+          <div class="form-section">
+            <div class="form-row">
+              <div class="form-field">
+                <span class="form-label">Customer</span>
+                <select class="form-select">
+                  <option>DFE Transport</option>
+                  <option>Budget Trucks</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <span class="form-label">Priority</span>
+                <select class="form-select">
+                  <option>P1 — Critical</option>
+                  <option>P2 — High</option>
+                  <option selected>P3 — Normal</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <span class="form-label">Template code</span>
+                <input class="form-input" type="text" placeholder="TP42N" />
+              </div>
+              <div class="form-field">
+                <span class="form-label">Rego</span>
+                <input class="form-input" type="text" placeholder="XV70PX" />
+              </div>
+            </div>
+            <div class="form-field">
+              <span class="form-label">Required date</span>
+              <input class="form-input" type="date" />
+            </div>
+            <div class="btn-row">
+              <button class="btn-primary" style="flex:1;padding:9px;">Create RO</button>
+              <button class="btn-secondary">Cancel</button>
+              <button class="btn-danger">Delete</button>
+            </div>
+          </div>
+          <div class="form-section">
+            <div style="margin-bottom:8px;">
+              <div class="sec-hdr">
+                <span class="sec-title">Station load — week of 21 Apr</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:12px;color:var(--ink);width:120px;">Body Build (10)</span>
+                  <div class="bar-track"><div class="bar-fill bar-red" style="width:95%"></div></div>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--ink-3);width:36px;">38h</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:12px;color:var(--ink);width:120px;">Electrical (20)</span>
+                  <div class="bar-track"><div class="bar-fill bar-amber" style="width:62%"></div></div>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--ink-3);width:36px;">25h</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:12px;color:var(--ink);width:120px;">Final QC (90)</span>
+                  <div class="bar-track"><div class="bar-fill bar-green" style="width:30%"></div></div>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--ink-3);width:36px;">12h</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:12px;color:var(--ink);width:120px;">Subframe (30)</span>
+                  <div class="bar-track"><div class="bar-fill bar-amber" style="width:75%"></div></div>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--ink-3);width:36px;">30h</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="sec-hdr"><span class="sec-title">Status badges</span></div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <span class="badge badge-good"><span class="dot"></span>COMPLETED</span>
+                <span class="badge badge-warn"><span class="dot"></span>IN PROGRESS</span>
+                <span class="badge badge-bad"><span class="dot"></span>OVERDUE</span>
+                <span class="badge badge-info"><span class="dot"></span>SCHEDULED</span>
+                <span class="badge badge-muted">DRAFT</span>
+                <span class="badge badge-accent"><span class="dot"></span>HOSPITAL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 9. COLOUR TOKEN DIFF ───────────────────────────────────────── -->
+  <section>
+    <div class="section-label">09 — Token diff (current → proposed)</div>
+    <div style="background:#111517;border-radius:10px;overflow:hidden;border:0.5px solid #1e2529;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono);">
+        <thead>
+          <tr style="border-bottom:1px solid #1e2529;">
+            <th style="padding:10px 16px;text-align:left;color:#555;font-weight:500;">Token</th>
+            <th style="padding:10px 16px;text-align:left;color:#555;font-weight:500;">Light (current)</th>
+            <th style="padding:10px 16px;text-align:left;color:#555;font-weight:500;">Dark (proposed)</th>
+            <th style="padding:10px 16px;text-align:left;color:#555;font-weight:500;">Role</th>
+          </tr>
+        </thead>
+        <tbody id="token-diff"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div><!-- /stage -->
+
+<script>
+const TOKENS = [
+  ['--ink',         '#0a0e0f', '#e6e1d8', 'Primary text'],
+  ['--ink-2',       '#1a1f21', '#b0a89e', 'Secondary text'],
+  ['--ink-3',       '#2a3033', '#756e67', 'Muted / labels'],
+  ['--paper',       '#f5f2ea', '#111517', 'Page background'],
+  ['--paper-2',     '#ebe7dc', '#181d1f', 'Card / panel surface'],
+  ['--paper-3',     '#ddd7c8', '#1f2529', 'Input bg / hover'],
+  ['--rule',        'rgba(10,14,15,.10)', 'rgba(230,225,216,.07)', 'Dividers'],
+  ['--rule-strong', 'rgba(10,14,15,.20)', 'rgba(230,225,216,.14)', 'Strong borders'],
+  ['--topbar-bg',   '#0a0e0f', '#0c0f11', 'Topbar background'],
+  ['--accent',      '#c2410c', '#f0622a', 'Primary action / orange'],
+  ['--good',        '#15803d', '#34d399', 'Success green'],
+  ['--warn',        '#b45309', '#fbbf24', 'Warning amber'],
+  ['--bad',         '#b91c1c', '#f87171', 'Error / danger red'],
+  ['--info',        '#1d4ed8', '#60a5fa', 'Info / track-body blue'],
+  ['--track-chassis','#b45309','#fbbf24', 'Chassis track amber'],
+  ['--track-subframe','#7c3aed','#a78bfa','Subframe track purple'],
+];
+
+// Build token diff table
+const tbody = document.getElementById('token-diff');
+TOKENS.forEach(([name, light, dark, role]) => {
+  const tr = document.createElement('tr');
+  tr.style.borderBottom = '1px solid #1a1e20';
+  tr.innerHTML = `
+    <td style="padding:9px 16px;color:#9ca3af;">${name}</td>
+    <td style="padding:9px 16px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:18px;height:18px;border-radius:3px;background:${light};border:0.5px solid rgba(255,255,255,0.08);flex-shrink:0;"></div>
+        <span style="color:#6b7280;">${light}</span>
+      </div>
+    </td>
+    <td style="padding:9px 16px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:18px;height:18px;border-radius:3px;background:${dark};border:0.5px solid rgba(255,255,255,0.08);flex-shrink:0;"></div>
+        <span style="color:#c9c2b8;">${dark}</span>
+      </div>
+    </td>
+    <td style="padding:9px 16px;color:#4b5563;">${role}</td>
+  `;
+  tbody.appendChild(tr);
+});
+
+// Build swatches
+const swatchTokens = [
+  ['--paper',   'Page bg'],
+  ['--paper-2', 'Card bg'],
+  ['--paper-3', 'Input bg'],
+  ['--ink',     'Primary text'],
+  ['--ink-2',   'Secondary text'],
+  ['--ink-3',   'Muted text'],
+  ['--accent',  'Accent'],
+  ['--good',    'Good'],
+  ['--warn',    'Warn'],
+  ['--bad',     'Bad'],
+  ['--info',    'Info'],
+];
+const grid = document.getElementById('swatches');
+swatchTokens.forEach(([token, label]) => {
+  const div = document.createElement('div');
+  div.className = 'swatch';
+  div.innerHTML = `
+    <div class="swatch-dot" style="background:var(${token});"></div>
+    <div class="swatch-name">${token}</div>
+    <div class="swatch-hex">${label}</div>
+  `;
+  grid.appendChild(div);
+});
+
+// Theme toggle
+function setTheme(t) {
+  document.querySelectorAll('.theme-frame').forEach(el => {
+    el.dataset.theme = t;
+  });
+  // Login logo filter
+  const logo = document.getElementById('login-logo');
+  if (logo) logo.style.filter = t === 'dark' ? 'brightness(0) invert(1)' : '';
+
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.toggle-btn:${t==='dark'?'last-child':'first-child'}`).classList.add('active');
+}
+
+// Default to dark
+setTheme('dark');
+</script>
+</body>
+</html>

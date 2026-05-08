@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEE Blue &amp; White Theme — Design Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+/* ─────────────────────────────────────────────────────────────────────
+   THEME: LIGHT (current — warm paper + orange accent)
+───────────────────────────────────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  --ink:          #0a0e0f;
+  --ink-2:        #1a1f21;
+  --ink-3:        #4a5258;
+  --paper:        #f5f2ea;
+  --paper-2:      #ebe7dc;
+  --paper-3:      #ddd7c8;
+  --rule:         rgba(10,14,15,0.10);
+  --rule-strong:  rgba(10,14,15,0.20);
+  --topbar-bg:    #0a0e0f;
+  --topbar-rule:  rgba(245,242,234,0.10);
+  --topbar-text:  #f5f2ea;
+  --topbar-sub:   rgba(245,242,234,0.45);
+  --topbar-muted: rgba(245,242,234,0.65);
+  --topbar-border:rgba(245,242,234,0.25);
+  --accent:       #c2410c;
+  --accent-dim:   rgba(194,65,12,0.10);
+  --good:         #15803d;
+  --good-dim:     rgba(21,128,61,0.10);
+  --warn:         #b45309;
+  --warn-dim:     rgba(180,83,9,0.10);
+  --bad:          #b91c1c;
+  --bad-dim:      rgba(185,28,28,0.10);
+  --info:         #1d4ed8;
+  --info-dim:     rgba(29,78,216,0.10);
+  --track-body:   #1d4ed8;
+  --track-chassis:#b45309;
+  --track-sub:    #7c3aed;
+  --shadow:       0 0 0 0.5px rgba(10,14,15,0.08), 0 2px 8px rgba(10,14,15,0.06);
+  --logo-filter:  brightness(0) invert(1);
+  --display: 'Fraunces', Georgia, serif;
+  --sans:    'Inter', -apple-system, sans-serif;
+  --mono:    'JetBrains Mono', monospace;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   THEME: BLUE & WHITE (proposed — clean navy + cobalt blue + white)
+───────────────────────────────────────────────────────────────────── */
+[data-theme="blue"] {
+  --ink:          #0d1b2e;
+  --ink-2:        #2d4059;
+  --ink-3:        #5b7a99;
+  --paper:        #ffffff;
+  --paper-2:      #f0f5fb;
+  --paper-3:      #dde8f4;
+  --rule:         rgba(13,27,46,0.08);
+  --rule-strong:  rgba(13,27,46,0.16);
+  --topbar-bg:    #0d2257;
+  --topbar-rule:  rgba(255,255,255,0.08);
+  --topbar-text:  #ffffff;
+  --topbar-sub:   rgba(255,255,255,0.45);
+  --topbar-muted: rgba(255,255,255,0.70);
+  --topbar-border:rgba(255,255,255,0.20);
+  --accent:       #1d6aff;
+  --accent-dim:   rgba(29,106,255,0.10);
+  --good:         #16a34a;
+  --good-dim:     rgba(22,163,74,0.10);
+  --warn:         #d97706;
+  --warn-dim:     rgba(217,119,6,0.10);
+  --bad:          #dc2626;
+  --bad-dim:      rgba(220,38,38,0.10);
+  --info:         #0284c7;
+  --info-dim:     rgba(2,132,199,0.10);
+  --track-body:   #1d6aff;
+  --track-chassis:#d97706;
+  --track-sub:    #7c3aed;
+  --shadow:       0 0 0 0.5px rgba(13,27,46,0.08), 0 2px 10px rgba(13,27,46,0.08);
+  --logo-filter:  brightness(0) invert(1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   OUTER CHROME (the review page itself — always dark)
+───────────────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0a0c0e;
+  color: #888;
+  line-height: 1.5;
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+.chrome-header {
+  position: sticky; top: 0; z-index: 200;
+  background: #0a0c0e;
+  border-bottom: 1px solid #181c1f;
+  padding: 14px 32px;
+  display: flex; align-items: center; gap: 20px;
+}
+.chrome-title { font-size: 13px; font-weight: 600; color: #d0cfc8; font-family: 'JetBrains Mono', monospace; }
+.chrome-sub   { font-size: 11px; color: #555; margin-top: 1px; }
+.toggle-row   { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.toggle-label { font-size: 11px; color: #555; font-family: 'JetBrains Mono', monospace;
+                text-transform: uppercase; letter-spacing: .08em; margin-right: 4px; }
+.tbtn {
+  padding: 6px 16px; border-radius: 5px;
+  border: 1px solid #272b2f; background: #141719;
+  color: #666; font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.tbtn:hover { border-color: #444; color: #ccc; }
+.tbtn.active-light { background: #f5f2ea; color: #0a0e0f; border-color: #f5f2ea; }
+.tbtn.active-blue  { background: #1d6aff; color: #fff;    border-color: #1d6aff; }
+
+.stage { max-width: 1200px; margin: 0 auto; padding: 40px 32px;
+         display: flex; flex-direction: column; gap: 48px; }
+
+.sec-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em;
+  color: #3a3f44; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.sec-label::after { content: ''; flex: 1; height: 1px; background: #181c1f; }
+
+/* Theme frame — contains the themed components */
+.frame {
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 0 0 1px #181c1f, 0 8px 40px rgba(0,0,0,.5);
+  background: var(--paper);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   COMPONENT STYLES (use CSS vars so they respond to data-theme)
+───────────────────────────────────────────────────────────────────── */
+
+/* — Topbar — */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 28px; height: 64px;
+  background: var(--topbar-bg);
+  border-bottom: 0.5px solid var(--topbar-rule);
+}
+.brand { display: flex; flex-direction: row; align-items: center; gap: 14px; }
+.brand-logo { height: 48px; width: auto; filter: var(--logo-filter); display: block; }
+.brand-sub {
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--topbar-sub);
+  border-left: 1px solid var(--topbar-border); padding-left: 14px;
+}
+.topbar-right { display: flex; align-items: center; gap: 18px; }
+.topbar-user  { font-size: 12px; color: var(--topbar-muted); }
+.topbar-link  { font-size: 13px; color: var(--topbar-muted); cursor: pointer; text-decoration: none; }
+.topbar-link:hover { color: var(--topbar-text); }
+.topbar-logout {
+  padding: 5px 14px; border-radius: 5px; font-size: 12px; cursor: pointer;
+  font-family: var(--sans); background: transparent;
+  border: 0.5px solid var(--topbar-border); color: var(--topbar-muted);
+}
+.topbar-logout:hover { color: var(--topbar-text); border-color: rgba(255,255,255,.4); }
+
+/* Topbar tab bar (blue theme uses a distinct accent strip) */
+.tab-bar {
+  display: flex; gap: 2px; padding: 0 28px;
+  background: var(--topbar-bg);
+  border-bottom: 0.5px solid var(--topbar-rule);
+}
+.tab {
+  padding: 10px 16px; font-size: 12px; font-family: var(--sans); font-weight: 500;
+  color: var(--topbar-muted); background: transparent; border: none; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -0.5px;
+  letter-spacing: 0.01em;
+}
+.tab:hover { color: var(--topbar-text); }
+.tab.active { color: var(--topbar-text); border-bottom-color: var(--accent); }
+[data-theme="light"] .tab.active { border-bottom-color: #c2410c; }
+
+/* — Page area — */
+.page { padding: 24px 28px; background: var(--paper); }
+
+/* — KPI cards — */
+.kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.kpi-card {
+  flex: 1; min-width: 120px;
+  background: var(--paper-2); border: 0.5px solid var(--rule);
+  border-radius: 10px; padding: 18px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  box-shadow: var(--shadow);
+}
+.kpi-card.kpi-accent { border-left: 3px solid var(--accent); }
+.kpi-card.kpi-warn   { border-left: 3px solid var(--warn); background: var(--warn-dim); }
+.kpi-card.kpi-bad    { border-left: 3px solid var(--bad);  background: var(--bad-dim); }
+.kpi-icon  { font-size: 18px; }
+.kpi-value { font-family: var(--display); font-size: 28px; font-weight: 400;
+             color: var(--ink); letter-spacing: -0.02em; line-height: 1; }
+.kpi-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+             letter-spacing: 0.1em; color: var(--ink-3); }
+
+/* — Panels — */
+.panel {
+  background: var(--paper-2); border: 0.5px solid var(--rule);
+  border-radius: 10px; padding: 18px;
+  box-shadow: var(--shadow);
+}
+.panel-title {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--ink-3); margin-bottom: 14px;
+}
+
+/* — Table — */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3); font-weight: 500;
+  padding: 9px 12px; text-align: left;
+  border-bottom: 0.5px solid var(--rule-strong); white-space: nowrap;
+  background: var(--paper-2);
+}
+tbody td { padding: 11px 12px; color: var(--ink); border-bottom: 0.5px solid var(--rule); }
+tbody tr:hover td { background: var(--paper-3); }
+tbody tr:last-child td { border-bottom: none; }
+.mono { font-family: var(--mono); font-size: 12px; }
+
+/* — Badges — */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 4px;
+  font-family: var(--mono); font-size: 11px; font-weight: 500; white-space: nowrap;
+}
+.bg-good    { background: var(--good-dim);   color: var(--good);   }
+.bg-warn    { background: var(--warn-dim);   color: var(--warn);   }
+.bg-bad     { background: var(--bad-dim);    color: var(--bad);    }
+.bg-info    { background: var(--info-dim);   color: var(--info);   }
+.bg-muted   { background: var(--paper-3);    color: var(--ink-3);  }
+.bg-accent  { background: var(--accent-dim); color: var(--accent); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+/* — Gate cells — */
+.gates { display: flex; gap: 5px; }
+.gate {
+  width: 22px; height: 22px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-family: var(--mono); font-weight: 600;
+}
+.g-green { background: var(--good-dim);   color: var(--good);  }
+.g-grey  { background: var(--paper-3);    color: var(--ink-3); }
+.g-warn  { background: var(--warn-dim);   color: var(--warn);  }
+
+/* — Track chips — */
+.track {
+  font-size: 10px; font-family: var(--mono); padding: 1px 6px;
+  border-radius: 3px; font-weight: 500;
+}
+.t-body    { background: var(--info-dim);   color: var(--track-body);    }
+.t-chassis { background: var(--warn-dim);   color: var(--track-chassis); }
+.t-sub     { background: rgba(124,58,237,.10); color: var(--track-sub); }
+
+/* — Kanban — */
+.kanban-strip {
+  display: flex; gap: 14px; overflow-x: auto; padding: 20px 28px 24px;
+  background: var(--paper); border-bottom: 0.5px solid var(--rule);
+}
+.k-col { flex-shrink: 0; width: 230px; display: flex; flex-direction: column; gap: 10px; }
+.k-col-hdr {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3); padding-bottom: 8px;
+  border-bottom: 2px solid var(--rule-strong);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.k-col-hdr.hdr-accent { border-bottom-color: var(--accent); color: var(--accent); }
+.k-col-hdr.hdr-bad    { border-bottom-color: var(--bad);    color: var(--bad); }
+.col-cnt {
+  font-size: 10px; padding: 1px 6px; border-radius: 3px;
+  background: var(--paper-3); color: var(--ink-3);
+}
+.k-card {
+  background: var(--paper); border: 0.5px solid var(--rule-strong);
+  border-radius: 8px; padding: 13px;
+  display: flex; flex-direction: column; gap: 9px;
+  box-shadow: var(--shadow); cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.k-card:hover { border-color: var(--accent); }
+.k-card.card-bad  { background: var(--bad-dim);  border-color: var(--bad); }
+.k-card.card-good { background: var(--good-dim); border-color: var(--good); }
+.k-ro   { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--ink); }
+.k-name { font-size: 13px; color: var(--ink); font-weight: 500; }
+.k-meta { font-size: 11px; color: var(--ink-3); display: flex; gap: 6px; flex-wrap: wrap; }
+.k-foot { display: flex; align-items: center; justify-content: space-between; }
+.k-date { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.pdot { width: 8px; height: 8px; border-radius: 50%; }
+.p1 { background: var(--bad);  }
+.p2 { background: var(--warn); }
+.p3 { background: var(--info); }
+
+/* — Chassis suggestion panel — */
+.suggest-panel {
+  background: var(--paper); border: 0.5px solid var(--rule);
+  border-radius: 12px; width: 420px; overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.suggest-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 18px; border-bottom: 0.5px solid var(--rule);
+  background: var(--paper-2);
+}
+.suggest-hdr-title {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--ink-3);
+}
+.suggest-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.s-card {
+  border: 0.5px solid var(--rule-strong); border-radius: 8px; padding: 13px;
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--paper);
+}
+.s-top  { display: flex; align-items: center; justify-content: space-between; }
+.s-num  { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink); }
+.sc-badge { padding: 2px 8px; border-radius: 3px;
+            font-family: var(--mono); font-size: 11px; font-weight: 600; }
+.sc-green { background: var(--good-dim);  color: var(--good);  }
+.sc-amber { background: var(--warn-dim);  color: var(--warn);  }
+.sc-grey  { background: var(--paper-3);   color: var(--ink-3); }
+.s-metas  { display: flex; flex-wrap: wrap; gap: 4px; }
+.s-meta   { font-size: 11px; padding: 1px 6px; border-radius: 3px;
+            background: var(--paper-3); color: var(--ink-3); font-family: var(--mono); }
+.s-brkd   { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+.s-reason { font-size: 12px; color: var(--ink); }
+.btn-alloc {
+  align-self: flex-end; padding: 6px 16px; border-radius: 6px; border: none;
+  font-size: 12px; font-weight: 500; cursor: pointer; margin-top: 2px;
+  background: var(--accent); color: white; font-family: var(--sans);
+  transition: opacity .15s;
+}
+.btn-alloc:hover { opacity: .88; }
+
+/* — Login card — */
+.login-wrap {
+  min-height: 360px; display: flex; align-items: center; justify-content: center;
+  padding: 40px; background: var(--paper);
+}
+.login-card {
+  width: 100%; max-width: 380px;
+  background: var(--paper-2); border: 0.5px solid var(--rule-strong);
+  border-radius: 16px; padding: 36px 32px; box-shadow: var(--shadow);
+}
+.login-brand {
+  display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px;
+  padding-bottom: 24px; border-bottom: 0.5px solid var(--rule);
+}
+.login-logo { height: 48px; width: auto; filter: var(--logo-filter); }
+[data-theme="light"] .login-logo { filter: none; }
+[data-theme="blue"]  .login-logo { filter: none; }
+.login-sub  {
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--ink-3);
+}
+.lf { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.lf label { font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+             letter-spacing: 0.08em; color: var(--ink-3); }
+.lf input  {
+  padding: 9px 11px; border: 0.5px solid var(--rule-strong);
+  border-radius: 6px; background: var(--paper-3);
+  color: var(--ink); font-size: 13px; font-family: var(--sans); outline: none;
+}
+.btn-signin {
+  width: 100%; padding: 11px; background: var(--accent); color: white;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: var(--sans); transition: opacity .15s;
+}
+.btn-signin:hover { opacity: .88; }
+
+/* — Form elements — */
+.frow  { display: flex; gap: 10px; }
+.ffield { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.flabel { font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+          letter-spacing: 0.08em; color: var(--ink-3); }
+.finput, .fselect {
+  padding: 8px 10px; border: 0.5px solid var(--rule-strong);
+  border-radius: 6px; background: var(--paper-3);
+  color: var(--ink); font-size: 13px; font-family: var(--sans); outline: none;
+}
+.finput:focus { border-color: var(--accent); }
+.btn-primary { padding: 9px 20px; background: var(--accent); color: white;
+               border: none; border-radius: 7px; font-size: 13px; font-weight: 600;
+               cursor: pointer; font-family: var(--sans); }
+.btn-secondary { padding: 9px 16px; border: 0.5px solid var(--rule-strong);
+                 border-radius: 7px; background: transparent; color: var(--ink-2);
+                 font-size: 13px; cursor: pointer; font-family: var(--sans); }
+.btn-danger { padding: 9px 16px; background: var(--bad-dim); color: var(--bad);
+              border: 0.5px solid var(--bad-dim); border-radius: 7px;
+              font-size: 13px; cursor: pointer; font-family: var(--sans); }
+
+/* — Capacity bars — */
+.bar-track { height: 6px; background: var(--paper-3); border-radius: 3px; overflow: hidden; flex: 1; }
+.bar-fill  { height: 100%; border-radius: 3px; }
+.bf-green  { background: var(--good); }
+.bf-amber  { background: var(--warn); }
+.bf-red    { background: var(--bad);  }
+.bf-blue   { background: var(--accent); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   COMPARISON LAYOUT  (shows both themes side by side)
+───────────────────────────────────────────────────────────────────── */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.compare-col-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.12em; margin-bottom: 8px; text-align: center; padding: 5px 0;
+  border-radius: 4px;
+}
+.lbl-light { color: #c8b99a; background: rgba(245,242,234,0.06); }
+.lbl-blue  { color: #7cb0ff; background: rgba(29,106,255,0.08); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   TOKEN DIFF TABLE
+───────────────────────────────────────────────────────────────────── */
+.diff-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  background: #111517; border-radius: 10px; overflow: hidden;
+}
+.diff-table th {
+  padding: 10px 16px; text-align: left; color: #444;
+  font-weight: 500; border-bottom: 1px solid #1a1e20;
+}
+.diff-table td { padding: 9px 16px; border-bottom: 1px solid #141719; }
+.diff-table tr:last-child td { border-bottom: none; }
+
+</style>
+</head>
+<body>
+
+<!-- ── CHROME HEADER ───────────────────────────────────────────────── -->
+<div class="chrome-header">
+  <div>
+    <div class="chrome-title">NEE · Blue &amp; White Theme — Design Preview</div>
+    <div class="chrome-sub">Plan only · not yet implemented · compare with current Light theme</div>
+  </div>
+  <div class="toggle-row">
+    <span class="toggle-label">Preview:</span>
+    <button class="tbtn" id="btn-light" onclick="setTheme('light')">Light (current)</button>
+    <button class="tbtn active-blue" id="btn-blue"  onclick="setTheme('blue')">Blue &amp; White (proposed)</button>
+    <button class="tbtn" id="btn-both"  onclick="setTheme('both')">Side by side</button>
+  </div>
+</div>
+
+<div class="stage">
+
+  <!-- ── 1. TOPBAR + TAB BAR ────────────────────────────────────────── -->
+  <section>
+    <div class="sec-label">01 — Topbar &amp; navigation</div>
+    <div id="s1-single" class="frame" data-theme="blue">
+      <div class="topbar">
+        <div class="brand">
+          <img class="brand-logo" src="../web/src/assets/nee-logo.png" alt="Northeast Engineering" />
+          <span class="brand-sub">Production Platform</span>
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-user">Jake Fowler · <span style="opacity:.6">SUPERVISOR</span></span>
+          <a class="topbar-link">Kanban</a>
+          <a class="topbar-link">Archive</a>
+          <button class="topbar-logout">Sign out</button>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <button class="tab active">Overview</button>
+        <button class="tab">Reports</button>
+        <button class="tab">Scheduling</button>
+        <button class="tab">Admin</button>
+      </div>
+    </div>
+    <div id="s1-both" class="compare" style="display:none;margin-top:0;">
+      <div>
+        <div class="compare-col-label lbl-light">Light (current)</div>
+        <div class="frame" data-theme="light">
+          <div class="topbar">
+            <div class="brand">
+              <img class="brand-logo" src="../web/src/assets/nee-logo.png" alt="NEE" />
+              <span class="brand-sub">Production Platform</span>
+            </div>
+            <div class="topbar-right">
+              <span class="topbar-user">Jake Fowler</span>
+              <a class="topbar-link">Kanban</a>
+              <button class="topbar-logout">Sign out</button>
+            </div>
+          </div>
+          <div class="tab-bar">
+            <button class="tab active">Overview</button>
+            <button class="tab">Reports</button>
+            <button class="tab">Scheduling</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="compare-col-label lbl-blue">Blue &amp; White (proposed)</div>
+        <div class="frame" data-theme="blue">
+          <div class="topbar">
+            <div class="brand">
+              <img class="brand-logo" src="../web/src/assets/nee-logo.png" alt="NEE" />
+              <span class="brand-sub">Production Platform</span>
+            </div>
+            <div class="topbar-right">
+              <span class="topbar-user">Jake Fowler</span>
+              <a class="topbar-link">Kanban</a>
+              <button class="topbar-logout">Sign out</button>
+            </div>
+          </div>
+          <div class="tab-bar">
+            <button class="tab active">Overview</button>
+            <button class="tab">Reports</button>
+            <button class="tab">Scheduling</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2. KPI CARDS ───────────────────────────────────────────────── -->
+  <section>
+    <div class="sec-label">02 — KPI cards</div>
+    <div id="s2-single" class="frame" data-theme="blue">
+      <div class="page">
+        <div class="kpi-row">
+          <div class="kpi-card kpi-accent"><div class="kpi-icon">📋</div><div class="kpi-value">24</div><div class="kpi-label">Active ROs</div></div>
+          <div class="kpi-card"><div class="kpi-icon">⚡</div><div class="kpi-value">78.4%</div><div class="kpi-label">Utilisation</div></div>
+          <div class="kpi-card kpi-warn"><div class="kpi-icon">🏥</div><div class="kpi-value">3</div><div class="kpi-label">In Hospital</div></div>
+          <div class="kpi-card"><div class="kpi-icon">✅</div><div class="kpi-value">91.2%</div><div class="kpi-label">On Time</div></div>
+          <div class="kpi-card kpi-bad"><div class="kpi-icon">⚠️</div><div class="kpi-value">2</div><div class="kpi-label">Overdue</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="s2-both" class="compare" style="display:none;">
+      <div><div class="compare-col-label lbl-light">Light</div><div class="frame" data-theme="light"><div class="page"><div class="kpi-row"><div class="kpi-card kpi-accent"><div class="kpi-icon">📋</div><div class="kpi-value">24</div><div class="kpi-label">Active ROs</div></div><div class="kpi-card"><div class="kpi-icon">⚡</div><div class="kpi-value">78.4%</div><div class="kpi-label">Utilisation</div></div><div class="kpi-card kpi-warn"><div class="kpi-icon">🏥</div><div class="kpi-value">3</div><div class="kpi-label">In Hospital</div></div></div></div></div></div>
+      <div><div class="compare-col-label lbl-blue">Blue &amp; White</div><div class="frame" data-theme="blue"><div class="page"><div class="kpi-row"><div class="kpi-card kpi-accent"><div class="kpi-icon">📋</div><div class="kpi-value">24</div><div class="kpi-label">Active ROs</div></div><div class="kpi-card"><div class="kpi-icon">⚡</div><div class="kpi-value">78.4%</div><div class="kpi-label">Utilisation</div></div><div class="kpi-card kpi-warn"><div class="kpi-icon">🏥</div><div class="kpi-value">3</div><div class="kpi-label">In Hospital</div></div></div></div></div></div>
+    </div>
+  </section>
+
+  <!-- ── 3. BACKLOG TABLE ───────────────────────────────────────────── -->
+  <section>
+    <div class="sec-label">03 — Scheduling backlog table</div>
+    <div id="s3-single" class="frame" data-theme="blue">
+      <div class="page" style="padding-top:0;padding-bottom:0;">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>RO #</th><th>Customer</th><th>Template</th>
+              <th>Priority</th><th>Required</th><th>Start week</th>
+              <th>Hours</th><th>Gates</th><th>Chassis</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="mono" style="font-weight:700;">RO00041</span></td>
+                <td>DFE Transport</td>
+                <td><span class="mono">TP42N</span></td>
+                <td><span class="badge bg-bad"><span class="dot"></span>P1</span></td>
+                <td><span class="mono">12 Jun 26</span></td>
+                <td><span class="badge bg-good">21 Apr</span></td>
+                <td><span class="mono">48.0h</span></td>
+                <td><div class="gates"><div class="gate g-green">D</div><div class="gate g-green">A</div><div class="gate g-green">C</div></div></td>
+                <td><span class="mono" style="font-size:11px;color:var(--good);">JALFVR34H6…</span></td>
+              </tr>
+              <tr>
+                <td><span class="mono" style="font-weight:700;">RO00042</span></td>
+                <td>Budget Trucks</td>
+                <td><span class="mono">TL28F</span></td>
+                <td><span class="badge bg-warn"><span class="dot"></span>P2</span></td>
+                <td><span class="mono">28 Jun 26</span></td>
+                <td><span class="badge bg-muted">Unsched.</span></td>
+                <td><span class="mono">36.5h</span></td>
+                <td><div class="gates"><div class="gate g-green">D</div><div class="gate g-warn">A</div><div class="gate g-grey">C</div></div></td>
+                <td><button style="font-size:11px;padding:3px 10px;border-radius:4px;background:var(--accent-dim);color:var(--accent);border:0.5px solid var(--accent-dim);font-family:var(--mono);cursor:pointer;">Suggest →</button></td>
+              </tr>
+              <tr>
+                <td><span class="mono" style="font-weight:700;">RO00043</span></td>
+                <td>Aldi Plumbing</td>
+                <td><span class="mono">TP42N</span></td>
+                <td><span class="badge bg-info"><span class="dot"></span>P3</span></td>
+                <td><span class="mono">15 Jul 26</span></td>
+                <td><span class="badge bg-muted">Unsched.</span></td>
+                <td><span class="mono">52.0h</span></td>
+                <td><div class="gates"><div class="gate g-grey">D</div><div class="gate g-grey">A</div><div class="gate g-grey">C</div></div></td>
+                <td style="color:var(--ink-3);">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div id="s3-both" class="compare" style="display:none;">
+      <div>
+        <div class="compare-col-label lbl-light">Light</div>
+        <div class="frame" data-theme="light" style="overflow-x:auto;">
+          <div class="page" style="padding:0;"><div class="tbl-wrap"><table><thead><tr><th>RO #</th><th>Customer</th><th>Priority</th><th>Start week</th><th>Gates</th></tr></thead><tbody>
+            <tr><td><span class="mono" style="font-weight:700;">RO00041</span></td><td>DFE Transport</td><td><span class="badge bg-bad"><span class="dot"></span>P1</span></td><td><span class="badge bg-good">21 Apr</span></td><td><div class="gates"><div class="gate g-green">D</div><div class="gate g-green">A</div><div class="gate g-green">C</div></div></td></tr>
+            <tr><td><span class="mono" style="font-weight:700;">RO00042</span></td><td>Budget Trucks</td><td><span class="badge bg-warn"><span class="dot"></span>P2</span></td><td><span class="badge bg-muted">Unsched.</span></td><td><div class="gates"><div class="gate g-green">D</div><div class="gate g-warn">A</div><div class="gate g-grey">C</div></div></td></tr>
+          </tbody></table></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="compare-col-label lbl-blue">Blue &amp; White</div>
+        <div class="frame" data-theme="blue" style="overflow-x:auto;">
+          <div class="page" style="padding:0;"><div class="tbl-wrap"><table><thead><tr><th>RO #</th><th>Customer</th><th>Priority</th><th>Start week</th><th>Gates</th></tr></thead><tbody>
+            <tr><td><span class="mono" style="font-weight:700;">RO00041</span></td><td>DFE Transport</td><td><span class="badge bg-bad"><span class="dot"></span>P1</span></td><td><span class="badge bg-good">21 Apr</span></td><td><div class="gates"><div class="gate g-green">D</div><div class="gate g-green">A</div><div class="gate g-green">C</div></div></td></tr>
+            <tr><td><span class="mono" style="font-weight:700;">RO00042</span></td><td>Budget Trucks</td><td><span class="badge bg-warn"><span class="dot"></span>P2</span></td><td><span class="badge bg-muted">Unsched.</span></td><td><div class="gates"><div class="gate g-green">D</div><div class="gate g-warn">A</div><div class="gate g-grey">C</div></div></td></tr>
+          </tbody></table></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. KANBAN ──────────────────────────────────────────────────── -->
+  <section>
+    <div class="sec-label">04 — Kanban board</div>
+    <div id="s4-single" class="frame" data-theme="blue">
+      <div class="kanban-strip">
+        <div class="k-col">
+          <div class="k-col-hdr hdr-accent">Body Build <span class="col-cnt">4</span></div>
+          <div class="k-card">
+            <div style="display:flex;justify-content:space-between;"><span class="k-ro">RO00041</span><span class="pdot p1"></span></div>
+            <div class="k-name">DFE Transport</div>
+            <div class="k-meta"><span>TIPPER_CS</span><span>·</span><span>48h</span></div>
+            <div style="display:flex;gap:4px;"><span class="track t-body">BODY</span><span class="track t-chassis">CHASSIS</span></div>
+            <div class="k-foot"><span class="badge bg-accent">BODY BUILD</span><span class="k-date">12 Jun</span></div>
+          </div>
+          <div class="k-card">
+            <div style="display:flex;justify-content:space-between;"><span class="k-ro">RO00044</span><span class="pdot p2"></span></div>
+            <div class="k-name">City of Marion</div>
+            <div class="k-meta"><span>CHIPPER</span></div>
+            <div class="k-foot"><span class="badge bg-accent">BODY BUILD</span><span class="k-date">22 Jun</span></div>
+          </div>
+        </div>
+        <div class="k-col">
+          <div class="k-col-hdr">Electrical <span class="col-cnt">2</span></div>
+          <div class="k-card">
+            <div style="display:flex;justify-content:space-between;"><span class="k-ro">RO00039</span><span class="pdot p1"></span></div>
+            <div class="k-name">Budget Trucks</div>
+            <div class="k-meta"><span>TAUTLINER</span><span>·</span><span>36h</span></div>
+            <div class="k-foot"><span class="badge bg-good">ELECTRICAL</span><span class="k-date">05 Jun</span></div>
+          </div>
+        </div>
+        <div class="k-col">
+          <div class="k-col-hdr">Final QC <span class="col-cnt">1</span></div>
+          <div class="k-card card-good">
+            <div style="display:flex;justify-content:space-between;"><span class="k-ro">RO00037</span><span class="pdot p3"></span></div>
+            <div class="k-name">Wagga Motors</div>
+            <div class="k-meta"><span>CAB CHASSIS</span></div>
+            <div class="k-foot"><span class="badge bg-good">FINAL QC</span><span class="k-date" style="color:var(--good);">Ready</span></div>
+          </div>
+        </div>
+        <div class="k-col">
+          <div class="k-col-hdr hdr-bad">Hospital <span class="col-cnt" style="background:var(--bad-dim);color:var(--bad);">3</span></div>
+          <div class="k-card card-bad">
+            <div style="display:flex;justify-content:space-between;"><span class="k-ro">RO00040</span><span class="pdot p1"></span></div>
+            <div class="k-name">Aldi Plumbing</div>
+            <div class="k-meta"><span>Parts delay</span></div>
+            <div class="k-foot"><span class="badge bg-bad">HOSPITAL</span><span class="k-date" style="color:var(--bad);">Blocked</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="s4-both" class="compare" style="display:none;">
+      <div>
+        <div class="compare-col-label lbl-light">Light</div>
+        <div class="frame" data-theme="light" style="overflow:hidden;">
+          <div class="kanban-strip" style="padding:14px 16px 18px;">
+            <div class="k-col"><div class="k-col-hdr hdr-accent">Body Build</div><div class="k-card"><div style="display:flex;justify-content:space-between;"><span class="k-ro">RO00041</span><span class="pdot p1"></span></div><div class="k-name">DFE Transport</div><div class="k-foot"><span class="badge bg-accent">BODY BUILD</span><span class="k-date">12 Jun</span></div></div></div>
+            <div class="k-col"><div class="k-col-hdr hdr-bad">Hospital</div><div class="k-card card-bad"><div style="display:flex;justify-content:space-between;"><span class="k-ro">RO00040</span><span class="pdot p1"></span></div><div class="k-name">Aldi Plumbing</div><div class="k-foot"><span class="badge bg-bad">HOSPITAL</span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="compare-col-label lbl-blue">Blue &amp; White</div>
+        <div class="frame" data-theme="blue" style="overflow:hidden;">
+          <div class="kanban-strip" style="padding:14px 16px 18px;">
+            <div class="k-col"><div class="k-col-hdr hdr-accent">Body Build</div><div class="k-card"><div style="display:flex;justify-content:space-between;"><span class="k-ro">RO00041</span><span class="pdot p1"></span></div><div class="k-name">DFE Transport</div><div class="k-foot"><span class="badge bg-accent">BODY BUILD</span><span class="k-date">12 Jun</span></div></div></div>
+            <div class="k-col"><div class="k-col-hdr hdr-bad">Hospital</div><div class="k-card card-bad"><div style="display:flex;justify-content:space-between;"><span class="k-ro">RO00040</span><span class="pdot p1"></span></div><div class="k-name">Aldi Plumbing</div><div class="k-foot"><span class="badge bg-bad">HOSPITAL</span></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 5. CHASSIS SUGGESTIONS + LOGIN ─────────────────────────────── -->
+  <section>
+    <div class="sec-label">05 — Chassis suggestions &amp; login</div>
+    <div id="s5-single" class="frame" data-theme="blue">
+      <div class="page" style="display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start;">
+        <!-- Suggest panel -->
+        <div class="suggest-panel">
+          <div class="suggest-hdr">
+            <span class="suggest-hdr-title">Chassis suggestions — RO00042</span>
+            <button style="background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:13px;">✕</button>
+          </div>
+          <div class="suggest-body">
+            <div class="s-card">
+              <div class="s-top"><span class="s-num">JALFVR34H67000006</span><span class="sc-badge sc-green">150</span></div>
+              <div class="s-metas"><span class="s-meta">TIPPER_CS</span><span class="s-meta">White</span><span class="s-meta">Tag: T-276</span><span class="s-meta">10 Dec 25</span></div>
+              <div class="s-brkd">tag 100 · colour 50 · proximity 0</div>
+              <p class="s-reason">Exact tag match, colour match</p>
+              <button class="btn-alloc">Allocate</button>
+            </div>
+            <div class="s-card">
+              <div class="s-top"><span class="s-num">LZZ8EXXC7SC707465</span><span class="sc-badge sc-amber">50</span></div>
+              <div class="s-metas"><span class="s-meta">TIPPER_CS</span><span class="s-meta">White</span><span class="s-meta">Tag: 83G</span></div>
+              <div class="s-brkd">tag 0 · colour 50 · proximity 0</div>
+              <p class="s-reason">Colour match</p>
+              <button class="btn-alloc">Allocate</button>
+            </div>
+          </div>
+        </div>
+        <!-- Login card -->
+        <div class="login-card" style="max-width:320px;">
+          <div class="login-brand">
+            <img class="login-logo" src="../web/src/assets/nee-logo.png" alt="NEE" />
+            <span class="login-sub">Production Platform</span>
+          </div>
+          <div class="lf"><label>Username</label><input class="finput" type="text" placeholder="supervisor" /></div>
+          <div class="lf"><label>Password</label><input class="finput" type="password" placeholder="••••••••" /></div>
+          <button class="btn-signin">Sign in</button>
+        </div>
+      </div>
+    </div>
+    <div id="s5-both" class="compare" style="display:none;">
+      <div>
+        <div class="compare-col-label lbl-light">Light</div>
+        <div class="frame" data-theme="light"><div class="page"><div class="login-card"><div class="login-brand"><img class="login-logo" src="../web/src/assets/nee-logo.png" alt="NEE" /><span class="login-sub">Production Platform</span></div><div class="lf"><label>Username</label><input class="finput" type="text" placeholder="supervisor" /></div><div class="lf"><label>Password</label><input class="finput" type="password" placeholder="••••••••" /></div><button class="btn-signin">Sign in</button></div></div></div>
+      </div>
+      <div>
+        <div class="compare-col-label lbl-blue">Blue &amp; White</div>
+        <div class="frame" data-theme="blue"><div class="page"><div class="login-card"><div class="login-brand"><img class="login-logo" src="../web/src/assets/nee-logo.png" alt="NEE" /><span class="login-sub">Production Platform</span></div><div class="lf"><label>Username</label><input class="finput" type="text" placeholder="supervisor" /></div><div class="lf"><label>Password</label><input class="finput" type="password" placeholder="••••••••" /></div><button class="btn-signin">Sign in</button></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 6. FORMS + BARS + BADGES ──────────────────────────────────── -->
+  <section>
+    <div class="sec-label">06 — Forms, capacity bars &amp; status badges</div>
+    <div id="s6-single" class="frame" data-theme="blue">
+      <div class="page" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="frow">
+            <div class="ffield"><span class="flabel">Customer</span><select class="fselect"><option>DFE Transport</option><option>Budget Trucks</option></select></div>
+            <div class="ffield"><span class="flabel">Priority</span><select class="fselect"><option>P1 — Critical</option><option selected>P3 — Normal</option></select></div>
+          </div>
+          <div class="frow">
+            <div class="ffield"><span class="flabel">Template code</span><input class="finput" type="text" placeholder="TP42N" /></div>
+            <div class="ffield"><span class="flabel">Rego</span><input class="finput" type="text" placeholder="XV70PX" /></div>
+          </div>
+          <div class="ffield"><span class="flabel">Required date</span><input class="finput" type="date" /></div>
+          <div class="frow" style="gap:8px;">
+            <button class="btn-primary" style="flex:1;">Create RO</button>
+            <button class="btn-secondary">Cancel</button>
+            <button class="btn-danger">Delete</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div>
+            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:10px;">Station load</div>
+            <div style="display:flex;flex-direction:column;gap:9px;">
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:12px;color:var(--ink);width:120px;">Body Build (10)</span><div class="bar-track"><div class="bar-fill bf-red" style="width:95%"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--ink-3);width:32px;text-align:right;">38h</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:12px;color:var(--ink);width:120px;">Electrical (20)</span><div class="bar-track"><div class="bar-fill bf-amber" style="width:62%"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--ink-3);width:32px;text-align:right;">25h</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:12px;color:var(--ink);width:120px;">Final QC (90)</span><div class="bar-track"><div class="bar-fill bf-blue" style="width:30%"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--ink-3);width:32px;text-align:right;">12h</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:12px;color:var(--ink);width:120px;">Subframe (30)</span><div class="bar-track"><div class="bar-fill bf-green" style="width:50%"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--ink-3);width:32px;text-align:right;">20h</span></div>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:10px;">Status badges</div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;">
+              <span class="badge bg-good"><span class="dot"></span>COMPLETED</span>
+              <span class="badge bg-warn"><span class="dot"></span>IN PROGRESS</span>
+              <span class="badge bg-bad"><span class="dot"></span>OVERDUE</span>
+              <span class="badge bg-info"><span class="dot"></span>SCHEDULED</span>
+              <span class="badge bg-muted">DRAFT</span>
+              <span class="badge bg-accent"><span class="dot"></span>HOSPITAL</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 7. TOKEN DIFF ──────────────────────────────────────────────── -->
+  <section>
+    <div class="sec-label">07 — Token diff (light → blue &amp; white)</div>
+    <table class="diff-table" id="token-diff"></table>
+  </section>
+
+</div>
+
+<script>
+const TOKENS = [
+  ['--ink',         '#0a0e0f', '#0d1b2e', 'Primary text'],
+  ['--ink-2',       '#1a1f21', '#2d4059', 'Secondary / subdued text'],
+  ['--ink-3',       '#4a5258', '#5b7a99', 'Muted labels / placeholders'],
+  ['--paper',       '#f5f2ea', '#ffffff',  'Page background'],
+  ['--paper-2',     '#ebe7dc', '#f0f5fb',  'Card / panel surface'],
+  ['--paper-3',     '#ddd7c8', '#dde8f4',  'Input bg / hover state'],
+  ['--rule',        'rgba(10,14,15,.10)',  'rgba(13,27,46,.08)',  'Dividers'],
+  ['--rule-strong', 'rgba(10,14,15,.20)',  'rgba(13,27,46,.16)',  'Borders'],
+  ['--topbar-bg',   '#0a0e0f', '#0d2257',  'Topbar background'],
+  ['--accent',      '#c2410c', '#1d6aff',  'Primary action colour'],
+  ['--accent-dim',  'rgba(194,65,12,.10)', 'rgba(29,106,255,.10)','Accent tint bg'],
+  ['--good',        '#15803d', '#16a34a',  'Success green'],
+  ['--warn',        '#b45309', '#d97706',  'Warning amber'],
+  ['--bad',         '#b91c1c', '#dc2626',  'Error / danger'],
+  ['--info',        '#1d4ed8', '#0284c7',  'Info / track-body'],
+  ['--track-chassis','#b45309','#d97706',  'Chassis track'],
+  ['--track-sub',   '#7c3aed', '#7c3aed',  'Subframe track (unchanged)'],
+];
+
+const tbody = document.getElementById('token-diff');
+// Header
+tbody.innerHTML = `<tr><th>Token</th><th>Light (current)</th><th>Blue &amp; White</th><th>Role</th></tr>`;
+TOKENS.forEach(([name, light, blue, role]) => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="color:#6b7280;">${name}</td>
+    <td><div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:16px;height:16px;border-radius:3px;background:${light};border:0.5px solid rgba(255,255,255,.07);flex-shrink:0;"></div>
+      <span style="color:#5a6370;">${light}</span>
+    </div></td>
+    <td><div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:16px;height:16px;border-radius:3px;background:${blue};border:0.5px solid rgba(255,255,255,.07);flex-shrink:0;"></div>
+      <span style="color:#7caee8;">${blue}</span>
+    </div></td>
+    <td style="color:#374151;">${role}</td>`;
+  tbody.appendChild(tr);
+});
+
+// Theme switching
+const SECTIONS = [1,2,3,4,5,6];
+let currentTheme = 'blue';
+
+function setTheme(t) {
+  currentTheme = t;
+  document.getElementById('btn-light').className = 'tbtn' + (t==='light' ? ' active-light' : '');
+  document.getElementById('btn-blue').className  = 'tbtn' + (t==='blue'  ? ' active-blue'  : '');
+  document.getElementById('btn-both').className  = 'tbtn' + (t==='both'  ? ' active-blue'  : '');
+
+  SECTIONS.forEach(i => {
+    const single = document.getElementById(`s${i}-single`);
+    const both   = document.getElementById(`s${i}-both`);
+    if (!single) return;
+    if (t === 'both') {
+      single.style.display = 'none';
+      both.style.display = 'grid';
+    } else {
+      single.style.display = '';
+      both.style.display = 'none';
+      single.dataset.theme = t;
+    }
+  });
+}
+
+setTheme('blue');
+</script>
+</body>
+</html>
