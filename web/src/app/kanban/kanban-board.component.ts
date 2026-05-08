@@ -3,13 +3,16 @@ import {
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { interval, firstValueFrom } from 'rxjs';
+import { interval } from 'rxjs';
 import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import * as signalR from '@microsoft/signalr';
 import { AuthService } from '../core/auth.service';
 import { KanbanService, KanbanStationDto, KanbanCardDto } from './kanban.service';
+import { StationCardComponent } from './station-card.component';
+import { CardDrawerComponent } from './card-drawer.component';
+import { NotificationBellComponent } from '../core/notification-bell.component';
 
 export interface KanbanHubConnection {
   on(methodName: string, newMethod: (...args: unknown[]) => void): void;
@@ -28,9 +31,19 @@ export const KANBAN_HUB_FACTORY = new InjectionToken<() => KanbanHubConnection>(
         .build() as unknown as KanbanHubConnection,
   },
 );
-import { StationCardComponent } from './station-card.component';
-import { CardDrawerComponent } from './card-drawer.component';
-import { NotificationBellComponent } from '../core/notification-bell.component';
+
+interface GateStateChip {
+  value: string;
+  label: string;
+  activeClass: string;
+}
+
+const GATE_STATES: GateStateChip[] = [
+  { value: 'IN_PROGRESS', label: 'In Progress', activeClass: 'chip-inprogress' },
+  { value: 'READY',       label: 'Ready',       activeClass: 'chip-ready'      },
+  { value: 'GATED',       label: 'Gated',       activeClass: 'chip-gated'      },
+  { value: 'COMPLETE',    label: 'Complete',    activeClass: 'chip-complete'   },
+];
 
 @Component({
   selector: 'app-kanban-board',
@@ -71,6 +84,22 @@ import { NotificationBellComponent } from '../core/notification-bell.component';
             <option [value]="s.stationId">{{ s.stationName }}</option>
           }
         </select>
+
+        <div class="gate-chips" role="group" aria-label="Filter by status">
+          @for (gs of gateStates; track gs.value) {
+            <button class="gate-chip"
+                    [class]="isGateActive(gs.value) ? 'gate-chip ' + gs.activeClass : 'gate-chip chip-off'"
+                    (click)="toggleGate(gs.value)"
+                    [title]="isGateActive(gs.value) ? 'Hide ' + gs.label : 'Show ' + gs.label">
+              {{ gs.label }}
+              <span class="chip-count"
+                    [style.visibility]="gateCount(gs.value) > 0 ? 'visible' : 'hidden'">
+                {{ gateCount(gs.value) }}
+              </span>
+            </button>
+          }
+        </div>
+
         <button class="refresh-btn" (click)="refresh()" [disabled]="isRefreshing()">
           {{ isRefreshing() ? 'Refreshing…' : 'Refresh' }}
         </button>
@@ -84,7 +113,7 @@ import { NotificationBellComponent } from '../core/notification-bell.component';
     <!-- Board -->
     <div class="board">
       <div class="board-columns">
-        @for (station of displayedStations(); track station.stationId) {
+        @for (station of filteredStations(); track station.stationId) {
           <div class="board-col">
             <div class="col-header">
               <div class="col-header-info">
@@ -95,7 +124,9 @@ import { NotificationBellComponent } from '../core/notification-bell.component';
             </div>
             <div class="col-body">
               @if (station.cards.length === 0) {
-                <p class="no-tasks">No open work</p>
+                <p class="no-tasks">
+                  {{ isFiltered() ? 'No matching cards' : 'No open work' }}
+                </p>
               } @else {
                 @for (card of station.cards; track card.roId) {
                   <app-station-card
@@ -142,23 +173,54 @@ import { NotificationBellComponent } from '../core/notification-bell.component';
 
     /* Page header */
     .page-header { display: flex; align-items: center; justify-content: space-between;
-                   padding: 24px 28px 0; position: relative; z-index: 1; }
+                   padding: 24px 28px 12px; position: relative; z-index: 1; flex-wrap: wrap; gap: 12px; }
     .page-title  { font-family: var(--display); font-size: 28px; font-weight: 500; color: var(--ink);
                    letter-spacing: -0.02em; margin: 0; }
-    .header-controls { display: flex; gap: 10px; align-items: center; }
+    .header-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .station-filter { padding: 8px 10px; border: 0.5px solid var(--rule-strong); border-radius: 6px;
                       font-size: 13px; background: var(--paper); color: var(--ink); }
     .refresh-btn { padding: 8px 16px; border: 0.5px solid var(--rule-strong); border-radius: 999px;
                    font-size: 13px; font-weight: 500; background: transparent; color: var(--ink); cursor: pointer;
-                   transition: background 0.15s, color 0.15s; }
+                   transition: background 0.15s, color 0.15s;
+                   min-width: 116px; text-align: center; }
     .refresh-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); border-color: var(--ink); }
     .refresh-btn:disabled { opacity: 0.5; cursor: default; }
 
+    /* Gate state chips */
+    .gate-chips { display: flex; gap: 5px; align-items: center; }
+    .gate-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 500;
+      cursor: pointer; border: 1px solid transparent;
+      transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+      font-family: var(--sans); white-space: nowrap;
+    }
+    .chip-count {
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      background: rgba(0,0,0,0.12); border-radius: 999px;
+      padding: 0px 5px; min-width: 22px; text-align: center;
+    }
+
+    /* Active states — colours match the card border styles */
+    .chip-inprogress { background: rgba(29,78,216,0.12); color: #1d4ed8; border-color: rgba(29,78,216,0.25); }
+    .chip-inprogress:hover { background: rgba(29,78,216,0.2); }
+    .chip-ready      { background: rgba(22,163,74,0.12);  color: var(--good); border-color: rgba(22,163,74,0.3); }
+    .chip-ready:hover { background: rgba(22,163,74,0.2); }
+    .chip-gated      { background: rgba(180,83,9,0.1);   color: #b45309; border-color: rgba(180,83,9,0.25); }
+    .chip-gated:hover { background: rgba(180,83,9,0.18); }
+    .chip-complete   { background: rgba(22,163,74,0.08); color: #15803d; border-color: rgba(22,163,74,0.2); }
+    .chip-complete:hover { background: rgba(22,163,74,0.16); }
+
+    /* Inactive / off state */
+    .chip-off { background: var(--paper-2); color: var(--ink-3); border-color: var(--rule);
+                opacity: 0.55; }
+    .chip-off:hover { opacity: 0.8; }
+
     .alert-error { background: #fef2f2; color: var(--bad); border-left: 4px solid var(--bad);
-                   border-radius: 6px; padding: 10px 16px; margin: 12px 28px; font-size: 13px; }
+                   border-radius: 6px; padding: 10px 16px; margin: 0 28px 12px; font-size: 13px; }
 
     /* Board layout */
-    .board { overflow-x: auto; padding: 16px 28px 28px; position: relative; z-index: 1; }
+    .board { overflow-x: auto; padding: 4px 28px 28px; position: relative; z-index: 1; }
     .board-columns { display: flex; gap: 14px; min-width: max-content; }
     .board-col { width: 290px; flex-shrink: 0; background: var(--paper-2);
                  border-radius: 12px; padding: 14px; min-height: 200px; }
@@ -213,6 +275,8 @@ export class KanbanBoardComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private hubFactory = inject(KANBAN_HUB_FACTORY);
 
+  readonly gateStates = GATE_STATES;
+
   user         = this.auth.user;
   isSupervisor = computed(() => {
     const roles = this.user()?.roles ?? [];
@@ -222,6 +286,7 @@ export class KanbanBoardComponent implements OnInit {
   allStations       = signal<KanbanStationDto[]>([]);
   displayedStations = signal<KanbanStationDto[]>([]);
   selectedStationId = signal<number | null>(null);
+  activeGateStates  = signal<string[]>(GATE_STATES.map(g => g.value));
   isRefreshing      = signal(false);
   lastUpdated       = signal<Date | null>(null);
   loadError         = signal(false);
@@ -230,6 +295,15 @@ export class KanbanBoardComponent implements OnInit {
   isDrawerOpen = signal(false);
 
   private hubConnection: KanbanHubConnection | null = null;
+
+  filteredStations = computed<KanbanStationDto[]>(() => {
+    const active   = this.activeGateStates();
+    const stations = this.displayedStations();
+    if (active.length === GATE_STATES.length) return stations;
+    return stations.map(s => ({ ...s, cards: s.cards.filter(c => active.includes(c.gateState)) }));
+  });
+
+  isFiltered = computed(() => this.activeGateStates().length < GATE_STATES.length);
 
   ngOnInit() {
     this.connectRealtime();
@@ -281,6 +355,23 @@ export class KanbanBoardComponent implements OnInit {
     const stationId = value ? Number(value) : undefined;
     this.selectedStationId.set(stationId ?? null);
     this.loadBoard(stationId);
+  }
+
+  toggleGate(state: string): void {
+    const current = this.activeGateStates();
+    this.activeGateStates.set(
+      current.includes(state) ? current.filter(s => s !== state) : [...current, state],
+    );
+  }
+
+  isGateActive(state: string): boolean {
+    return this.activeGateStates().includes(state);
+  }
+
+  gateCount(state: string): number {
+    return this.displayedStations().reduce(
+      (sum, s) => sum + s.cards.filter(c => c.gateState === state).length, 0,
+    );
   }
 
   openCardDrawer(card: KanbanCardDto): void {

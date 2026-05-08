@@ -15,6 +15,11 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard(['SUPERVISOR', 'ADMIN'])],
   },
   {
+    path: 'dashboard/archive',
+    loadComponent: () => import('./dashboard/archive.component').then(m => m.ArchiveComponent),
+    canActivate: [authGuard, roleGuard(['SUPERVISOR', 'ADMIN'])],
+  },
+  {
     path: 'kanban',
     loadComponent: () => import('./kanban/kanban-board.component').then(m => m.KanbanBoardComponent),
     canActivate: [authGuard],

@@ -40,6 +40,7 @@ import { SchedulingComponent } from './scheduling.component';
           <span class="user-label">{{ u.fullName }} · <span class="role">{{ u.roles.join(', ') }}</span></span>
         }
         <a class="nav-link" (click)="router.navigate(['/kanban'])">Kanban Board</a>
+        <a class="nav-link" (click)="router.navigate(['/dashboard/archive'])">Archive</a>
         <app-notification-bell />
         <button class="logout" (click)="logout()">Sign out</button>
       </div>

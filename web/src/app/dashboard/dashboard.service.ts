@@ -59,6 +59,43 @@ export interface ThroughputWeek {
   blocked: number;
 }
 
+export interface JobTypeRef {
+  id: number;
+  name: string;
+}
+
+export interface ArchiveRo {
+  id: string;
+  roNumber: string;
+  sourceRoNumber: string | null;
+  rego: string | null;
+  customerName: string;
+  jobTypeName: string;
+  bodyType: string | null;
+  roDate: string;
+  completedAt: string;
+  estimatedHours: number;
+  actualHours: number;
+}
+
+export interface ArchivePage {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  rows: ArchiveRo[];
+}
+
+export interface ArchiveParams {
+  search?: string;
+  from?: string;
+  to?: string;
+  jobTypeId?: number;
+  sortBy?: string;
+  sortDir?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface CalibrationRow {
   templateCode: string;
   operationName: string;
@@ -90,6 +127,23 @@ export class DashboardService {
     if (status) params = params.set('status', status);
     if (customerId) params = params.set('customerId', customerId);
     return this.http.get<ActiveRo[]>('/api/dashboard/active-ros', { params });
+  }
+
+  getJobTypes(): Observable<JobTypeRef[]> {
+    return this.http.get<JobTypeRef[]>('/api/dashboard/job-types');
+  }
+
+  getArchive(params: ArchiveParams = {}): Observable<ArchivePage> {
+    let p = new HttpParams()
+      .set('page',     String(params.page     ?? 1))
+      .set('pageSize', String(params.pageSize ?? 50));
+    if (params.search)    p = p.set('search',    params.search);
+    if (params.from)      p = p.set('from',      params.from);
+    if (params.to)        p = p.set('to',        params.to);
+    if (params.jobTypeId) p = p.set('jobTypeId', String(params.jobTypeId));
+    if (params.sortBy)    p = p.set('sortBy',    params.sortBy);
+    if (params.sortDir)   p = p.set('sortDir',   params.sortDir);
+    return this.http.get<ArchivePage>('/api/dashboard/archive', { params: p });
   }
 
   getThroughput(): Observable<ThroughputWeek[]> {
