@@ -12,7 +12,7 @@ import { AuthService } from '../core/auth.service';
     <div class="login-stage">
       <div class="login-card">
         <div class="brand">
-          <span class="brand-name">North East Engineering</span>
+          <img class="brand-logo" src="assets/nee-logo.png" alt="North East Engineering" />
           <span class="brand-sub">Production Platform</span>
         </div>
 

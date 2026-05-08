@@ -10,7 +10,7 @@ import { AuthService } from '../core/auth.service';
   template: `
     <div class="topbar">
       <div class="brand">
-        <span class="brand-name">North East Engineering</span>
+        <img class="brand-logo" src="assets/nee-logo.png" alt="North East Engineering" />
         <span class="brand-sub">Drafter Workspace</span>
       </div>
       <div class="topbar-right">
@@ -32,7 +32,7 @@ import { AuthService } from '../core/auth.service';
     .topbar { display: flex; justify-content: space-between; align-items: center;
               padding: 14px 28px; background: var(--ink); color: var(--paper); }
     .brand  { display: flex; flex-direction: column; gap: 2px; }
-    .brand-name { font-family: var(--display); font-weight: 500; font-size: 16px; color: var(--paper); }
+    .brand-logo { height: 26px; width: auto; filter: brightness(0) invert(1); }
     .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
                   letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }

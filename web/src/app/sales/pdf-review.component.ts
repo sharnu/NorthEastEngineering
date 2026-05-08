@@ -35,7 +35,7 @@ interface TemplateDetail extends TemplateSummary { operations: TemplateOperation
   template: `
     <div class="topbar">
       <div class="brand">
-        <span class="brand-name">North East Engineering</span>
+        <img class="brand-logo" src="assets/nee-logo.png" alt="North East Engineering" />
         <span class="brand-sub">Production Platform</span>
       </div>
       <div class="topbar-right">
@@ -386,7 +386,7 @@ interface TemplateDetail extends TemplateSummary { operations: TemplateOperation
               padding: 14px 28px; background: var(--ink); color: var(--paper);
               border-bottom: 0.5px solid rgba(245,242,234,0.1); }
     .brand { display: flex; flex-direction: column; gap: 2px; }
-    .brand-name { font-family: var(--display); font-weight: 500; font-size: 16px; letter-spacing: -0.01em; color: var(--paper); }
+    .brand-logo { height: 26px; width: auto; filter: brightness(0) invert(1); }
     .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
     .back-link { font-size: 13px; color: rgba(245,242,234,0.7); cursor: pointer; transition: color 0.15s; }
