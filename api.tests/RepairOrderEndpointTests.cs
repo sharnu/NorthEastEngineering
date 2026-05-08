@@ -291,6 +291,58 @@ public class RepairOrderEndpointTests(ApiFixture fixture)
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    // ── GET /api/repair-orders/{id}/flow ─────────────────────────────────────
+
+    [Fact]
+    public async Task GetFlow_TipperCs_ReturnsThreeTracks()
+    {
+        var client = AuthenticatedClient("SALES");
+        var customerId = await GetDfeCustomerIdAsync();
+
+        // TP42N → TIPPER_CS body type (backfilled by migration 021)
+        var createResponse = await client.PostAsJsonAsync("/api/repair-orders", new
+        {
+            CustomerId = customerId,
+            JobTypeId = 1,
+            TemplateCode = ValidTemplate,
+            Rego = "FLOW001",
+            Make = "Isuzu",
+            Model = "NPR",
+            RequiredDate = DateTimeOffset.UtcNow.AddMonths(3),
+            Priority = 2,
+        });
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResponse.Content.ReadFromJsonAsync<CreateRoResponse>();
+
+        var flowResponse = await client.GetAsync($"/api/repair-orders/{created!.RoId}/flow");
+        flowResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var flow = await flowResponse.Content.ReadFromJsonAsync<FlowResponse>();
+        flow.Should().NotBeNull();
+        flow!.BodyType.Should().Be("TIPPER_CS");
+        flow.Tracks.Should().HaveCount(3);
+
+        var body = flow.Tracks.Single(t => t.Track == "BODY");
+        body.Steps.Should().HaveCount(6);
+        body.Steps.Should().AllSatisfy(s => s.StepStatus.Should().Be("PENDING"));
+
+        var chassis = flow.Tracks.Single(t => t.Track == "CHASSIS");
+        chassis.Steps.Should().HaveCount(4);
+
+        var subframe = flow.Tracks.Single(t => t.Track == "SUBFRAME");
+        subframe.Steps.Should().HaveCount(4);
+
+        // Stations 70 (FINAL_FITMENT) and 90 (COMPLIANCE_QC) are merge points
+        flow.Tracks.SelectMany(t => t.Steps)
+            .Where(s => s.StationId is 70 or 90)
+            .Should().AllSatisfy(s => s.IsMergePoint.Should().BeTrue());
+
+        // All other steps are not merge points
+        flow.Tracks.SelectMany(t => t.Steps)
+            .Where(s => s.StationId is not 70 and not 90)
+            .Should().AllSatisfy(s => s.IsMergePoint.Should().BeFalse());
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task<Guid> GetDfeCustomerIdAsync()
@@ -310,6 +362,9 @@ public class RepairOrderEndpointTests(ApiFixture fixture)
     private record CreateRoResponse(Guid RoId, string RoNumber, int TasksCreated);
     private record RepairOrderDetail(Guid Id, string RoNumber, string Status, int Priority, RoTask[] Tasks);
     private record RoTask(Guid Id, int Sequence, string StationName, decimal EstimatedHours, string Status);
+    private record FlowResponse(Guid RoId, string BodyType, FlowTrackDto[] Tracks);
+    private record FlowTrackDto(string Track, FlowStepDto[] Steps);
+    private record FlowStepDto(int StationId, string StationName, string StepStatus, bool IsMergePoint);
 }
 
 [CollectionDefinition("Api")]
