@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEE Forest Theme — Design Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+/* ─────────────────────────────────────────────────────────────────────
+   LIGHT — current warm paper + orange accent
+───────────────────────────────────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  --ink:          #0a0e0f;
+  --ink-2:        #1a1f21;
+  --ink-3:        #4a5258;
+  --paper:        #f5f2ea;
+  --paper-2:      #ebe7dc;
+  --paper-3:      #ddd7c8;
+  --rule:         rgba(10,14,15,0.10);
+  --rule-strong:  rgba(10,14,15,0.20);
+  --topbar-bg:    #0a0e0f;
+  --topbar-text:  #f5f2ea;
+  --topbar-sub:   rgba(245,242,234,0.45);
+  --topbar-muted: rgba(245,242,234,0.65);
+  --topbar-border:rgba(245,242,234,0.25);
+  --accent:       #c2410c;
+  --accent-dim:   rgba(194,65,12,0.10);
+  --good:         #15803d;
+  --good-dim:     rgba(21,128,61,0.10);
+  --warn:         #b45309;
+  --warn-dim:     rgba(180,83,9,0.10);
+  --bad:          #b91c1c;
+  --bad-dim:      rgba(185,28,28,0.10);
+  --info:         #1d4ed8;
+  --info-dim:     rgba(29,78,216,0.10);
+  --shadow:       0 0 0 0.5px rgba(10,14,15,0.08), 0 2px 8px rgba(10,14,15,0.06);
+  --card-bg:      #ffffff;
+  --body-bg:      var(--paper);
+  --display: 'Fraunces', Georgia, serif;
+  --sans:    'Inter', -apple-system, sans-serif;
+  --mono:    'JetBrains Mono', monospace;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   FOREST — inspired by Upstream SaaS design
+   Deep green sidebar · Soft mint background · White airy cards
+───────────────────────────────────────────────────────────────────── */
+[data-theme="forest"] {
+  --ink:          #0d1f15;
+  --ink-2:        #2b4435;
+  --ink-3:        #6b8f79;
+  --paper:        #f2f8f4;
+  --paper-2:      #e4f0e9;
+  --paper-3:      #cfe3d6;
+  --rule:         rgba(13,31,21,0.09);
+  --rule-strong:  rgba(13,31,21,0.18);
+  --topbar-bg:    #132b1e;
+  --topbar-text:  #e8f4ee;
+  --topbar-sub:   rgba(232,244,238,0.45);
+  --topbar-muted: rgba(232,244,238,0.65);
+  --topbar-border:rgba(232,244,238,0.15);
+  --accent:       #1a7a4d;
+  --accent-dim:   rgba(26,122,77,0.10);
+  --good:         #16a34a;
+  --good-dim:     rgba(22,163,74,0.10);
+  --warn:         #c27c0e;
+  --warn-dim:     rgba(194,124,14,0.10);
+  --bad:          #b91c1c;
+  --bad-dim:      rgba(185,28,28,0.10);
+  --info:         #0369a1;
+  --info-dim:     rgba(3,105,161,0.10);
+  --shadow:       0 0 0 0.5px rgba(13,31,21,0.06), 0 4px 16px rgba(13,31,21,0.07);
+  --card-bg:      #ffffff;
+  --body-bg:      var(--paper);
+  --display: 'Fraunces', Georgia, serif;
+  --sans:    'Inter', -apple-system, sans-serif;
+  --mono:    'JetBrains Mono', monospace;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   PREVIEW SHELL
+───────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--body-bg);
+  color: var(--ink);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Body gradient when forest theme active */
+[data-theme="forest"] body {
+  background: linear-gradient(145deg, #ffffff 0%, #f2f8f4 35%, #e4f0e9 100%);
+  min-height: 100vh;
+}
+
+.switcher {
+  position: fixed; top: 16px; right: 16px; z-index: 1000;
+  display: flex; gap: 8px;
+}
+.sw-btn {
+  padding: 7px 14px; border-radius: 6px; border: 0.5px solid var(--rule-strong);
+  background: var(--card-bg); color: var(--ink); font-size: 12px;
+  font-family: var(--mono); cursor: pointer; letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+.sw-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.page-wrap { max-width: 1160px; margin: 0 auto; padding: 28px 24px 80px; }
+.section-label {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--ink-3); margin: 48px 0 16px;
+  padding-bottom: 8px; border-bottom: 0.5px solid var(--rule);
+}
+.section-label:first-of-type { margin-top: 80px; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   1 · TOKEN PALETTE
+───────────────────────────────────────────────────────────────────── */
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.swatch { border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+.swatch-color { height: 56px; }
+.swatch-label {
+  padding: 6px 8px; background: var(--card-bg);
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+}
+.swatch-name { font-weight: 500; color: var(--ink); font-size: 11px; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   2 · TOPBAR / SIDEBAR NAV
+───────────────────────────────────────────────────────────────────── */
+.topbar {
+  background: var(--topbar-bg);
+  border-bottom: 0.5px solid var(--topbar-border);
+  padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px; border-radius: 10px;
+}
+.brand { display: flex; flex-direction: row; align-items: center; gap: 12px; }
+.brand-logo-block {
+  height: 36px; width: 120px; background: rgba(232,244,238,0.15);
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+}
+.brand-logo-text { font-family: var(--display); font-size: 14px; font-weight: 500; color: var(--topbar-text); }
+.brand-sub { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--topbar-sub); }
+.nav-pills { display: flex; gap: 4px; }
+.nav-pill {
+  padding: 6px 12px; border-radius: 6px; font-size: 12px;
+  color: var(--topbar-muted); cursor: pointer; font-family: var(--sans);
+  transition: background 0.15s, color 0.15s;
+}
+.nav-pill.active { background: rgba(232,244,238,0.12); color: var(--topbar-text); }
+.nav-pill:hover { background: rgba(232,244,238,0.08); color: var(--topbar-text); }
+.nav-user {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 600; font-family: var(--sans);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Sidebar variant (Upstream-style icon nav) */
+.sidebar-demo {
+  display: flex; gap: 0; border-radius: 10px; overflow: hidden;
+  box-shadow: var(--shadow); height: 320px;
+}
+.sidebar {
+  width: 56px; background: var(--topbar-bg);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 0; gap: 4px; flex-shrink: 0;
+}
+.sidebar-logo {
+  width: 32px; height: 32px; background: var(--accent);
+  border-radius: 6px; margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-size: 14px; font-weight: 600; color: #fff;
+}
+.si {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s;
+  color: var(--topbar-muted); font-size: 15px;
+}
+.si.active { background: rgba(232,244,238,0.14); color: var(--topbar-text); }
+.si:hover  { background: rgba(232,244,238,0.08); color: var(--topbar-text); }
+.sidebar-content {
+  flex: 1; background: var(--body-bg); padding: 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   3 · KPI CARDS
+───────────────────────────────────────────────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpi-card {
+  background: var(--card-bg); border-radius: 10px;
+  padding: 18px 20px; box-shadow: var(--shadow);
+  border: 0.5px solid var(--rule);
+}
+.kpi-label {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3); margin-bottom: 8px;
+}
+.kpi-value {
+  font-family: var(--display); font-size: 28px; font-weight: 500;
+  color: var(--ink); letter-spacing: -0.02em;
+}
+.kpi-delta {
+  font-family: var(--mono); font-size: 10px; margin-top: 6px;
+}
+.kpi-delta.up   { color: var(--good); }
+.kpi-delta.down { color: var(--bad); }
+.kpi-delta.neutral { color: var(--ink-3); }
+.kpi-bar {
+  height: 2px; margin-top: 10px; border-radius: 1px;
+  background: var(--paper-3);
+}
+.kpi-bar-fill { height: 100%; border-radius: 1px; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   4 · BACKLOG TABLE
+───────────────────────────────────────────────────────────────────── */
+.table-card {
+  background: var(--card-bg); border-radius: 10px;
+  box-shadow: var(--shadow); border: 0.5px solid var(--rule);
+  overflow: hidden;
+}
+.table-header {
+  padding: 14px 20px; border-bottom: 0.5px solid var(--rule);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.table-title {
+  font-family: var(--display); font-size: 15px; font-weight: 500; color: var(--ink);
+}
+.table-action {
+  padding: 6px 12px; border-radius: 6px; border: 0.5px solid var(--rule-strong);
+  background: var(--card-bg); color: var(--ink); font-size: 12px; font-family: var(--sans);
+  cursor: pointer; transition: background 0.15s;
+}
+.table-action:hover { background: var(--paper-2); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  padding: 10px 20px; text-align: left; background: var(--paper);
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-3); font-weight: 500;
+  border-bottom: 0.5px solid var(--rule);
+}
+tbody td { padding: 12px 20px; border-bottom: 0.5px solid var(--rule); color: var(--ink); }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--paper); }
+
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase;
+}
+.badge-received { background: var(--info-dim); color: var(--info); }
+.badge-draft    { background: var(--warn-dim); color: var(--warn); }
+.badge-fab      { background: var(--accent-dim); color: var(--accent); }
+.badge-qc       { background: var(--good-dim); color: var(--good); }
+.badge-blocked  { background: var(--bad-dim); color: var(--bad); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   5 · KANBAN CARDS
+───────────────────────────────────────────────────────────────────── */
+.kanban-strip { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+.kanban-col { min-width: 180px; flex-shrink: 0; }
+.kanban-col-title {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3); margin-bottom: 8px; padding-left: 2px;
+}
+.k-card {
+  background: var(--card-bg); border-radius: 8px;
+  padding: 12px 14px; box-shadow: var(--shadow);
+  border: 0.5px solid var(--rule); margin-bottom: 8px;
+}
+.k-ro { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-bottom: 4px; }
+.k-customer { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 6px; }
+.k-meta { font-size: 11px; color: var(--ink-3); }
+.k-progress { height: 2px; background: var(--paper-3); border-radius: 1px; margin-top: 10px; }
+.k-progress-fill { height: 100%; border-radius: 1px; }
+.k-card.hospital {
+  border-color: var(--bad-dim); background: #fff8f8;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   6 · LOGIN
+───────────────────────────────────────────────────────────────────── */
+.login-demo {
+  display: flex; justify-content: center;
+  padding: 32px; background: var(--body-bg);
+  border-radius: 10px; border: 0.5px solid var(--rule);
+}
+[data-theme="forest"] .login-demo {
+  background: linear-gradient(145deg, #ffffff 0%, #f2f8f4 50%, #e4f0e9 100%);
+}
+.login-card {
+  width: 100%; max-width: 380px; background: var(--card-bg);
+  border: 0.5px solid var(--rule); border-radius: 14px;
+  padding: 36px 32px; box-shadow: var(--shadow);
+}
+.login-brand { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 0.5px solid var(--rule); }
+.login-logo-block {
+  height: 36px; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--topbar-bg); border-radius: 6px; padding: 0 12px;
+  font-family: var(--display); font-size: 13px; font-weight: 500; color: #e8f4ee;
+}
+.login-heading {
+  font-family: var(--display); font-size: 24px; font-weight: 500;
+  color: var(--ink); margin: 16px 0 20px; letter-spacing: -0.02em;
+}
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.field label {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-3); font-weight: 500;
+}
+.field input {
+  padding: 9px 11px; border: 0.5px solid var(--rule-strong);
+  border-radius: 6px; background: var(--paper); color: var(--ink);
+  font-size: 13px; font-family: var(--sans); outline: none;
+}
+.btn-primary {
+  width: 100%; padding: 12px; background: var(--accent); color: #fff;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 500;
+  cursor: pointer; font-family: var(--sans); letter-spacing: 0.01em;
+  transition: opacity 0.15s; margin-top: 4px;
+}
+.btn-primary:hover { opacity: 0.88; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   7 · MOBILE TECH TASK DETAIL
+───────────────────────────────────────────────────────────────────── */
+.mobile-wrap { display: flex; gap: 24px; align-items: flex-start; }
+.phone-shell {
+  width: 320px; flex-shrink: 0; background: var(--body-bg);
+  border-radius: 14px; overflow: hidden;
+  box-shadow: var(--shadow); border: 0.5px solid var(--rule);
+}
+.phone-header {
+  background: var(--card-bg); border-bottom: 0.5px solid var(--rule);
+  padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+}
+.phone-back { color: var(--accent); font-size: 16px; }
+.phone-title { font-family: var(--display); font-size: 14px; font-weight: 500; color: var(--ink); }
+.phone-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.phone-card {
+  background: var(--card-bg); border-radius: 8px;
+  border: 0.5px solid var(--rule); padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+.phone-card-title {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--ink-3); margin-bottom: 8px;
+}
+.phone-row {
+  display: flex; justify-content: space-between; font-size: 12px;
+  padding: 4px 0; border-bottom: 0.5px solid var(--rule);
+}
+.phone-row:last-child { border-bottom: none; }
+.phone-label { color: var(--ink-3); }
+
+/* document list */
+.doc-item-ph {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; border-bottom: 0.5px solid var(--rule);
+}
+.doc-item-ph:last-child { border-bottom: none; }
+.doc-icon-ph {
+  width: 28px; height-28px; color: var(--ink-3); font-size: 16px; flex-shrink: 0;
+}
+.doc-info-ph { flex: 1; min-width: 0; }
+.doc-fname { font-size: 11px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-cat-ph { font-family: var(--mono); font-size: 9px; text-transform: uppercase; color: var(--ink-3); }
+.doc-chevron-ph { color: var(--ink-3); font-size: 14px; }
+
+/* action buttons */
+.phone-actions { padding: 8px 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+.ph-btn {
+  width: 100%; padding: 11px; border-radius: 8px; border: none;
+  font-size: 12px; font-weight: 500; font-family: var(--sans);
+  cursor: pointer; letter-spacing: 0.01em;
+}
+.ph-clockin  { background: var(--accent); color: #fff; }
+.ph-complete { background: var(--good); color: #fff; }
+.ph-block    { background: var(--card-bg); border: 0.5px solid var(--bad); color: var(--bad); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   8 · FORMS · INPUTS · BADGES
+───────────────────────────────────────────────────────────────────── */
+.components-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.comp-card {
+  background: var(--card-bg); border-radius: 10px; padding: 20px;
+  box-shadow: var(--shadow); border: 0.5px solid var(--rule);
+}
+.comp-title {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3); margin-bottom: 14px;
+}
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-sm {
+  padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  font-family: var(--sans); cursor: pointer; letter-spacing: 0.01em; border: none;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn-sm:active { transform: scale(0.98); opacity: 0.9; }
+.btn-filled-accent { background: var(--accent); color: #fff; }
+.btn-filled-good   { background: var(--good); color: #fff; }
+.btn-filled-ink    { background: var(--ink); color: #fff; }
+.btn-outline-bad   { background: var(--card-bg); border: 0.5px solid var(--bad); color: var(--bad); }
+.btn-outline-ink   { background: var(--card-bg); border: 0.5px solid var(--rule-strong); color: var(--ink); }
+.btn-ghost         { background: var(--paper-2); color: var(--ink-2); border: 0.5px solid var(--rule); }
+
+.input-row { display: flex; flex-direction: column; gap: 6px; }
+.input-demo {
+  padding: 9px 11px; border: 0.5px solid var(--rule-strong);
+  border-radius: 6px; background: var(--paper); color: var(--ink);
+  font-size: 13px; font-family: var(--sans);
+}
+.input-demo:focus { outline: none; border-color: var(--accent); background: var(--card-bg); }
+
+.badge-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* status pill */
+.spill {
+  display: inline-block; padding: 3px 9px; border-radius: 4px;
+  font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase;
+}
+.spill-assigned   { background: #e8eeff; color: #3730a3; }
+.spill-progress   { background: var(--info-dim); color: var(--info); }
+.spill-paused     { background: var(--warn-dim); color: var(--warn); }
+.spill-blocked    { background: var(--bad-dim); color: var(--bad); }
+.spill-complete   { background: var(--good-dim); color: var(--good); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   9 · TOKEN DIFF TABLE
+───────────────────────────────────────────────────────────────────── */
+.diff-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.diff-table th {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-3); padding: 8px 12px;
+  text-align: left; border-bottom: 0.5px solid var(--rule);
+}
+.diff-table td { padding: 8px 12px; border-bottom: 0.5px solid var(--rule); font-family: var(--mono); font-size: 11px; }
+.diff-table tr:last-child td { border-bottom: none; }
+.diff-table tr:hover td { background: var(--paper); }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 7px; border-radius: 3px; border: 0.5px solid var(--rule);
+  background: var(--card-bg);
+}
+.chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.token-name { color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<!-- ── THEME SWITCHER ─────────────────────────────────────────────── -->
+<div class="switcher">
+  <button class="sw-btn" onclick="setTheme('light')">Light (current)</button>
+  <button class="sw-btn active" onclick="setTheme('forest')">Forest</button>
+</div>
+
+<div class="page-wrap">
+
+  <!-- ── HERO ──────────────────────────────────────────────────────── -->
+  <div style="padding: 20px 0 8px;">
+    <h1 style="font-family: var(--display); font-size: 32px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink);">
+      Forest Theme
+    </h1>
+    <p style="font-size: 13px; color: var(--ink-3); margin-top: 6px; font-family: var(--sans);">
+      Inspired by Upstream SaaS — deep forest-green nav · soft mint background · white airy cards
+    </p>
+  </div>
+
+  <!-- ── 1 · TOKEN PALETTE ─────────────────────────────────────────── -->
+  <div class="section-label">01 · Token Palette</div>
+  <div class="palette-grid" id="palette"></div>
+
+  <!-- ── 2 · TOPBAR (current layout) ──────────────────────────────── -->
+  <div class="section-label">02 · Topbar — existing layout</div>
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo-block"><span class="brand-logo-text">NEE</span></div>
+      <span class="brand-sub">Production Platform</span>
+    </div>
+    <div class="nav-pills">
+      <span class="nav-pill active">Dashboard</span>
+      <span class="nav-pill">Kanban</span>
+      <span class="nav-pill">Sales</span>
+      <span class="nav-pill">Admin</span>
+    </div>
+    <div class="nav-user">SK</div>
+  </div>
+
+  <!-- ── 2b · SIDEBAR (Upstream-style) ─────────────────────────────── -->
+  <div class="section-label">02b · Sidebar variant — Upstream icon-nav style</div>
+  <div class="sidebar-demo">
+    <div class="sidebar">
+      <div class="sidebar-logo">N</div>
+      <div class="si active" title="Dashboard">⊞</div>
+      <div class="si" title="Kanban">⊟</div>
+      <div class="si" title="Sales">◈</div>
+      <div class="si" title="Scheduling">⊕</div>
+      <div class="si" title="Admin">⚙</div>
+    </div>
+    <div class="sidebar-content">
+      <div style="font-family: var(--display); font-size: 20px; font-weight: 400; color: var(--ink); letter-spacing: -0.01em;">Dashboard</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div class="phone-card">
+          <div class="phone-card-title">Active ROs</div>
+          <div style="font-family: var(--display); font-size: 24px; color: var(--ink);">14</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Overdue</div>
+          <div style="font-family: var(--display); font-size: 24px; color: var(--bad);">3</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">In QC</div>
+          <div style="font-family: var(--display); font-size: 24px; color: var(--ink);">2</div>
+        </div>
+        <div class="phone-card">
+          <div class="phone-card-title">Blocked</div>
+          <div style="font-family: var(--display); font-size: 24px; color: var(--warn);">1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3 · KPI CARDS ─────────────────────────────────────────────── -->
+  <div class="section-label">03 · KPI Cards</div>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Active ROs</div>
+      <div class="kpi-value">14</div>
+      <div class="kpi-delta neutral">↔ no change</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:58%; background: var(--accent);"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Completed this week</div>
+      <div class="kpi-value">6</div>
+      <div class="kpi-delta up">↑ 2 vs last week</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:80%; background: var(--good);"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Overdue</div>
+      <div class="kpi-value">3</div>
+      <div class="kpi-delta down">↑ 1 since yesterday</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:25%; background: var(--bad);"></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Variance avg</div>
+      <div class="kpi-value">+0.4h</div>
+      <div class="kpi-delta down">↑ over estimate</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:42%; background: var(--warn);"></div></div>
+    </div>
+  </div>
+
+  <!-- ── 4 · BACKLOG TABLE ──────────────────────────────────────────── -->
+  <div class="section-label">04 · Backlog Table</div>
+  <div class="table-card">
+    <div class="table-header">
+      <span class="table-title">Repair Orders</span>
+      <button class="table-action">+ New RO</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>RO #</th><th>Customer</th><th>Rego</th><th>Stage</th><th>Due</th><th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-family: var(--mono); color: var(--accent);">RO-00041</td>
+          <td>Mitchell Freightlines</td><td style="font-family: var(--mono);">XYZ123</td>
+          <td><span class="badge badge-fab">Fabrication</span></td>
+          <td style="font-family: var(--mono);">12 May</td>
+          <td><span class="badge badge-blocked">High</span></td>
+        </tr>
+        <tr>
+          <td style="font-family: var(--mono); color: var(--accent);">RO-00039</td>
+          <td>Snowy Mountains Haulage</td><td style="font-family: var(--mono);">ABC999</td>
+          <td><span class="badge badge-qc">Final QC</span></td>
+          <td style="font-family: var(--mono);">09 May</td>
+          <td><span class="badge badge-received">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-family: var(--mono); color: var(--accent);">RO-00038</td>
+          <td>Tablelands Refrigeration</td><td style="font-family: var(--mono);">TRK042</td>
+          <td><span class="badge badge-draft">Drafting</span></td>
+          <td style="font-family: var(--mono);">22 May</td>
+          <td><span class="badge badge-received">Normal</span></td>
+        </tr>
+        <tr>
+          <td style="font-family: var(--mono); color: var(--accent);">RO-00036</td>
+          <td>Blue Mountains Transport</td><td style="font-family: var(--mono);">BMT007</td>
+          <td><span class="badge badge-received">Received</span></td>
+          <td style="font-family: var(--mono);">28 May</td>
+          <td><span class="badge badge-draft">Low</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── 5 · KANBAN ─────────────────────────────────────────────────── -->
+  <div class="section-label">05 · Kanban Board</div>
+  <div class="kanban-strip">
+    <div class="kanban-col">
+      <div class="kanban-col-title">Received</div>
+      <div class="k-card">
+        <div class="k-ro">RO-00036</div>
+        <div class="k-customer">Blue Mountains</div>
+        <div class="k-meta">BMT007 · due 28 May</div>
+        <div class="k-progress"><div class="k-progress-fill" style="width:5%; background: var(--ink-3);"></div></div>
+      </div>
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-col-title">Drafting</div>
+      <div class="k-card">
+        <div class="k-ro">RO-00038</div>
+        <div class="k-customer">Tablelands Refrig.</div>
+        <div class="k-meta">TRK042 · due 22 May</div>
+        <div class="k-progress"><div class="k-progress-fill" style="width:30%; background: var(--warn);"></div></div>
+      </div>
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-col-title">Fabrication</div>
+      <div class="k-card">
+        <div class="k-ro">RO-00041</div>
+        <div class="k-customer">Mitchell Freight</div>
+        <div class="k-meta">XYZ123 · due 12 May</div>
+        <div class="k-progress"><div class="k-progress-fill" style="width:65%; background: var(--accent);"></div></div>
+      </div>
+      <div class="k-card hospital">
+        <div class="k-ro" style="color: var(--bad);">RO-00040 · BLOCKED</div>
+        <div class="k-customer">Outback Carriers</div>
+        <div class="k-meta">OUT011 · awaiting part</div>
+      </div>
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-col-title">Final QC</div>
+      <div class="k-card">
+        <div class="k-ro">RO-00039</div>
+        <div class="k-customer">Snowy Mtns Haulage</div>
+        <div class="k-meta">ABC999 · due 09 May</div>
+        <div class="k-progress"><div class="k-progress-fill" style="width:92%; background: var(--good);"></div></div>
+      </div>
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-col-title">Complete</div>
+      <div class="k-card" style="opacity: 0.6;">
+        <div class="k-ro">RO-00035</div>
+        <div class="k-customer">Hunter Valley Trans.</div>
+        <div class="k-meta">HVT220 · done 05 May</div>
+        <div class="k-progress"><div class="k-progress-fill" style="width:100%; background: var(--good);"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 6 · LOGIN ──────────────────────────────────────────────────── -->
+  <div class="section-label">06 · Login</div>
+  <div class="login-demo">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-logo-block">NEE · Production Platform</div>
+      </div>
+      <div class="login-heading">Welcome back</div>
+      <div class="field">
+        <label>Username</label>
+        <input class="input-demo" type="text" value="supervisor" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input class="input-demo" type="password" value="••••••••" />
+      </div>
+      <button class="btn-primary">Sign in</button>
+    </div>
+  </div>
+
+  <!-- ── 7 · MOBILE TASK DETAIL ─────────────────────────────────────── -->
+  <div class="section-label">07 · Mobile — Tech Task Detail</div>
+  <div class="mobile-wrap">
+    <div class="phone-shell">
+      <div class="phone-header">
+        <span class="phone-back">←</span>
+        <span class="phone-title">Task Detail</span>
+      </div>
+      <div class="phone-body">
+
+        <!-- Job header -->
+        <div class="phone-card">
+          <div style="font-family: var(--display); font-size: 16px; font-weight: 500; color: var(--ink); margin-bottom: 8px;">Chassis Fabrication</div>
+          <div class="phone-row"><span class="phone-label">Job Code</span><span style="font-family: var(--mono); font-size: 11px;">STN10-FAB-001</span></div>
+          <div class="phone-row"><span class="phone-label">Station</span><span>Station 10</span></div>
+          <div class="phone-row"><span class="phone-label">Status</span><span class="spill spill-progress">In Progress</span></div>
+        </div>
+
+        <!-- Vehicle -->
+        <div class="phone-card">
+          <div class="phone-card-title">Vehicle</div>
+          <div class="phone-row"><span class="phone-label">Customer</span><span>Mitchell Freightlines</span></div>
+          <div class="phone-row"><span class="phone-label">Rego</span><span style="font-family: var(--mono);">XYZ123</span></div>
+          <div class="phone-row"><span class="phone-label">Paint</span><span>Hammerstone White</span></div>
+        </div>
+
+        <!-- RO Documents -->
+        <div class="phone-card">
+          <div class="phone-card-title">RO Documents</div>
+          <div class="doc-item-ph">
+            <span class="doc-icon-ph">📄</span>
+            <div class="doc-info-ph">
+              <div class="doc-fname">CDF_Ver_1.3_(Dis).pdf</div>
+              <div class="doc-cat-ph">Drawing Pack · 204 KB</div>
+            </div>
+            <span class="doc-chevron-ph">›</span>
+          </div>
+          <div class="doc-item-ph">
+            <span class="doc-icon-ph">📄</span>
+            <div class="doc-info-ph">
+              <div class="doc-fname">RO00041_BOM_v2.pdf</div>
+              <div class="doc-cat-ph">BOM · 88 KB</div>
+            </div>
+            <span class="doc-chevron-ph">›</span>
+          </div>
+          <div class="doc-item-ph">
+            <span class="doc-icon-ph">📄</span>
+            <div class="doc-info-ph">
+              <div class="doc-fname">NEE_RO00041_Sales.pdf</div>
+              <div class="doc-cat-ph">RO PDF · 312 KB</div>
+            </div>
+            <span class="doc-chevron-ph">›</span>
+          </div>
+        </div>
+
+        <!-- Hours -->
+        <div class="phone-card">
+          <div class="phone-card-title">Hours</div>
+          <div style="display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-bottom: 6px;">
+            <span>3.2h actual</span><span>4h estimated</span>
+          </div>
+          <div style="height: 4px; background: var(--paper-3); border-radius: 2px;">
+            <div style="width: 80%; height: 100%; background: var(--accent); border-radius: 2px;"></div>
+          </div>
+        </div>
+
+      </div>
+      <!-- Action buttons -->
+      <div class="phone-actions">
+        <button class="ph-btn ph-clockin">Clock In</button>
+        <button class="ph-btn ph-complete">Complete Task</button>
+        <button class="ph-btn ph-block">Report Blocker</button>
+      </div>
+    </div>
+
+    <!-- Annotations -->
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; padding-top: 8px;">
+      <div style="font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); margin-bottom: 4px;">Key decisions</div>
+      <div style="font-size: 13px; color: var(--ink-2); line-height: 1.6; background: var(--card-bg); border-radius: 8px; padding: 14px 16px; border: 0.5px solid var(--rule); box-shadow: var(--shadow);">
+        <strong style="color: var(--ink);">Background</strong> — soft mint gradient replaces the warm paper tone. Cards stay pure white for high contrast.
+      </div>
+      <div style="font-size: 13px; color: var(--ink-2); line-height: 1.6; background: var(--card-bg); border-radius: 8px; padding: 14px 16px; border: 0.5px solid var(--rule); box-shadow: var(--shadow);">
+        <strong style="color: var(--ink);">Nav / Sidebar</strong> — deep forest green <code style="background: var(--paper-2); padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: 10px;">#132b1e</code> replaces near-black. Can stay as topbar or become an icon sidebar (see section 02b).
+      </div>
+      <div style="font-size: 13px; color: var(--ink-2); line-height: 1.6; background: var(--card-bg); border-radius: 8px; padding: 14px 16px; border: 0.5px solid var(--rule); box-shadow: var(--shadow);">
+        <strong style="color: var(--ink);">Accent</strong> — forest green <code style="background: var(--paper-2); padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: 10px;">#1a7a4d</code> replaces burnt orange. Clock In and primary actions pick this up.
+      </div>
+      <div style="font-size: 13px; color: var(--ink-2); line-height: 1.6; background: var(--card-bg); border-radius: 8px; padding: 14px 16px; border: 0.5px solid var(--rule); box-shadow: var(--shadow);">
+        <strong style="color: var(--ink);">Shadows</strong> — green-tinted subtle shadows replace the neutral-gray ones, creating depth without heaviness.
+      </div>
+      <div style="font-size: 13px; color: var(--ink-2); line-height: 1.6; background: var(--card-bg); border-radius: 8px; padding: 14px 16px; border: 0.5px solid var(--rule); box-shadow: var(--shadow);">
+        <strong style="color: var(--ink);">Typography</strong> — Fraunces (display) + Inter (sans) + JetBrains Mono unchanged. The font stack is already well-suited.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 8 · COMPONENTS ─────────────────────────────────────────────── -->
+  <div class="section-label">08 · Buttons · Inputs · Badges</div>
+  <div class="components-grid">
+    <div class="comp-card">
+      <div class="comp-title">Buttons</div>
+      <div class="btn-row">
+        <button class="btn-sm btn-filled-accent">Clock In</button>
+        <button class="btn-sm btn-filled-good">Complete</button>
+        <button class="btn-sm btn-filled-ink">Start QC</button>
+      </div>
+      <div class="btn-row" style="margin-top: 8px;">
+        <button class="btn-sm btn-outline-bad">Report Blocker</button>
+        <button class="btn-sm btn-outline-ink">Cancel</button>
+        <button class="btn-sm btn-ghost">Export</button>
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-title">Status Pills</div>
+      <div class="badge-row">
+        <span class="spill spill-assigned">Assigned</span>
+        <span class="spill spill-progress">In Progress</span>
+        <span class="spill spill-paused">Paused</span>
+        <span class="spill spill-blocked">Blocked</span>
+        <span class="spill spill-complete">Complete</span>
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-title">Inputs</div>
+      <div class="input-row">
+        <input class="input-demo" type="text" placeholder="Search ROs…" />
+        <input class="input-demo" type="text" value="Mitchell Freightlines" />
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-title">Stage Badges</div>
+      <div class="badge-row">
+        <span class="badge badge-received">Received</span>
+        <span class="badge badge-draft">Drafting</span>
+        <span class="badge badge-fab">Fabrication</span>
+        <span class="badge badge-qc">Final QC</span>
+        <span class="badge badge-blocked">Blocked</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 9 · TOKEN DIFF ─────────────────────────────────────────────── -->
+  <div class="section-label">09 · Token Changes — Light → Forest</div>
+  <div class="table-card">
+    <table class="diff-table">
+      <thead>
+        <tr><th>Token</th><th>Light (current)</th><th>Forest (proposed)</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="token-name">--paper</td>
+          <td><span class="chip"><span class="chip-dot" style="background:#f5f2ea;border:0.5px solid #ccc;"></span>#f5f2ea</span></td>
+          <td><span class="chip"><span class="chip-dot" style="background:#f2f8f4;border:0.5px solid #ccc;"></span>#f2f8f4</span></td>
+          <td style="color: var(--ink-3);">Warm paper → soft mint</td>
+        </tr>
+        <tr>
+          <td class="token-name">--paper-2</td>
+          <td><span class="chip"><span class="chip-dot" style="background:#ebe7dc;border:0.5px solid #ccc;"></span>#ebe7dc</span></td>
+          <td><span class="chip"><span class="chip-dot" style="background:#e4f0e9;border:0.5px solid #ccc;"></span>#e4f0e9</span></td>
+          <td style="color: var(--ink-3);">Warm parchment → mint hover</td>
+        </tr>
+        <tr>
+          <td class="token-name">--ink-3</td>
+          <td><span class="chip"><span class="chip-dot" style="background:#4a5258;border:0.5px solid #ccc;"></span>#4a5258</span></td>
+          <td><span class="chip"><span class="chip-dot" style="background:#6b8f79;border:0.5px solid #ccc;"></span>#6b8f79</span></td>
+          <td style="color: var(--ink-3);">Neutral gray → sage green</td>
+        </tr>
+        <tr>
+          <td class="token-name">--topbar-bg</td>
+          <td><span class="chip"><span class="chip-dot" style="background:#0a0e0f;border:0.5px solid #ccc;"></span>#0a0e0f</span></td>
+          <td><span class="chip"><span class="chip-dot" style="background:#132b1e;border:0.5px solid #ccc;"></span>#132b1e</span></td>
+          <td style="color: var(--ink-3);">Near-black → deep forest green</td>
+        </tr>
+        <tr>
+          <td class="token-name">--accent</td>
+          <td><span class="chip"><span class="chip-dot" style="background:#c2410c;border:0.5px solid #ccc;"></span>#c2410c</span></td>
+          <td><span class="chip"><span class="chip-dot" style="background:#1a7a4d;border:0.5px solid #ccc;"></span>#1a7a4d</span></td>
+          <td style="color: var(--ink-3);">Burnt orange → forest green</td>
+        </tr>
+        <tr>
+          <td class="token-name">--rule</td>
+          <td><span class="chip">rgba(10,14,15,0.10)</span></td>
+          <td><span class="chip">rgba(13,31,21,0.09)</span></td>
+          <td style="color: var(--ink-3);">Green-tinted border</td>
+        </tr>
+        <tr>
+          <td class="token-name">--shadow</td>
+          <td><span class="chip" style="font-size:10px;">neutral gray, 6%</span></td>
+          <td><span class="chip" style="font-size:10px;">green-tinted, 7%</span></td>
+          <td style="color: var(--ink-3);">Depth with green warmth</td>
+        </tr>
+        <tr>
+          <td class="token-name">--good · --bad · --warn · --info</td>
+          <td colspan="2" style="color: var(--ink-3);">Unchanged — semantic colours kept as-is</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<script>
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.querySelectorAll('.sw-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(t === 'forest' ? 'forest' : 'light'));
+  });
+}
+
+/* Build palette swatches dynamically */
+const tokens = [
+  { name: '--paper',       label: 'paper',       fn: t => t==='forest'?'#f2f8f4':'#f5f2ea' },
+  { name: '--paper-2',     label: 'paper-2',      fn: t => t==='forest'?'#e4f0e9':'#ebe7dc' },
+  { name: '--paper-3',     label: 'paper-3',      fn: t => t==='forest'?'#cfe3d6':'#ddd7c8' },
+  { name: '--ink',         label: 'ink',          fn: t => t==='forest'?'#0d1f15':'#0a0e0f' },
+  { name: '--ink-2',       label: 'ink-2',        fn: t => t==='forest'?'#2b4435':'#1a1f21' },
+  { name: '--ink-3',       label: 'ink-3',        fn: t => t==='forest'?'#6b8f79':'#4a5258' },
+  { name: '--topbar-bg',   label: 'topbar',       fn: t => t==='forest'?'#132b1e':'#0a0e0f' },
+  { name: '--accent',      label: 'accent',       fn: t => t==='forest'?'#1a7a4d':'#c2410c' },
+  { name: '--good',        label: 'good',         fn: t => t==='forest'?'#16a34a':'#15803d' },
+  { name: '--warn',        label: 'warn',         fn: t => t==='forest'?'#c27c0e':'#b45309' },
+  { name: '--bad',         label: 'bad',          fn: t => '#b91c1c' },
+  { name: '--info',        label: 'info',         fn: t => t==='forest'?'#0369a1':'#1d4ed8' },
+];
+
+function renderPalette() {
+  const theme = document.documentElement.getAttribute('data-theme') || 'forest';
+  const grid = document.getElementById('palette');
+  grid.innerHTML = tokens.map(tk => {
+    const color = tk.fn(theme);
+    const isLight = ['paper','paper-2','paper-3'].some(l => tk.label.includes(l));
+    return `<div class="swatch">
+      <div class="swatch-color" style="background:${color}; ${isLight ? 'border:0.5px solid var(--rule);' : ''}"></div>
+      <div class="swatch-label">
+        <div class="swatch-name">${tk.label}</div>
+        <div>${color}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+const orig = setTheme;
+window.setTheme = t => { orig(t); renderPalette(); };
+
+// Init
+document.documentElement.setAttribute('data-theme', 'forest');
+renderPalette();
+</script>
+</body>
+</html>
