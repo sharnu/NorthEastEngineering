@@ -82,6 +82,16 @@ export interface BlockResult {
   blockedAt: string;
 }
 
+export interface RoDocument {
+  attachmentId: string;
+  category: string;
+  label: string;
+  fileName: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  url: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TechService {
   private http = inject(HttpClient);
@@ -129,5 +139,9 @@ export class TechService {
 
   unblockTask(id: string): Observable<void> {
     return this.http.post<void>(`/api/tech/tasks/${id}/unblock`, {});
+  }
+
+  getRoDocuments(id: string): Observable<RoDocument[]> {
+    return this.http.get<RoDocument[]>(`/api/tech/tasks/${id}/ro-documents`);
   }
 }

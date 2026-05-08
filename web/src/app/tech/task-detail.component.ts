@@ -4,7 +4,7 @@ import {
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Subscription, interval } from 'rxjs';
-import { TechService, TechTaskDetail, PhotoItem } from './tech.service';
+import { TechService, TechTaskDetail, PhotoItem, RoDocument } from './tech.service';
 import { TechBottomNavComponent } from './tech-bottom-nav.component';
 import { VarianceModalComponent } from './variance-modal.component';
 import { BlockerModalComponent } from './blocker-modal.component';
@@ -67,7 +67,16 @@ function formatElapsed(seconds: number): string {
             </div>
           </section>
 
-          <!-- 3. Hours tracker -->
+          <!-- 3. RO Documents -->
+          @if (roDocuments().length > 0) {
+            <div class="doc-row">
+              @for (doc of roDocuments(); track doc.attachmentId) {
+                <a class="doc-btn" [href]="doc.url" target="_blank" rel="noopener">{{ doc.label }}</a>
+              }
+            </div>
+          }
+
+          <!-- 4. Hours tracker -->
           <section class="card">
             <h3 class="section-title">Hours</h3>
             <div class="progress-labels">
@@ -89,7 +98,7 @@ function formatElapsed(seconds: number): string {
             }
           </section>
 
-          <!-- 4. Sessions -->
+          <!-- 5. Sessions -->
           @if (task()!.timeEntries.length > 0) {
             <section class="card">
               <h3 class="section-title">Sessions</h3>
@@ -113,7 +122,7 @@ function formatElapsed(seconds: number): string {
             </section>
           }
 
-          <!-- 5. Photos -->
+          <!-- 6. Photos -->
           <section class="card">
             <h3 class="section-title">Photos</h3>
             <div class="photo-grid">
@@ -257,6 +266,15 @@ function formatElapsed(seconds: number): string {
     .btn-block    { background: #dc2626; color: #fff; }
     .btn-qc       { background: #7c3aed; color: #fff; }
     .empty-state  { text-align: center; padding: 48px 16px; color: #6b7280; }
+    .doc-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 4px; }
+    .doc-btn {
+      flex: 1; min-width: 100px; padding: 12px 10px;
+      border: 0.5px solid var(--rule-strong); border-radius: 10px;
+      background: white; color: var(--ink); font-size: 14px;
+      font-family: var(--sans); text-align: center; text-decoration: none;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .doc-btn:active { background: var(--paper-2); }
   `],
 })
 export class TechTaskDetailComponent implements OnInit, OnDestroy {
@@ -266,6 +284,7 @@ export class TechTaskDetailComponent implements OnInit, OnDestroy {
 
   task = signal<TechTaskDetail | null>(null);
   photos = signal<PhotoItem[]>([]);
+  roDocuments = signal<RoDocument[]>([]);
   loadError = signal(false);
   isUploading = signal(false);
 
@@ -301,6 +320,7 @@ export class TechTaskDetailComponent implements OnInit, OnDestroy {
     this.taskId = this.route.snapshot.paramMap.get('id') ?? '';
     this.loadTask();
     this.loadPhotos();
+    this.loadRoDocuments();
   }
 
   ngOnDestroy(): void {
@@ -327,6 +347,12 @@ export class TechTaskDetailComponent implements OnInit, OnDestroy {
   loadPhotos(): void {
     this.techService.getPhotos(this.taskId).subscribe({
       next: photos => this.photos.set(photos),
+    });
+  }
+
+  loadRoDocuments(): void {
+    this.techService.getRoDocuments(this.taskId).subscribe({
+      next: docs => this.roDocuments.set(docs),
     });
   }
 

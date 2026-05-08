@@ -300,6 +300,40 @@ public static class TechEndpoints
             return Results.Ok(photos);
         });
 
+        // ── GET /api/tech/tasks/{id}/ro-documents ────────────────────────────
+        tech.MapGet("/{id:guid}/ro-documents", async (Guid id, NeeDbContext db, CancellationToken ct) =>
+        {
+            var roId = await db.JobTasks
+                .Where(t => t.Id == id)
+                .Select(t => (Guid?)t.RoId)
+                .FirstOrDefaultAsync(ct);
+
+            if (roId is null) return Results.NotFound();
+
+            var docs = await db.Attachments
+                .Where(a => a.EntityType == "RepairOrder"
+                         && a.EntityId  == roId
+                         && (a.Category == "DRAFT_DRAWING_PACK"
+                          || a.Category == "DRAFT_BOM"
+                          || a.Category == "DRAFT_LAYOUT"))
+                .OrderBy(a => a.UploadedAt)
+                .Select(a => new
+                {
+                    attachmentId = a.Id,
+                    category     = a.Category,
+                    label        = CategoryLabel(a.Category),
+                    fileName     = a.FileName,
+                    sizeBytes    = a.SizeBytes,
+                    uploadedAt   = a.UploadedAt,
+                    url          = $"/uploads/{a.BlobPath}",
+                })
+                .ToListAsync(ct);
+
+            return Results.Ok(docs);
+        })
+        .RequireAuthorization()
+        .WithName("GetTaskRoDocuments");
+
         // ── POST /api/tech/tasks/{id}/complete ────────────────────────────────
         tech.MapPost("/{id:guid}/complete", async (
             Guid id,
@@ -608,6 +642,14 @@ public static class TechEndpoints
                ?? throw new InvalidOperationException("No sub claim found in token.");
         return Guid.Parse(sub);
     }
+
+    private static string CategoryLabel(string category) => category switch
+    {
+        "DRAFT_DRAWING_PACK" => "Drawing pack",
+        "DRAFT_BOM"          => "BOM",
+        "DRAFT_LAYOUT"       => "Layout",
+        _                    => category,
+    };
 
     private static short StationSortOrderToKanbanStage(int sortOrder) => sortOrder switch
     {
