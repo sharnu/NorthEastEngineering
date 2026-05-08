@@ -71,7 +71,10 @@ function formatElapsed(seconds: number): string {
           @if (roDocuments().length > 0) {
             <div class="doc-row">
               @for (doc of roDocuments(); track doc.attachmentId) {
-                <a class="doc-btn" [href]="doc.url" target="_blank" rel="noopener">{{ doc.label }}</a>
+                <a class="doc-btn" [href]="doc.url" target="_blank" rel="noopener">
+                  <span class="doc-cat">{{ doc.label }}</span>
+                  <span class="doc-name">{{ doc.fileName }}</span>
+                </a>
               }
             </div>
           }
@@ -270,11 +273,16 @@ function formatElapsed(seconds: number): string {
     .doc-btn {
       flex: 1; min-width: 100px; padding: 12px 10px;
       border: 0.5px solid var(--rule-strong); border-radius: 10px;
-      background: white; color: var(--ink); font-size: 14px;
+      background: white; color: var(--ink);
       font-family: var(--sans); text-align: center; text-decoration: none;
       cursor: pointer; -webkit-tap-highlight-color: transparent;
+      display: flex; flex-direction: column; gap: 3px; align-items: center;
     }
     .doc-btn:active { background: var(--paper-2); }
+    .doc-cat { font-size: 11px; font-family: var(--mono); text-transform: uppercase;
+               letter-spacing: 0.08em; color: var(--ink-3); }
+    .doc-name { font-size: 12px; color: var(--ink); word-break: break-all;
+                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   `],
 })
 export class TechTaskDetailComponent implements OnInit, OnDestroy {
