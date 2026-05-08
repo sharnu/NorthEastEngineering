@@ -29,7 +29,7 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
           <!-- Tasks pane -->
           <div class="drawer-tasks">
             @if (card()?.roId; as roId) {
-              <app-flow-ribbon [roId]="roId" [compact]="true" />
+              <app-flow-ribbon [roId]="roId" [compact]="true" [refreshAt]="refreshAt()" />
             }
             <div class="drawer-section-label">Station</div>
             <div class="drawer-station-title">
@@ -568,9 +568,10 @@ export class CardDrawerComponent {
   private router = inject(Router);
   private svc    = inject(KanbanService);
 
-  card   = input<KanbanCardDto | null>(null);
-  isOpen = input<boolean>(false);
-  closed = output<void>();
+  card      = input<KanbanCardDto | null>(null);
+  isOpen    = input<boolean>(false);
+  refreshAt = input<number>(0);
+  closed    = output<void>();
 
   pdfReady         = signal(false);
   activeMenuTaskId = signal<string | null>(null);

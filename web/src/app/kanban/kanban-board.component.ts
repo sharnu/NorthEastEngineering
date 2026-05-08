@@ -131,7 +131,7 @@ const GATE_STATES: GateStateChip[] = [
 
     <!-- Flow ribbon for last-selected RO -->
     @if (selectedCard(); as card) {
-      <app-flow-ribbon [roId]="card.roId" />
+      <app-flow-ribbon [roId]="card.roId" [refreshAt]="boardRefreshCount()" />
     }
 
     <!-- Board -->
@@ -168,6 +168,7 @@ const GATE_STATES: GateStateChip[] = [
     <app-card-drawer
       [card]="selectedCard()"
       [isOpen]="isDrawerOpen()"
+      [refreshAt]="boardRefreshCount()"
       (closed)="isDrawerOpen.set(false)" />
   `,
   styles: [`
@@ -335,6 +336,7 @@ export class KanbanBoardComponent implements OnInit {
   isRefreshing      = signal(false);
   lastUpdated       = signal<Date | null>(null);
   loadError         = signal(false);
+  boardRefreshCount = signal(0);
 
   selectedCard = signal<KanbanCardDto | null>(null);
   isDrawerOpen = signal(false);
@@ -394,6 +396,7 @@ export class KanbanBoardComponent implements OnInit {
       if (!this.selectedStationId()) this.allStations.set(board.stations);
       this.displayedStations.set(board.stations);
       this.lastUpdated.set(new Date());
+      this.boardRefreshCount.update(n => n + 1);
     });
   }
 
@@ -416,6 +419,7 @@ export class KanbanBoardComponent implements OnInit {
       if (!stationId) this.allStations.set(board.stations);
       this.displayedStations.set(board.stations);
       this.lastUpdated.set(new Date());
+      this.boardRefreshCount.update(n => n + 1);
     });
   }
 

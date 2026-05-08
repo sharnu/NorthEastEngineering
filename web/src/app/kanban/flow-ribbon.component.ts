@@ -1,8 +1,9 @@
-import { Component, DestroyRef, inject, input, signal, computed } from '@angular/core';
+import { Component, DestroyRef, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { switchMap, catchError } from 'rxjs/operators';
+import { switchMap, catchError, distinctUntilChanged } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { FlowData, KanbanService } from './kanban.service';
+import { computed } from '@angular/core';
 
 @Component({
   selector: 'app-flow-ribbon',
@@ -189,17 +190,23 @@ export class FlowRibbonComponent {
   private svc        = inject(KanbanService);
   private destroyRef = inject(DestroyRef);
 
-  roId    = input.required<string>();
-  compact = input<boolean>(false);
-  flow    = signal<FlowData | null>(null);
-  loading = signal(true);
+  roId      = input.required<string>();
+  compact   = input<boolean>(false);
+  refreshAt = input<number>(0);
+  flow      = signal<FlowData | null>(null);
+  loading   = signal(true);
+
+  // Combines roId + refreshAt into a string nonce so any change triggers a re-fetch
+  private nonce = computed(() => `${this.roId()}::${this.refreshAt()}`);
 
   constructor() {
-    toObservable(this.roId).pipe(
-      switchMap(id => {
+    toObservable(this.nonce).pipe(
+      distinctUntilChanged(),
+      switchMap(nonce => {
+        const roId = nonce.split('::')[0];
         this.flow.set(null);
         this.loading.set(true);
-        return this.svc.getFlow(id).pipe(catchError(() => of(null)));
+        return this.svc.getFlow(roId).pipe(catchError(() => of(null)));
       }),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(data => {
