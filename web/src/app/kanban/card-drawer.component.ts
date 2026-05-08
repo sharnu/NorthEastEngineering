@@ -6,11 +6,12 @@ import { KanbanCardDto, KanbanCardTaskDto, KanbanService, StationTechnicianDto }
 import { SafeResourcePipe } from '../core/safe-resource.pipe';
 import { bodyTypeShortCode } from './body-type.util';
 import { AuthService } from '../core/auth.service';
+import { FlowRibbonComponent } from './flow-ribbon.component';
 
 @Component({
   selector: 'app-card-drawer',
   standalone: true,
-  imports: [RouterLink, SafeResourcePipe],
+  imports: [RouterLink, SafeResourcePipe, FlowRibbonComponent],
   template: `
     @if (isOpen()) {
       <div class="drawer-bg" (click)="closed.emit()">
@@ -27,6 +28,9 @@ import { AuthService } from '../core/auth.service';
 
           <!-- Tasks pane -->
           <div class="drawer-tasks">
+            @if (card()?.roId; as roId) {
+              <app-flow-ribbon [roId]="roId" [compact]="true" />
+            }
             <div class="drawer-section-label">Station</div>
             <div class="drawer-station-title">
               {{ card()?.stationName }} · {{ trackLabel() }} track

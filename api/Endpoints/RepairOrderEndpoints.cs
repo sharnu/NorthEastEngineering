@@ -573,6 +573,75 @@ public static class RepairOrderEndpoints
         .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "ADMIN"))
         .WithName("CancelRepairOrder");
 
+        // GET /api/repair-orders/{id}/flow  — E25-S1
+        grp.MapGet("/{id:guid}/flow", async (Guid id, NeeDbContext db, CancellationToken ct) =>
+        {
+            var ro = await db.RepairOrders
+                .Where(r => r.Id == id)
+                .Select(r => new { r.BodyType })
+                .FirstOrDefaultAsync(ct);
+
+            if (ro is null) return Results.NotFound();
+
+            if (ro.BodyType is null)
+                return Results.Ok(new { RoId = id, BodyType = (string?)null, Tracks = Array.Empty<object>() });
+
+            var flowSteps = await (
+                from fd in db.FlowDefinitions
+                where fd.BodyType == ro.BodyType
+                join s  in db.Stations     on fd.StationId equals s.Id
+                join ks in db.KanbanStages on fd.StationId equals ks.Id into ksJ
+                from ks in ksJ.DefaultIfEmpty()
+                select new
+                {
+                    fd.Track,
+                    fd.SortOrder,
+                    fd.StationId,
+                    StationName  = s.Name,
+                    IsMergePoint = ks != null ? ks.IsMergePoint : false,
+                }
+            ).ToListAsync(ct);
+
+            var rawTasks = await db.JobTasks
+                .Where(t => t.RoId == id)
+                .Select(t => new { t.StationId, t.FlowTrack, t.Status })
+                .ToListAsync(ct);
+
+            var taskLookup = rawTasks
+                .GroupBy(t => (t.StationId, t.FlowTrack))
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var trackOrder = new[] { "BODY", "CHASSIS", "SUBFRAME", "ANY" };
+
+            var tracks = flowSteps
+                .GroupBy(s => s.Track)
+                .OrderBy(g => { var i = Array.IndexOf(trackOrder, g.Key); return i < 0 ? 99 : i; })
+                .Select(g => new
+                {
+                    Track = g.Key,
+                    Steps = g.OrderBy(s => s.SortOrder).Select(s =>
+                    {
+                        var hasTasks = taskLookup.TryGetValue((s.StationId, s.Track), out var ts);
+                        var tasks = hasTasks ? ts! : null;
+                        string status = tasks is null || tasks.Count == 0          ? "PENDING"
+                                      : tasks.Any(t => t.Status == "BLOCKED")      ? "BLOCKED"
+                                      : tasks.Any(t => t.Status is "IN_PROGRESS" or "PAUSED") ? "ACTIVE"
+                                      : tasks.All(t => t.Status == "COMPLETED")    ? "DONE"
+                                      : "PENDING";
+                        return new
+                        {
+                            StationId    = (int)s.StationId,
+                            StationName  = s.StationName,
+                            StepStatus   = status,
+                            IsMergePoint = s.IsMergePoint,
+                        };
+                    }).ToList(),
+                }).ToList();
+
+            return Results.Ok(new { RoId = id, BodyType = ro.BodyType, Tracks = tracks });
+        })
+        .WithName("GetRepairOrderFlow");
+
         // POST /api/repair-orders/{id}/reopen (E14-S3)
         grp.MapPost("/{id:guid}/reopen", async (
             Guid id,

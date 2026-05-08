@@ -61,6 +61,7 @@ function configureTestBed(user = TECH_USER) {
         useValue: {
           getTechnicians: jasmine.createSpy('getTechnicians').and.returnValue(of(MOCK_TECHS)),
           assignTask:     jasmine.createSpy('assignTask').and.returnValue(of(undefined)),
+          getFlow:        jasmine.createSpy('getFlow').and.returnValue(of({ roId: MOCK_CARD.roId, bodyType: null, tracks: [] })),
         },
       },
     ],

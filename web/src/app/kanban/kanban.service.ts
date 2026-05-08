@@ -75,6 +75,24 @@ export interface KanbanTaskDto {
   overrideByName: string | null;
 }
 
+export interface FlowStep {
+  stationId: number;
+  stationName: string;
+  stepStatus: 'DONE' | 'ACTIVE' | 'PENDING' | 'BLOCKED';
+  isMergePoint: boolean;
+}
+
+export interface FlowTrack {
+  track: string;
+  steps: FlowStep[];
+}
+
+export interface FlowData {
+  roId: string;
+  bodyType: string | null;
+  tracks: FlowTrack[];
+}
+
 export interface StationTechnicianDto {
   userId: string;
   fullName: string;
@@ -111,5 +129,9 @@ export class KanbanService {
 
   forceAdvance(roId: string, stationId: number, reason: string): Observable<void> {
     return this.http.post<void>(`/api/kanban/ros/${roId}/force-advance`, { stationId, reason });
+  }
+
+  getFlow(roId: string): Observable<FlowData> {
+    return this.http.get<FlowData>(`/api/repair-orders/${roId}/flow`);
   }
 }

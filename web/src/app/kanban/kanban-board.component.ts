@@ -1,5 +1,5 @@
 import {
-  Component, OnInit, inject, signal, computed, DestroyRef, InjectionToken,
+  Component, OnInit, effect, inject, signal, computed, DestroyRef, InjectionToken,
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
@@ -12,7 +12,9 @@ import { AuthService } from '../core/auth.service';
 import { KanbanService, KanbanStationDto, KanbanCardDto } from './kanban.service';
 import { StationCardComponent } from './station-card.component';
 import { CardDrawerComponent } from './card-drawer.component';
+import { FlowRibbonComponent } from './flow-ribbon.component';
 import { NotificationBellComponent } from '../core/notification-bell.component';
+import { bodyTypeLabel, bodyTypeShortCode } from './body-type.util';
 
 export interface KanbanHubConnection {
   on(methodName: string, newMethod: (...args: unknown[]) => void): void;
@@ -48,7 +50,7 @@ const GATE_STATES: GateStateChip[] = [
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [CommonModule, DatePipe, StationCardComponent, CardDrawerComponent, NotificationBellComponent],
+  imports: [CommonModule, DatePipe, StationCardComponent, CardDrawerComponent, FlowRibbonComponent, NotificationBellComponent],
   template: `
     <!-- Topbar -->
     <div class="topbar">
@@ -85,6 +87,23 @@ const GATE_STATES: GateStateChip[] = [
           }
         </select>
 
+        @if (distinctBodyTypes().length > 1) {
+          <div class="bodytype-chips" role="group" aria-label="Filter by body type">
+            <button class="bodytype-chip"
+                    [class.active]="activeBodyTypes().length === 0"
+                    (click)="activeBodyTypes.set([])"
+                    title="Show all body types">All</button>
+            @for (bt of distinctBodyTypes(); track bt) {
+              <button class="bodytype-chip"
+                      [class.active]="activeBodyTypes().includes(bt)"
+                      (click)="toggleBodyType(bt)"
+                      [title]="bodyTypeLabel(bt)">
+                {{ bodyTypeShortCode(bt) }}
+              </button>
+            }
+          </div>
+        }
+
         <div class="gate-chips" role="group" aria-label="Filter by status">
           @for (gs of gateStates; track gs.value) {
             <button class="gate-chip"
@@ -108,6 +127,11 @@ const GATE_STATES: GateStateChip[] = [
 
     @if (loadError()) {
       <div class="alert-error">Could not load board data. Retrying automatically…</div>
+    }
+
+    <!-- Flow ribbon for last-selected RO -->
+    @if (selectedCard(); as card) {
+      <app-flow-ribbon [roId]="card.roId" />
     }
 
     <!-- Board -->
@@ -185,6 +209,19 @@ const GATE_STATES: GateStateChip[] = [
                    min-width: 116px; text-align: center; }
     .refresh-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); border-color: var(--ink); }
     .refresh-btn:disabled { opacity: 0.5; cursor: default; }
+
+    /* Body-type filter chips */
+    .bodytype-chips { display: flex; gap: 4px; align-items: center; }
+    .bodytype-chip {
+      display: inline-flex; align-items: center;
+      padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 500;
+      font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.04em;
+      cursor: pointer; border: 1px solid var(--rule); background: var(--paper-2); color: var(--ink-3);
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      white-space: nowrap;
+    }
+    .bodytype-chip:hover { background: var(--paper-3); color: var(--ink); }
+    .bodytype-chip.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 
     /* Gate state chips */
     .gate-chips { display: flex; gap: 5px; align-items: center; }
@@ -276,6 +313,10 @@ export class KanbanBoardComponent implements OnInit {
   private hubFactory = inject(KANBAN_HUB_FACTORY);
 
   readonly gateStates = GATE_STATES;
+  readonly bodyTypeLabel    = bodyTypeLabel;
+  readonly bodyTypeShortCode = bodyTypeShortCode;
+
+  private readonly BT_KEY = 'kanban.activeBodyTypes';
 
   user         = this.auth.user;
   isSupervisor = computed(() => {
@@ -287,6 +328,10 @@ export class KanbanBoardComponent implements OnInit {
   displayedStations = signal<KanbanStationDto[]>([]);
   selectedStationId = signal<number | null>(null);
   activeGateStates  = signal<string[]>(GATE_STATES.map(g => g.value));
+  activeBodyTypes   = signal<string[]>((() => {
+    try { return JSON.parse(localStorage.getItem('kanban.activeBodyTypes') ?? '[]'); }
+    catch { return []; }
+  })());
   isRefreshing      = signal(false);
   lastUpdated       = signal<Date | null>(null);
   loadError         = signal(false);
@@ -296,14 +341,39 @@ export class KanbanBoardComponent implements OnInit {
 
   private hubConnection: KanbanHubConnection | null = null;
 
-  filteredStations = computed<KanbanStationDto[]>(() => {
-    const active   = this.activeGateStates();
-    const stations = this.displayedStations();
-    if (active.length === GATE_STATES.length) return stations;
-    return stations.map(s => ({ ...s, cards: s.cards.filter(c => active.includes(c.gateState)) }));
+  distinctBodyTypes = computed<string[]>(() => {
+    const types = this.allStations()
+      .flatMap(s => s.cards.map(c => c.bodyType ?? ''))
+      .filter(t => t.length > 0);
+    return [...new Set(types)].sort();
   });
 
-  isFiltered = computed(() => this.activeGateStates().length < GATE_STATES.length);
+  filteredStations = computed<KanbanStationDto[]>(() => {
+    const activeGates = this.activeGateStates();
+    const activeBTs   = this.activeBodyTypes();
+    const stations    = this.displayedStations();
+    const allGates    = activeGates.length === GATE_STATES.length;
+    const allBTs      = activeBTs.length === 0;
+    if (allGates && allBTs) return stations;
+    return stations.map(s => ({
+      ...s,
+      cards: s.cards.filter(c => {
+        const gateOk = allGates || activeGates.includes(c.gateState);
+        const btOk   = allBTs   || activeBTs.includes(c.bodyType ?? '');
+        return gateOk && btOk;
+      }),
+    }));
+  });
+
+  isFiltered = computed(() =>
+    this.activeGateStates().length < GATE_STATES.length || this.activeBodyTypes().length > 0
+  );
+
+  constructor() {
+    effect(() => {
+      localStorage.setItem(this.BT_KEY, JSON.stringify(this.activeBodyTypes()));
+    });
+  }
 
   ngOnInit() {
     this.connectRealtime();
@@ -355,6 +425,13 @@ export class KanbanBoardComponent implements OnInit {
     const stationId = value ? Number(value) : undefined;
     this.selectedStationId.set(stationId ?? null);
     this.loadBoard(stationId);
+  }
+
+  toggleBodyType(bt: string): void {
+    const current = this.activeBodyTypes();
+    this.activeBodyTypes.set(
+      current.includes(bt) ? current.filter(t => t !== bt) : [...current, bt],
+    );
   }
 
   toggleGate(state: string): void {
