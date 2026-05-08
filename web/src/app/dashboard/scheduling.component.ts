@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ChassisSuggestModalComponent } from './chassis-suggest-modal.component';
 
 interface GatesDto {
   draftingComplete: boolean;
@@ -44,7 +45,7 @@ interface CapacityResponse {
 @Component({
   selector: 'app-scheduling',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, DecimalPipe],
+  imports: [CommonModule, FormsModule, DatePipe, DecimalPipe, ChassisSuggestModalComponent],
   template: `
     @if (loading()) {
       <div class="sched-loading">Loading scheduling data…</div>
@@ -107,6 +108,9 @@ interface CapacityResponse {
                     (click)="!row.gates.chassisAllocated && togglePopover($event, row.roId, 'chassis')">
                     {{ row.gates.chassisAllocated ? '✓' : '✗' }} Chassis
                   </button>
+                  @if (!row.gates.chassisAllocated) {
+                    <button class="btn-suggest" (click)="openSuggest(row.roId)">Suggest →</button>
+                  }
                 </td>
 
                 <!-- Scheduled week -->
@@ -206,6 +210,18 @@ interface CapacityResponse {
       </div>
     }
 
+    <!-- Chassis suggestion modal (E28-S2) -->
+    <app-chassis-suggest-modal
+      [open]="!!suggestRoId()"
+      [roId]="suggestRoId()"
+      (closed)="suggestRoId.set(null)"
+      (allocated)="onSuggestAllocated($event)">
+    </app-chassis-suggest-modal>
+
+    @if (suggestToast()) {
+      <div class="suggest-toast">{{ suggestToast() }}</div>
+    }
+
     @if (schedulePopoverRoId() && scheduleAnchor()) {
       <div class="gate-popover overlay-popover cal-popover"
            [style.top]="calPos().top"
@@ -285,6 +301,18 @@ interface CapacityResponse {
     .pri-high   { background: #fef9c3; color: var(--warn); }
     .pri-normal { background: #dbeafe; color: var(--info); }
     .pri-low    { background: var(--paper-3); color: var(--ink-3); }
+
+    /* Suggest button */
+    .btn-suggest { margin-left: 4px; padding: 3px 8px; border-radius: 4px;
+                   border: .5px solid var(--accent); background: none; color: var(--accent);
+                   font-size: 11px; cursor: pointer; font-family: var(--mono); white-space: nowrap; }
+    .btn-suggest:hover { background: #e0e7ff; }
+
+    /* Allocation success toast */
+    .suggest-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+                     background: #0a0e0f; color: white; padding: 10px 20px; border-radius: 8px;
+                     font-size: 13px; z-index: 20000; box-shadow: 0 4px 16px rgba(10,14,15,.3);
+                     pointer-events: none; }
 
     /* Gate pills */
     .gate-cell { white-space: nowrap; }
@@ -391,6 +419,10 @@ export class SchedulingComponent implements OnInit {
   schedulePopoverRoId = signal<string | null>(null);
   scheduleAnchor      = signal<DOMRect | null>(null);
   scheduleError       = signal<string | null>(null);
+
+  suggestRoId  = signal<string | null>(null);
+  suggestToast = signal<string | null>(null);
+  private toastTimer: any;
 
   // Flip left→right when popover would overflow the viewport right edge
   calPos = computed(() => {
@@ -590,6 +622,28 @@ export class SchedulingComponent implements OnInit {
         this.scheduleError.set(msg);
       },
     });
+  }
+
+  openSuggest(roId: string) {
+    this.closePopover();
+    this.closeSchedulePopover();
+    this.suggestRoId.set(roId);
+  }
+
+  onSuggestAllocated(e: { chassisId: string; chassisNumber: string; roId: string }) {
+    // Patch the row in-place — no full backlog refetch needed
+    this.backlog.update(rows => rows.map(r => r.roId !== e.roId ? r : {
+      ...r,
+      gates: {
+        ...r.gates,
+        chassisAllocated: true,
+        allGreen: r.gates.draftingComplete && r.gates.customerApproved,
+      },
+    }));
+    this.suggestRoId.set(null);
+    clearTimeout(this.toastTimer);
+    this.suggestToast.set(`Chassis ${e.chassisNumber} allocated`);
+    this.toastTimer = setTimeout(() => this.suggestToast.set(null), 4000);
   }
 
   heatClass(pct: number) {

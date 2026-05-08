@@ -249,9 +249,100 @@ public static class SchedulingEndpoints
         })
         .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "STATION_OWNER"))
         .WithName("ScheduleRo");
+
+        // GET /api/scheduling/ros/{id}/chassis-suggestions (E28-S1)
+        sched.MapGet("/ros/{id:guid}/chassis-suggestions", async (
+            Guid id,
+            NeeDbContext db,
+            CancellationToken ct) =>
+        {
+            var ro = await db.RepairOrders
+                .Where(r => r.Id == id)
+                .Select(r => new { r.Id, r.BodyType, r.Colour, r.ChassisTag, r.RequiredDate })
+                .FirstOrDefaultAsync(ct);
+
+            if (ro is null) return Results.NotFound();
+
+            var candidates = await db.ChassisInventory
+                .Where(c => c.Status == "AVAILABLE"
+                         && (c.BodyType == null || c.BodyType == ro.BodyType))
+                .OrderBy(c => c.ArrivalDate)
+                .Select(c => new { c.Id, c.ChassisNumber, c.BodyType, c.Colour, c.TagNumber, c.ArrivalDate })
+                .ToListAsync(ct);
+
+            var requiredDateOnly = ro.RequiredDate.HasValue
+                ? DateOnly.FromDateTime(ro.RequiredDate.Value.UtcDateTime)
+                : (DateOnly?)null;
+
+            var scored = candidates
+                .Select(c =>
+                {
+                    var tag       = ro.ChassisTag != null && c.TagNumber == ro.ChassisTag ? 100 : 0;
+                    var colour    = string.Equals(c.Colour, ro.Colour, StringComparison.OrdinalIgnoreCase) ? 50 : 0;
+                    var proximity = c.ArrivalDate.HasValue && requiredDateOnly.HasValue
+                        ? Math.Max(0, 30 - Math.Abs(c.ArrivalDate.Value.DayNumber - requiredDateOnly.Value.DayNumber))
+                        : 0;
+                    var score     = tag + colour + proximity;
+                    return new ChassisSuggestionDto(
+                        ChassisId:      c.Id,
+                        ChassisNumber:  c.ChassisNumber,
+                        BodyType:       c.BodyType,
+                        Colour:         c.Colour,
+                        TagNumber:      c.TagNumber,
+                        ArrivalDate:    c.ArrivalDate,
+                        Score:          score,
+                        ScoreBreakdown: new ScoreBreakdownDto(tag, colour, proximity),
+                        Reason:         BuildSuggestionReason(tag, colour, proximity, c.ArrivalDate, requiredDateOnly));
+                })
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.ArrivalDate)
+                .Take(3)
+                .ToList();
+
+            return Results.Ok(new
+            {
+                RoId         = ro.Id,
+                RoBodyType   = ro.BodyType,
+                RoColour     = ro.Colour,
+                RoChassisTag = ro.ChassisTag,
+                RoRequiredDate = ro.RequiredDate,
+                Candidates   = scored,
+            });
+        })
+        .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "ADMIN"))
+        .WithName("GetChassisSuggestions");
+    }
+
+    private static string BuildSuggestionReason(int tag, int colour, int proximity,
+        DateOnly? arrivalDate, DateOnly? requiredDate)
+    {
+        var parts = new List<string>();
+        if (tag == 100) parts.Add("exact tag match");
+        if (colour == 50) parts.Add("colour match");
+        if (proximity > 0 && arrivalDate.HasValue && requiredDate.HasValue)
+        {
+            var diff = arrivalDate.Value.DayNumber - requiredDate.Value.DayNumber;
+            parts.Add(diff <= 0
+                ? $"arrives {Math.Abs(diff)} day{(Math.Abs(diff) == 1 ? "" : "s")} before required date"
+                : $"arrives {diff} day{(diff == 1 ? "" : "s")} after required date");
+        }
+        if (parts.Count == 0) return "Available chassis, no specific match";
+        var first = char.ToUpper(parts[0][0]) + parts[0][1..];
+        return parts.Count == 1 ? first : first + ", " + string.Join(", ", parts.Skip(1));
     }
 }
 
 public record ApproveRoRequest(string SignedByName, string? Notes);
 public record AllocateChassisRequest(Guid RoId);
 public record ScheduleRoRequest(string StartWeek);
+public record ChassisSuggestionDto(
+    Guid ChassisId,
+    string ChassisNumber,
+    string? BodyType,
+    string? Colour,
+    string? TagNumber,
+    DateOnly? ArrivalDate,
+    int Score,
+    ScoreBreakdownDto ScoreBreakdown,
+    string Reason);
+public record ScoreBreakdownDto(int Tag, int Colour, int Proximity);
