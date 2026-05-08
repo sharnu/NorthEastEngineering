@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Nee.Api.Domain;
 using Xunit;
 
@@ -327,6 +328,48 @@ public class KanbanEndpointTests(ApiFixture fixture)
         // All FAB_LINE ops on a tipper are BODY track; card must reflect that
         card.Tasks.Should().AllSatisfy(t => t.FlowTrack.Should().Be("BODY"));
         card.Track.Should().Be("BODY");
+    }
+
+    // ── E26-S1: parity — grouped board covers all open tasks ─────────────────
+
+    [Fact]
+    public async Task Parity_GroupedBoardCoversAllOpenTasks()
+    {
+        var salesClient = AuthClient(SalesUserId, "SALES");
+        var customers   = await salesClient.GetFromJsonAsync<CustomerItem[]>("/api/customers");
+        var customerId  = customers!.First().Id;
+
+        await salesClient.PostAsJsonAsync("/api/repair-orders", new
+        {
+            CustomerId = customerId, JobTypeId = 1, TemplateCode = "TP42N",
+            Rego = "PAR001", Priority = 2,
+        });
+
+        // Snapshot all open task IDs directly from DB before fetching the board
+        await using var db = fixture.CreateDbContext();
+        var openTaskIds = await db.JobTasks
+            .Where(t => t.Status != "COMPLETED" && t.Status != "CANCELLED")
+            .Select(t => t.Id)
+            .ToListAsync();
+
+        // Fetch the grouped board and flatten all task IDs from every card
+        var board = await salesClient.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban");
+        var boardTaskIds = board!.Stations
+            .SelectMany(s => s.Cards)
+            .SelectMany(c => c.Tasks)
+            .Select(t => t.Id)
+            .ToList();
+
+        var boardTaskSet = boardTaskIds.ToHashSet();
+
+        // Every open task must appear in at least one card
+        openTaskIds.Should().AllSatisfy(id =>
+            boardTaskSet.Should().Contain(id, $"open task {id} must appear in the board"));
+
+        // No task appears in more than one card (no duplicates)
+        boardTaskIds.Should().HaveSameCount(
+            boardTaskIds.Distinct().ToList(),
+            "each task appears in exactly one card");
     }
 
     // ── Response DTOs ─────────────────────────────────────────────────────────

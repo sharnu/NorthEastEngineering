@@ -411,6 +411,7 @@ public static class TechEndpoints
 
             // Fire-and-forget: board clients refresh on stage change or task completion
             _ = hub.Clients.All.SendAsync("KanbanUpdated", new { roId = task.RoId }, CancellationToken.None);
+            _ = hub.NotifyCardUpdated(task.RoId, task.StationId);
 
             return Results.Ok(new
             {

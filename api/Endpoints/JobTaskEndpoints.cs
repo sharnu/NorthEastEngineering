@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Nee.Api.Data;
 using Nee.Api.Domain;
+using Nee.Api.Hubs;
 
 namespace Nee.Api.Endpoints;
 
@@ -18,6 +20,7 @@ public static class JobTaskEndpoints
             AssignTaskRequest req,
             ClaimsPrincipal principal,
             NeeDbContext db,
+            IHubContext<KanbanHub> hub,
             CancellationToken ct) =>
         {
             var task = await db.JobTasks.FindAsync([id], ct);
@@ -71,6 +74,7 @@ public static class JobTaskEndpoints
 
             task.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
+            _ = hub.NotifyCardUpdated(task.RoId, task.StationId);
             return Results.NoContent();
         })
         .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "STATION_OWNER"))

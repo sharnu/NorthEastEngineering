@@ -3,8 +3,8 @@ import {
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { interval } from 'rxjs';
-import { startWith, switchMap, catchError } from 'rxjs/operators';
+import { interval, Subject } from 'rxjs';
+import { startWith, switchMap, catchError, debounceTime } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import * as signalR from '@microsoft/signalr';
@@ -342,6 +342,7 @@ export class KanbanBoardComponent implements OnInit {
   isDrawerOpen = signal(false);
 
   private hubConnection: KanbanHubConnection | null = null;
+  private readonly cardUpdated$ = new Subject<void>();
 
   distinctBodyTypes = computed<string[]>(() => {
     const types = this.allStations()
@@ -375,6 +376,10 @@ export class KanbanBoardComponent implements OnInit {
     effect(() => {
       localStorage.setItem(this.BT_KEY, JSON.stringify(this.activeBodyTypes()));
     });
+    this.cardUpdated$.pipe(
+      debounceTime(250),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(() => this.refresh());
   }
 
   ngOnInit() {
@@ -403,6 +408,7 @@ export class KanbanBoardComponent implements OnInit {
   private connectRealtime(): void {
     const conn = this.hubFactory();
     conn.on('KanbanUpdated', () => this.refresh());
+    conn.on('KanbanCardUpdated', () => this.cardUpdated$.next());
     conn.start().catch(err => console.error('[KanbanHub]', err));
     this.hubConnection = conn;
     this.destroyRef.onDestroy(() => conn.stop());

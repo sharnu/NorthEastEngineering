@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Nee.Api.Data;
 using Nee.Api.Domain.Events;
+using Nee.Api.Hubs;
 using Nee.Api.Services;
 
 namespace Nee.Api.Endpoints;
@@ -200,6 +202,7 @@ public static class KanbanEndpoints
             ClaimsPrincipal principal,
             NeeDbContext db,
             IGateEvaluator gateEvaluator,
+            IHubContext<KanbanHub> hub,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(req.Reason) || req.Reason.Trim().Length < 10)
@@ -286,67 +289,13 @@ public static class KanbanEndpoints
             RoLifecycleEvents.EmitRoStageForceAdvanced(db, id, userId, fromStageId, targetStageId, req.Reason.Trim());
 
             await db.SaveChangesAsync(ct);
+            var stationId = req.StationId ?? targetStageId;
+            _ = hub.NotifyCardUpdated(id, stationId);
             return Results.NoContent();
         })
         .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "ADMIN"))
         .WithName("ForceAdvanceKanbanStage");
 
-        // POST /api/kanban/ros/{id}/override-stage — backward-compat alias (remove in E26-S3)
-        grp.MapPost("/ros/{id:guid}/override-stage", async (
-            Guid id,
-            OverrideStageRequest req,
-            ClaimsPrincipal principal,
-            NeeDbContext db,
-            IGateEvaluator gateEvaluator,
-            CancellationToken ct) =>
-        {
-            // Delegate to force-advance logic with the provided stageId
-            if (string.IsNullOrWhiteSpace(req.Reason) || req.Reason.Trim().Length < 10)
-                return Results.UnprocessableEntity(new { message = "Reason must be at least 10 characters." });
-
-            var ro = await db.RepairOrders.FindAsync(new object[] { id }, ct);
-            if (ro is null) return Results.NotFound();
-            if (ro.Status is "COMPLETED" or "CANCELLED")
-                return Results.Conflict(new { message = "Cannot override stage on a completed or cancelled repair order." });
-
-            var targetStage = await db.KanbanStages.FindAsync(new object[] { req.StageId }, ct);
-            if (targetStage is null)
-                return Results.UnprocessableEntity(new { message = "Stage not found." });
-
-            var state = await db.RoKanbanStates.FirstOrDefaultAsync(s => s.RoId == id, ct);
-            short fromStageId = 0;
-            if (state is null)
-            {
-                state = new Nee.Api.Domain.RoKanbanState
-                {
-                    RoId           = id,
-                    CurrentStageId = req.StageId,
-                    EnteredStageAt = DateTimeOffset.UtcNow,
-                    UpdatedAt      = DateTimeOffset.UtcNow,
-                };
-                db.RoKanbanStates.Add(state);
-            }
-            else
-            {
-                fromStageId          = state.CurrentStageId;
-                state.CurrentStageId = req.StageId;
-                state.EnteredStageAt = DateTimeOffset.UtcNow;
-                state.UpdatedAt      = DateTimeOffset.UtcNow;
-            }
-
-            var userId = GetKanbanCallerId(principal);
-
-            state.LastOverrideAt     = DateTimeOffset.UtcNow;
-            state.LastOverrideReason = req.Reason.Trim();
-            state.LastOverrideBy     = userId;
-
-            RoLifecycleEvents.EmitRoStageForceAdvanced(db, id, userId, fromStageId, req.StageId, req.Reason.Trim());
-
-            await db.SaveChangesAsync(ct);
-            return Results.NoContent();
-        })
-        .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "ADMIN"))
-        .WithName("OverrideKanbanStage");
     }
 
     private static Guid? GetKanbanCallerId(ClaimsPrincipal p)
@@ -403,5 +352,4 @@ public record KanbanCardDto(
     bool HasManualOverride,
     KanbanCardTaskDto[] Tasks);
 
-public record OverrideStageRequest(short StageId, string Reason);
 public record ForceAdvanceRequest(string Reason, short? StageId = null, short? StationId = null);
