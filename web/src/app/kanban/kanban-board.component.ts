@@ -8,15 +8,15 @@ import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../core/auth.service';
-import { KanbanService, KanbanStationDto, KanbanCardDto, KanbanTaskDto } from './kanban.service';
+import { KanbanService, KanbanStationDto, KanbanCardDto } from './kanban.service';
 import { StationCardComponent } from './station-card.component';
-import { TaskDrawerComponent } from './task-drawer.component';
+import { CardDrawerComponent } from './card-drawer.component';
 import { NotificationBellComponent } from '../core/notification-bell.component';
 
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [CommonModule, DatePipe, StationCardComponent, TaskDrawerComponent, NotificationBellComponent],
+  imports: [CommonModule, DatePipe, StationCardComponent, CardDrawerComponent, NotificationBellComponent],
   template: `
     <!-- Topbar -->
     <div class="topbar">
@@ -91,12 +91,10 @@ import { NotificationBellComponent } from '../core/notification-bell.component';
       </div>
     </div>
 
-    <!-- Task drawer (E23-S3 will replace with card-aware drawer) -->
-    <app-task-drawer
-      [task]="selectedTask()"
+    <app-card-drawer
+      [card]="selectedCard()"
       [isOpen]="isDrawerOpen()"
-      (closed)="isDrawerOpen.set(false)"
-      (taskUpdated)="onTaskUpdated($event)" />
+      (closed)="isDrawerOpen.set(false)" />
   `,
   styles: [`
     /* Topbar */
@@ -208,9 +206,8 @@ export class KanbanBoardComponent implements OnInit {
   lastUpdated       = signal<Date | null>(null);
   loadError         = signal(false);
 
-  // Drawer (E23-S3 will replace with card-aware drawer)
-  selectedTask  = signal<KanbanTaskDto | null>(null);
-  isDrawerOpen  = signal(false);
+  selectedCard = signal<KanbanCardDto | null>(null);
+  isDrawerOpen = signal(false);
 
   ngOnInit() {
     interval(30_000).pipe(
@@ -255,33 +252,8 @@ export class KanbanBoardComponent implements OnInit {
     this.loadBoard(stationId);
   }
 
-  // TODO E23-S3: replace with card-aware drawer that shows all tasks in the card
   openCardDrawer(card: KanbanCardDto): void {
-    const t = card.tasks[0];
-    if (!t) return;
-    this.selectedTask.set({
-      id:               t.id,
-      roId:             card.roId,
-      roNumber:         card.roNumber,
-      sequence:         t.sequence,
-      jobCodeLine:      t.jobCodeLine,
-      operationName:    t.operationName,
-      assignedToUserId: t.assignedToUserId,
-      assignedToName:   t.assignedToName,
-      estimatedHours:   t.estimatedHours,
-      actualHours:      t.actualHours,
-      status:           t.status,
-      priority:         card.priority,
-      customerName:     card.customerName,
-      requiredDate:     card.requiredDate,
-      stationId:        card.stationId,
-      stationName:      card.stationName,
-      notes:            t.notes,
-      hasManualOverride: card.hasManualOverride,
-      overrideAt:       null,
-      overrideReason:   null,
-      overrideByName:   null,
-    });
+    this.selectedCard.set(card);
     this.isDrawerOpen.set(true);
   }
 
@@ -289,10 +261,6 @@ export class KanbanBoardComponent implements OnInit {
     if (card.sourcePdfUrl) {
       window.open(card.sourcePdfUrl, '_blank');
     }
-  }
-
-  onTaskUpdated(partial: Partial<KanbanTaskDto>): void {
-    this.selectedTask.update(t => t ? { ...t, ...partial } : t);
   }
 
   logout() {
