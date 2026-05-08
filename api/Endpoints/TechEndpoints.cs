@@ -315,7 +315,8 @@ public static class TechEndpoints
                          && a.EntityId  == roId
                          && (a.Category == "DRAFT_DRAWING_PACK"
                           || a.Category == "DRAFT_BOM"
-                          || a.Category == "DRAFT_LAYOUT"))
+                          || a.Category == "DRAFT_LAYOUT"
+                          || a.Category == "SOURCE_PDF"))
                 .OrderBy(a => a.UploadedAt)
                 .Select(a => new
                 {
@@ -648,6 +649,7 @@ public static class TechEndpoints
         "DRAFT_DRAWING_PACK" => "Drawing pack",
         "DRAFT_BOM"          => "BOM",
         "DRAFT_LAYOUT"       => "Layout",
+        "SOURCE_PDF"         => "RO PDF",
         _                    => category,
     };
 

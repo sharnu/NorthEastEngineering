@@ -69,14 +69,28 @@ function formatElapsed(seconds: number): string {
 
           <!-- 3. RO Documents -->
           @if (roDocuments().length > 0) {
-            <div class="doc-row">
+            <section class="card">
+              <h3 class="section-title">RO Documents</h3>
               @for (doc of roDocuments(); track doc.attachmentId) {
-                <a class="doc-btn" [href]="doc.url" target="_blank" rel="noopener">
-                  <span class="doc-cat">{{ doc.label }}</span>
-                  <span class="doc-name">{{ doc.fileName }}</span>
+                <a class="doc-item" [href]="doc.url" target="_blank" rel="noopener">
+                  <div class="doc-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <rect x="3" y="1" width="11" height="15" rx="1.5" fill="white" stroke="var(--rule-strong)" stroke-width="0.75"/>
+                      <path d="M11 1v4h4" stroke="var(--rule-strong)" stroke-width="0.75" fill="none"/>
+                      <rect x="3" y="1" width="11" height="15" rx="1.5" fill="white" stroke="var(--rule-strong)" stroke-width="0.75"/>
+                      <path d="M11 1v4h4" stroke="var(--rule-strong)" stroke-width="0.75"/>
+                      <rect x="6" y="9" width="8" height="1" rx="0.5" fill="var(--ink-3)"/>
+                      <rect x="6" y="11.5" width="6" height="1" rx="0.5" fill="var(--ink-3)"/>
+                    </svg>
+                  </div>
+                  <div class="doc-info">
+                    <span class="doc-filename">{{ doc.fileName }}</span>
+                    <span class="doc-meta">{{ doc.label }} · {{ formatBytes(doc.sizeBytes) }}</span>
+                  </div>
+                  <span class="doc-chevron">›</span>
                 </a>
               }
-            </div>
+            </section>
           }
 
           <!-- 4. Hours tracker -->
@@ -269,20 +283,18 @@ function formatElapsed(seconds: number): string {
     .btn-block    { background: #dc2626; color: #fff; }
     .btn-qc       { background: #7c3aed; color: #fff; }
     .empty-state  { text-align: center; padding: 48px 16px; color: #6b7280; }
-    .doc-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 4px; }
-    .doc-btn {
-      flex: 1; min-width: 100px; padding: 12px 10px;
-      border: 0.5px solid var(--rule-strong); border-radius: 10px;
-      background: white; color: var(--ink);
-      font-family: var(--sans); text-align: center; text-decoration: none;
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
-      display: flex; flex-direction: column; gap: 3px; align-items: center;
+    .doc-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-bottom: 0.5px solid var(--rule);
+      text-decoration: none; color: var(--ink); -webkit-tap-highlight-color: transparent;
     }
-    .doc-btn:active { background: var(--paper-2); }
-    .doc-cat { font-size: 11px; font-family: var(--mono); text-transform: uppercase;
-               letter-spacing: 0.08em; color: var(--ink-3); }
-    .doc-name { font-size: 12px; color: var(--ink); word-break: break-all;
-                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .doc-item:last-child { border-bottom: none; }
+    .doc-item:active { opacity: 0.6; }
+    .doc-icon { flex-shrink: 0; }
+    .doc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .doc-filename { font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .doc-meta { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+    .doc-chevron { flex-shrink: 0; color: var(--ink-3); font-size: 20px; line-height: 1; }
   `],
 })
 export class TechTaskDetailComponent implements OnInit, OnDestroy {
@@ -444,6 +456,12 @@ export class TechTaskDetailComponent implements OnInit, OnDestroy {
       case 'blocked':     return 'status-pill pill-blocked';
       default:            return 'status-pill pill-default';
     }
+  }
+
+  formatBytes(n: number): string {
+    if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(1)} MB`;
+    if (n >= 1_024)     return `${Math.round(n / 1_024)} KB`;
+    return `${n} B`;
   }
 
   openQc(): void {
