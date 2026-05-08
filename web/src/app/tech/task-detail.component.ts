@@ -260,28 +260,23 @@ function formatElapsed(seconds: number): string {
       display: flex; flex-direction: column; gap: 8px;
     }
     .btn-clockout {
-      padding: 8px 14px; background: var(--bad); color: white; border: none;
-      border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; font-family: var(--sans);
+      padding: 8px 16px; background: white; color: var(--bad);
+      border: 0.5px solid var(--bad); border-radius: 6px;
+      font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--sans);
+      transition: background 0.15s;
     }
-    .btn-clockout:hover { background: #991b1b; }
+    .btn-clockout:active { background: #fef2f2; }
     .btn {
-      width: 100%; padding: 14px; border-radius: 10px;
-      border: none; font-size: 14px; font-weight: 500;
+      width: 100%; padding: 13px; border-radius: 8px; border: none;
+      font-size: 13px; font-weight: 500; letter-spacing: 0.01em;
       cursor: pointer; font-family: var(--sans);
+      transition: opacity 0.15s, transform 0.1s;
     }
-    .btn-clockin  { background: var(--accent); color: white; }
-    .btn-clockin:hover { background: #1d6bc8; }
-    .btn-complete { background: var(--good); color: white; }
-    .btn-complete:hover { background: #166534; }
-    .btn-block {
-      background: white; border: 0.5px solid var(--rule-strong);
-      color: var(--ink-2); padding: 10px; border-radius: 8px; font-size: 12px;
-    }
-    .btn-clockin  { background: #2563eb; color: #fff; }
-    .btn-clockout { background: #0891b2; color: #fff; }
-    .btn-complete { background: #16a34a; color: #fff; }
-    .btn-block    { background: #dc2626; color: #fff; }
-    .btn-qc       { background: #7c3aed; color: #fff; }
+    .btn:active { transform: scale(0.99); opacity: 0.88; }
+    .btn-clockin  { background: var(--accent); color: #fff; }
+    .btn-complete { background: var(--good); color: #fff; }
+    .btn-block    { background: white; border: 0.5px solid var(--bad); color: var(--bad); }
+    .btn-qc       { background: var(--ink); color: #fff; }
     .empty-state  { text-align: center; padding: 48px 16px; color: #6b7280; }
     .doc-item {
       display: flex; align-items: center; gap: 10px;
