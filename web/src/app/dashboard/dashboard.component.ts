@@ -171,8 +171,8 @@ import { SchedulingComponent } from './scheduling.component';
     .topbar { display: flex; justify-content: space-between; align-items: center;
               padding: 14px 28px; background: var(--ink); color: var(--paper);
               border-bottom: 0.5px solid rgba(245,242,234,0.1); position: relative; z-index: 10; }
-    .brand  { display: flex; flex-direction: column; gap: 2px; }
-    .brand-logo { height: 36px; width: auto; filter: brightness(0) invert(1); }
+    .brand  { display: flex; flex-direction: row; align-items: center; gap: 12px; }
+    .brand-logo { height: 48px; width: auto; filter: brightness(0) invert(1); }
     .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
     .user-label { font-size: 13px; color: rgba(245,242,234,0.8); }
