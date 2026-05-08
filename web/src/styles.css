@@ -22,7 +22,41 @@
   --display: 'Fraunces', Georgia, serif;
   --sans: 'Inter', -apple-system, sans-serif;
   --mono: 'JetBrains Mono', monospace;
+  /* Topbar tokens (overridden by SaaS theme) */
+  --topbar-bg:     #0a0e0f;
+  --topbar-text:   #f5f2ea;
+  --topbar-sub:    rgba(245, 242, 234, 0.50);
+  --topbar-muted:  rgba(245, 242, 234, 0.80);
+  --topbar-border: rgba(245, 242, 234, 0.10);
+  --topbar-hover:  rgba(245, 242, 234, 0.10);
+  --logo-filter:   brightness(0) invert(1);
 }
+
+/* ── SaaS theme ────────────────────────────────────────────────────── */
+[data-theme="saas"] {
+  --paper:        #f0f4f8;
+  --paper-2:      #e4ecf4;
+  --paper-3:      #d2dfe9;
+  --ink:          #0d1b2e;
+  --ink-2:        #2d4059;
+  --ink-3:        #6b88a4;
+  --rule:         rgba(13, 27, 46, 0.08);
+  --rule-strong:  rgba(13, 27, 46, 0.15);
+  --accent:       #3b6fd4;
+  --good:         #16a34a;
+  --warn:         #d97706;
+  --bad:          #dc2626;
+  --info:         #0369a1;
+  --topbar-bg:    #ffffff;
+  --topbar-text:  #0d1b2e;
+  --topbar-sub:   rgba(13, 27, 46, 0.45);
+  --topbar-muted: rgba(13, 27, 46, 0.60);
+  --topbar-border:rgba(13, 27, 46, 0.08);
+  --topbar-hover: rgba(13, 27, 46, 0.05);
+  --logo-filter:  none;
+}
+
+[data-theme="saas"] body::before { display: none; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 

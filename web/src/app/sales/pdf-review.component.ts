@@ -9,6 +9,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, switchMap, debounceTime, startWith, catchError, of } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { AuthService } from '../core/auth.service';
+import { ThemeSwitcherComponent } from '../core/theme-switcher.component';
 
 interface ScoredField {
   value: string | null;
@@ -31,7 +32,7 @@ interface TemplateDetail extends TemplateSummary { operations: TemplateOperation
 @Component({
   selector: 'app-pdf-review',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ThemeSwitcherComponent],
   template: `
     <div class="topbar">
       <div class="brand">
@@ -41,6 +42,7 @@ interface TemplateDetail extends TemplateSummary { operations: TemplateOperation
       <div class="topbar-right">
         <a class="back-link" (click)="router.navigate(['/sales/ros'])">&#8592; Repair Orders</a>
         @if (user(); as u) { <span class="user-label">{{ u.fullName }}</span> }
+        <app-theme-switcher />
         <button class="logout" (click)="logout()">Sign out</button>
       </div>
     </div>
@@ -383,18 +385,18 @@ interface TemplateDetail extends TemplateSummary { operations: TemplateOperation
   `,
   styles: [`
     .topbar { display: flex; justify-content: space-between; align-items: center;
-              padding: 14px 28px; background: var(--ink); color: var(--paper);
-              border-bottom: 0.5px solid rgba(245,242,234,0.1); }
+              padding: 14px 28px; background: var(--topbar-bg); color: var(--topbar-text);
+              border-bottom: 0.5px solid var(--topbar-border); }
     .brand { display: flex; flex-direction: row; align-items: center; gap: 12px; }
-    .brand-logo { height: 48px; width: auto; filter: brightness(0) invert(1); }
-    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
+    .brand-logo { height: 48px; width: auto; filter: var(--logo-filter); }
+    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--topbar-sub); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
-    .back-link { font-size: 13px; color: rgba(245,242,234,0.7); cursor: pointer; transition: color 0.15s; }
+    .back-link { font-size: 13px; color: var(--topbar-muted); cursor: pointer; transition: color 0.15s; }
     .back-link:hover { color: var(--paper); }
-    .user-label { font-size: 13px; color: rgba(245,242,234,0.8); }
-    .logout { background: transparent; border: 0.5px solid rgba(245,242,234,0.3); color: var(--paper);
+    .user-label { font-size: 13px; color: var(--topbar-muted); }
+    .logout { background: transparent; border: 0.5px solid var(--topbar-border); color: var(--topbar-text);
               padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-    .logout:hover { background: rgba(245,242,234,0.1); }
+    .logout:hover { background: var(--topbar-hover); }
 
     .pdf-review-layout { display: grid; grid-template-columns: 1fr 1fr; height: calc(100vh - 57px); }
     @media (max-width: 900px) { .pdf-review-layout { grid-template-columns: 1fr; } }
@@ -470,7 +472,7 @@ interface TemplateDetail extends TemplateSummary { operations: TemplateOperation
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-secondary { background: transparent; color: var(--ink); border: 0.5px solid var(--rule-strong);
                      padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; }
-    .btn-secondary:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+    .btn-secondary:hover { background: var(--topbar-bg); color: var(--topbar-text); border-color: var(--ink); }
   `],
 })
 export class PdfReviewComponent implements OnInit {

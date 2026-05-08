@@ -8,6 +8,7 @@ import { interval, forkJoin } from 'rxjs';
 import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { AuthService } from '../core/auth.service';
+import { ThemeSwitcherComponent } from '../core/theme-switcher.component';
 import { DashboardService, KpiData, StationLoad, TopVarianceItem, ActiveRo } from './dashboard.service';
 import { ActiveRosTableComponent } from './active-ros-table.component';
 import { NotificationBellComponent } from '../core/notification-bell.component';
@@ -17,7 +18,7 @@ import { SchedulingComponent } from './scheduling.component';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, DatePipe, DecimalPipe, ActiveRosTableComponent, NotificationBellComponent, ReportsComponent, SchedulingComponent],
+  imports: [CommonModule, DatePipe, DecimalPipe, ActiveRosTableComponent, NotificationBellComponent, ReportsComponent, SchedulingComponent, ThemeSwitcherComponent],
   styleUrls: ['./dashboard.component.css'],
   template: `
     <div class="topbar">
@@ -42,6 +43,7 @@ import { SchedulingComponent } from './scheduling.component';
         <a class="nav-link" (click)="router.navigate(['/kanban'])">Kanban Board</a>
         <a class="nav-link" (click)="router.navigate(['/dashboard/archive'])">Archive</a>
         <app-notification-bell />
+        <app-theme-switcher />
         <button class="logout" (click)="logout()">Sign out</button>
       </div>
     </div>
@@ -169,27 +171,27 @@ import { SchedulingComponent } from './scheduling.component';
   styles: [`
     /* Topbar */
     .topbar { display: flex; justify-content: space-between; align-items: center;
-              padding: 14px 28px; background: var(--ink); color: var(--paper);
-              border-bottom: 0.5px solid rgba(245,242,234,0.1); position: relative; z-index: 10; }
+              padding: 14px 28px; background: var(--topbar-bg); color: var(--topbar-text);
+              border-bottom: 0.5px solid var(--topbar-border); position: relative; z-index: 10; }
     .brand  { display: flex; flex-direction: row; align-items: center; gap: 12px; }
-    .brand-logo { height: 48px; width: auto; filter: brightness(0) invert(1); }
-    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
+    .brand-logo { height: 48px; width: auto; filter: var(--logo-filter); }
+    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--topbar-sub); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
-    .user-label { font-size: 13px; color: rgba(245,242,234,0.8); }
+    .user-label { font-size: 13px; color: var(--topbar-muted); }
     .role  { opacity: 0.65; }
-    .nav-link { font-size: 13px; color: rgba(245,242,234,0.8); cursor: pointer;
+    .nav-link { font-size: 13px; color: var(--topbar-muted); cursor: pointer;
                 padding: 5px 0; border-bottom: 1px solid transparent; transition: border-color 0.15s, color 0.15s; }
-    .nav-link:hover { color: var(--paper); border-bottom-color: rgba(245,242,234,0.4); }
-    .logout { background: transparent; border: 0.5px solid rgba(245,242,234,0.3); color: var(--paper);
+    .nav-link:hover { color: var(--topbar-text); border-bottom-color: var(--topbar-border); }
+    .logout { background: transparent; border: 0.5px solid var(--topbar-border); color: var(--topbar-text);
               padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-    .logout:hover { background: rgba(245,242,234,0.1); }
+    .logout:hover { background: var(--topbar-hover); }
 
     /* Refresh indicator */
     .refresh-indicator { display: flex; align-items: center; gap: 6px; }
     .refresh-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); opacity: 0.4; }
     .refresh-dot.active { opacity: 1; animation: pulse 1s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-    .last-updated { font-family: var(--mono); font-size: 11px; color: rgba(245,242,234,0.6); }
+    .last-updated { font-family: var(--mono); font-size: 11px; color: var(--topbar-sub); }
 
     /* Stage */
     .stage { background: var(--paper); min-height: calc(100vh - 57px); padding-bottom: 40px; position: relative; z-index: 1; }

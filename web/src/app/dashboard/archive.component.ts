@@ -6,6 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime } from 'rxjs';
 import { AuthService } from '../core/auth.service';
+import { ThemeSwitcherComponent } from '../core/theme-switcher.component';
 import { NotificationBellComponent } from '../core/notification-bell.component';
 import {
   DashboardService, ArchiveRo, JobTypeRef,
@@ -17,7 +18,7 @@ type SortField = 'completedAt' | 'roNumber' | 'rego' | 'customerName' | 'roDate'
 @Component({
   selector: 'app-archive',
   standalone: true,
-  imports: [CommonModule, DatePipe, DecimalPipe, RouterLink, NotificationBellComponent],
+  imports: [CommonModule, DatePipe, DecimalPipe, RouterLink, NotificationBellComponent, ThemeSwitcherComponent],
   template: `
     <!-- Topbar -->
     <div class="topbar">
@@ -32,6 +33,7 @@ type SortField = 'completedAt' | 'roNumber' | 'rego' | 'customerName' | 'roDate'
         <a class="nav-link" (click)="router.navigate(['/dashboard'])">Dashboard</a>
         <a class="nav-link" (click)="router.navigate(['/kanban'])">Kanban Board</a>
         <app-notification-bell />
+        <app-theme-switcher />
         <button class="logout" (click)="logout()">Sign out</button>
       </div>
     </div>
@@ -141,20 +143,20 @@ type SortField = 'completedAt' | 'roNumber' | 'rego' | 'customerName' | 'roDate'
   styles: [`
     /* Topbar */
     .topbar { display: flex; justify-content: space-between; align-items: center;
-              padding: 14px 28px; background: var(--ink); color: var(--paper);
-              border-bottom: 0.5px solid rgba(245,242,234,0.1); position: relative; z-index: 10; }
+              padding: 14px 28px; background: var(--topbar-bg); color: var(--topbar-text);
+              border-bottom: 0.5px solid var(--topbar-border); position: relative; z-index: 10; }
     .brand  { display: flex; flex-direction: row; align-items: center; gap: 12px; }
-    .brand-logo { height: 48px; width: auto; filter: brightness(0) invert(1); }
-    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
+    .brand-logo { height: 48px; width: auto; filter: var(--logo-filter); }
+    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--topbar-sub); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
-    .user-label { font-size: 13px; color: rgba(245,242,234,0.8); }
+    .user-label { font-size: 13px; color: var(--topbar-muted); }
     .role { opacity: 0.65; }
-    .nav-link { font-size: 13px; color: rgba(245,242,234,0.8); cursor: pointer;
+    .nav-link { font-size: 13px; color: var(--topbar-muted); cursor: pointer;
                 padding: 5px 0; border-bottom: 1px solid transparent; transition: border-color 0.15s, color 0.15s; }
-    .nav-link:hover { color: var(--paper); border-bottom-color: rgba(245,242,234,0.4); }
-    .logout { background: transparent; border: 0.5px solid rgba(245,242,234,0.3); color: var(--paper);
+    .nav-link:hover { color: var(--topbar-text); border-bottom-color: var(--topbar-border); }
+    .logout { background: transparent; border: 0.5px solid var(--topbar-border); color: var(--topbar-text);
               padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-    .logout:hover { background: rgba(245,242,234,0.1); }
+    .logout:hover { background: var(--topbar-hover); }
 
     /* Page header */
     .page-header { display: flex; align-items: baseline; justify-content: space-between;
@@ -166,7 +168,7 @@ type SortField = 'completedAt' | 'roNumber' | 'rego' | 'customerName' | 'roDate'
     .export-btn { padding: 8px 16px; border: 0.5px solid var(--rule-strong); border-radius: 999px;
                   font-size: 13px; font-weight: 500; background: transparent; color: var(--ink); cursor: pointer;
                   transition: background 0.15s, color 0.15s; }
-    .export-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+    .export-btn:hover:not(:disabled) { background: var(--topbar-bg); color: var(--topbar-text); border-color: var(--ink); }
     .export-btn:disabled { opacity: 0.4; cursor: default; }
 
     /* Filter bar */
@@ -219,7 +221,7 @@ type SortField = 'completedAt' | 'roNumber' | 'rego' | 'customerName' | 'roDate'
                   padding: 20px 28px 40px; }
     .page-btn { padding: 7px 16px; border: 0.5px solid var(--rule-strong); border-radius: 6px;
                 font-size: 13px; background: transparent; color: var(--ink); cursor: pointer; }
-    .page-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+    .page-btn:hover:not(:disabled) { background: var(--topbar-bg); color: var(--topbar-text); }
     .page-btn:disabled { opacity: 0.35; cursor: default; }
     .page-indicator { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
   `],

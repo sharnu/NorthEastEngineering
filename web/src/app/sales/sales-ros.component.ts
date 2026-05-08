@@ -9,6 +9,7 @@ import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../core/auth.service';
+import { ThemeSwitcherComponent } from '../core/theme-switcher.component';
 import { ActiveRo } from '../dashboard/dashboard.service';
 import { ActiveRosTableComponent } from '../dashboard/active-ros-table.component';
 import { NotificationBellComponent } from '../core/notification-bell.component';
@@ -16,7 +17,7 @@ import { NotificationBellComponent } from '../core/notification-bell.component';
 @Component({
   selector: 'app-sales-ros',
   standalone: true,
-  imports: [CommonModule, DatePipe, ActiveRosTableComponent, NotificationBellComponent],
+  imports: [CommonModule, DatePipe, ActiveRosTableComponent, NotificationBellComponent, ThemeSwitcherComponent],
   template: `
     <div class="topbar">
       <div class="brand">
@@ -28,6 +29,7 @@ import { NotificationBellComponent } from '../core/notification-bell.component';
           <span class="user-label">{{ u.fullName }} · <span class="role">{{ u.roles.join(', ') }}</span></span>
         }
         <app-notification-bell />
+        <app-theme-switcher />
         <button class="logout" (click)="logout()">Sign out</button>
       </div>
     </div>
@@ -61,17 +63,17 @@ import { NotificationBellComponent } from '../core/notification-bell.component';
   `,
   styles: [`
     .topbar { display: flex; justify-content: space-between; align-items: center;
-              padding: 14px 28px; background: var(--ink); color: var(--paper);
-              border-bottom: 0.5px solid rgba(245,242,234,0.1); position: relative; z-index: 10; }
+              padding: 14px 28px; background: var(--topbar-bg); color: var(--topbar-text);
+              border-bottom: 0.5px solid var(--topbar-border); position: relative; z-index: 10; }
     .brand  { display: flex; flex-direction: row; align-items: center; gap: 12px; }
-    .brand-logo { height: 48px; width: auto; filter: brightness(0) invert(1); }
-    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
+    .brand-logo { height: 48px; width: auto; filter: var(--logo-filter); }
+    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--topbar-sub); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
-    .user-label { font-size: 13px; color: rgba(245,242,234,0.8); }
+    .user-label { font-size: 13px; color: var(--topbar-muted); }
     .role  { opacity: 0.65; }
-    .logout { background: transparent; border: 0.5px solid rgba(245,242,234,0.3); color: var(--paper);
+    .logout { background: transparent; border: 0.5px solid var(--topbar-border); color: var(--topbar-text);
               padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-    .logout:hover { background: rgba(245,242,234,0.1); }
+    .logout:hover { background: var(--topbar-hover); }
 
     .stage { background: var(--paper); min-height: calc(100vh - 57px); padding-bottom: 40px; position: relative; z-index: 1; }
     .page-header { display: flex; align-items: center; justify-content: space-between;

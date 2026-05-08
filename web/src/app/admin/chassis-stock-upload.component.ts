@@ -9,13 +9,14 @@ import {
   DryRunResult, CommitResult,
   ParsedChassisRow, ChassisUpdateDiff, ChassisStaleRow, ParseError,
 } from './chassis-stock.service';
+import { ThemeSwitcherComponent } from '../core/theme-switcher.component';
 
 const MAX_DISPLAY_ROWS = 100;
 
 @Component({
   selector: 'app-chassis-stock-upload',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ThemeSwitcherComponent],
   template: `
     <div class="page-wrap">
       <!-- Top bar -->
@@ -27,6 +28,7 @@ const MAX_DISPLAY_ROWS = 100;
         <div class="topbar-right">
           <a class="nav-link" (click)="router.navigate(['/admin'])">Admin</a>
           <a class="nav-link" (click)="router.navigate(['/dashboard'])">Dashboard</a>
+          <app-theme-switcher />
         </div>
       </div>
 
@@ -230,16 +232,16 @@ const MAX_DISPLAY_ROWS = 100;
 
     .topbar {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 14px 28px; background: var(--ink); color: var(--paper);
+      padding: 14px 28px; background: var(--topbar-bg); color: var(--topbar-text);
     }
     .brand { display: flex; flex-direction: row; align-items: center; gap: 12px; }
-    .brand-logo { height: 48px; width: auto; filter: brightness(0) invert(1); }
+    .brand-logo { height: 48px; width: auto; filter: var(--logo-filter); }
     .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase;
-                  letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
+                  letter-spacing: 0.12em; color: var(--topbar-sub); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
-    .nav-link { font-size: 13px; color: rgba(245,242,234,0.8); cursor: pointer;
+    .nav-link { font-size: 13px; color: var(--topbar-muted); cursor: pointer;
                 padding: 5px 0; border-bottom: 1px solid transparent; }
-    .nav-link:hover { color: var(--paper); border-bottom-color: rgba(245,242,234,0.4); }
+    .nav-link:hover { color: var(--topbar-text); border-bottom-color: var(--topbar-border); }
 
     .stage { background: var(--paper); min-height: calc(100vh - 57px); }
     .content { max-width: 1100px; margin: 0 auto; padding: 32px 28px; }
@@ -269,7 +271,7 @@ const MAX_DISPLAY_ROWS = 100;
     .actions--commit { margin-top: 20px; justify-content: flex-end; }
 
     .btn-primary {
-      background: var(--ink); color: var(--paper);
+      background: var(--topbar-bg); color: var(--topbar-text);
       border: none; padding: 9px 20px; border-radius: 5px;
       font-size: 13px; font-weight: 500; cursor: pointer;
     }

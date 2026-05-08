@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../core/auth.service';
+import { ThemeSwitcherComponent } from '../core/theme-switcher.component';
 
 interface RoTask {
   id: string;
@@ -73,7 +74,7 @@ interface KanbanStage   { id: number; code: string; name: string; isTerminal: bo
 @Component({
   selector: 'app-ro-detail',
   standalone: true,
-  imports: [CommonModule, DatePipe, FormsModule],
+  imports: [CommonModule, DatePipe, FormsModule, ThemeSwitcherComponent],
   template: `
     <div class="topbar">
       <div class="brand">
@@ -85,6 +86,7 @@ interface KanbanStage   { id: number; code: string; name: string; isTerminal: bo
         @if (user(); as u) {
           <span class="user-label">{{ u.fullName }}</span>
         }
+        <app-theme-switcher />
         <button class="logout" (click)="logout()">Sign out</button>
       </div>
     </div>
@@ -389,18 +391,18 @@ interface KanbanStage   { id: number; code: string; name: string; isTerminal: bo
   `,
   styles: [`
     .topbar { display: flex; justify-content: space-between; align-items: center;
-              padding: 14px 28px; background: var(--ink); color: var(--paper);
-              border-bottom: 0.5px solid rgba(245,242,234,0.1); position: relative; z-index: 1; }
+              padding: 14px 28px; background: var(--topbar-bg); color: var(--topbar-text);
+              border-bottom: 0.5px solid var(--topbar-border); position: relative; z-index: 1; }
     .brand { display: flex; flex-direction: row; align-items: center; gap: 12px; }
-    .brand-logo { height: 48px; width: auto; filter: brightness(0) invert(1); }
-    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
+    .brand-logo { height: 48px; width: auto; filter: var(--logo-filter); }
+    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--topbar-sub); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
-    .back-link { font-size: 13px; color: rgba(245,242,234,0.7); cursor: pointer; transition: color 0.15s; }
+    .back-link { font-size: 13px; color: var(--topbar-muted); cursor: pointer; transition: color 0.15s; }
     .back-link:hover { color: var(--paper); }
-    .user-label { font-size: 13px; color: rgba(245,242,234,0.8); }
-    .logout { background: transparent; border: 0.5px solid rgba(245,242,234,0.3); color: var(--paper);
+    .user-label { font-size: 13px; color: var(--topbar-muted); }
+    .logout { background: transparent; border: 0.5px solid var(--topbar-border); color: var(--topbar-text);
               padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-    .logout:hover { background: rgba(245,242,234,0.1); }
+    .logout:hover { background: var(--topbar-hover); }
 
     .toast { position: fixed; top: 70px; right: 28px; background: var(--good); color: white;
              padding: 12px 18px; border-radius: 8px; font-size: 13px; font-weight: 500;
@@ -526,7 +528,7 @@ interface KanbanStage   { id: number; code: string; name: string; isTerminal: bo
     .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--ink); }
     .field-checkbox { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }
 
-    .btn-primary  { background: var(--ink); color: var(--paper); border: none; border-radius: 6px;
+    .btn-primary  { background: var(--topbar-bg); color: var(--topbar-text); border: none; border-radius: 6px;
                     padding: 9px 20px; font-size: 13px; cursor: pointer; }
     .btn-primary:hover:not(:disabled) { opacity: 0.85; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }

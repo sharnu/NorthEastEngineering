@@ -8,6 +8,7 @@ import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, switchMap, debounceTime, startWith, catchError, of } from 'rxjs';
 import { AuthService } from '../core/auth.service';
+import { ThemeSwitcherComponent } from '../core/theme-switcher.component';
 
 interface Customer { id: string; code: string; name: string; }
 interface JobType { id: number; code: string; name: string; }
@@ -23,7 +24,7 @@ function futureDate(ctrl: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-new-ro',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ThemeSwitcherComponent],
   template: `
     <div class="topbar">
       <div class="brand">
@@ -35,6 +36,7 @@ function futureDate(ctrl: AbstractControl): ValidationErrors | null {
         @if (user(); as u) {
           <span class="user-label">{{ u.fullName }}</span>
         }
+        <app-theme-switcher />
         <button class="logout" (click)="logout()">Sign out</button>
       </div>
     </div>
@@ -204,18 +206,18 @@ function futureDate(ctrl: AbstractControl): ValidationErrors | null {
   `,
   styles: [`
     .topbar { display: flex; justify-content: space-between; align-items: center;
-              padding: 14px 28px; background: var(--ink); color: var(--paper);
-              border-bottom: 0.5px solid rgba(245,242,234,0.1); position: relative; z-index: 1; }
+              padding: 14px 28px; background: var(--topbar-bg); color: var(--topbar-text);
+              border-bottom: 0.5px solid var(--topbar-border); position: relative; z-index: 1; }
     .brand { display: flex; flex-direction: row; align-items: center; gap: 12px; }
-    .brand-logo { height: 48px; width: auto; filter: brightness(0) invert(1); }
-    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(245,242,234,0.5); }
+    .brand-logo { height: 48px; width: auto; filter: var(--logo-filter); }
+    .brand-sub  { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--topbar-sub); }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
-    .back-link { font-size: 13px; color: rgba(245,242,234,0.7); cursor: pointer; transition: color 0.15s; }
+    .back-link { font-size: 13px; color: var(--topbar-muted); cursor: pointer; transition: color 0.15s; }
     .back-link:hover { color: var(--paper); }
-    .user-label { font-size: 13px; color: rgba(245,242,234,0.8); }
-    .logout { background: transparent; border: 0.5px solid rgba(245,242,234,0.3); color: var(--paper);
+    .user-label { font-size: 13px; color: var(--topbar-muted); }
+    .logout { background: transparent; border: 0.5px solid var(--topbar-border); color: var(--topbar-text);
               padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-    .logout:hover { background: rgba(245,242,234,0.1); }
+    .logout:hover { background: var(--topbar-hover); }
 
     .stage { background: var(--paper); min-height: calc(100vh - 57px); padding-bottom: 40px; position: relative; z-index: 1; }
     .page-header { padding: 24px 28px 0; margin-bottom: 16px; }
@@ -254,8 +256,8 @@ function futureDate(ctrl: AbstractControl): ValidationErrors | null {
     .template-card.selected { background: var(--ink); border-color: var(--ink); }
     .template-card.selected .tpl-name { color: var(--paper); }
     .template-card.selected .tpl-code { color: var(--paper-3); }
-    .template-card.selected .tpl-meta { color: rgba(245,242,234,0.6); }
-    .template-card.selected .tpl-variant { color: rgba(245,242,234,0.7); }
+    .template-card.selected .tpl-meta { color: var(--topbar-sub); }
+    .template-card.selected .tpl-variant { color: var(--topbar-muted); }
     .template-card.selected .tpl-hours { color: var(--paper); }
     .tpl-main { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
     .tpl-code { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--ink-3); }
@@ -287,7 +289,7 @@ function futureDate(ctrl: AbstractControl): ValidationErrors | null {
     .btn-secondary { background: transparent; color: var(--ink); border: 0.5px solid var(--rule-strong);
                      padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer;
                      transition: background 0.15s, color 0.15s; }
-    .btn-secondary:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+    .btn-secondary:hover { background: var(--topbar-bg); color: var(--topbar-text); border-color: var(--ink); }
   `],
 })
 export class NewRoComponent implements OnInit {

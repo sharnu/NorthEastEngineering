@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ToastContainerComponent } from './core/toast-container.component';
+import { ThemeService } from './core/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -8,4 +9,6 @@ import { ToastContainerComponent } from './core/toast-container.component';
   imports: [RouterOutlet, ToastContainerComponent],
   template: `<router-outlet /><app-toast-container />`,
 })
-export class AppComponent {}
+export class AppComponent {
+  constructor() { inject(ThemeService).init(); }
+}
