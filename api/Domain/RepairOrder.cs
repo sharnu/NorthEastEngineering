@@ -18,6 +18,8 @@ public class RepairOrder
     public string? Make { get; set; }
     public string? Model { get; set; }
     public string? PaintColour { get; set; }
+    public string? ChassisTag { get; set; }
+    public string? Colour { get; set; }
     public DateOnly? BuildDate { get; set; }
     public string? KeyTagNo { get; set; }
     public int? Odometer { get; set; }

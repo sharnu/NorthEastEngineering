@@ -36,6 +36,9 @@
 
     <!-- Email (MailKit) -->
     <PackageReference Include="MailKit" Version="4.12.0" />
+
+    <!-- E27: Excel intake -->
+    <PackageReference Include="ClosedXML" Version="0.105.*" />
   </ItemGroup>
 
 </Project>

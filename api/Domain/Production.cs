@@ -127,6 +127,18 @@ public class ChassisInventory
     public string? Notes { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+
+    // E27: match fields
+    public string? BodyType { get; set; }
+    public string? Colour { get; set; }
+    public string? TagNumber { get; set; }
+    public DateOnly? ArrivalDate { get; set; }
+    public DateTimeOffset? LastSeenAt { get; set; }
+    public DateTimeOffset? DeliveredAt { get; set; }
+    public Guid? SourceUploadId { get; set; }
+
+    // Navigation
+    public RepairOrder? AllocatedRo { get; set; }
 }
 
 public class CustomerApproval

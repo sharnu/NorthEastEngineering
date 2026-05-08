@@ -65,6 +65,11 @@ export const routes: Routes = [
     canActivate: [authGuard, adminGuard],
   },
   {
+    path: 'admin/chassis-stock',
+    loadComponent: () => import('./admin/chassis-stock-upload.component').then(m => m.ChassisStockUploadComponent),
+    canActivate: [authGuard, adminGuard],
+  },
+  {
     path: 'drafter',
     loadComponent: () => import('./drafter/drafter-shell.component').then(m => m.DrafterShellComponent),
     canActivate: [authGuard, roleGuard(['DRAFTER', 'ADMIN'])],

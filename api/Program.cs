@@ -173,6 +173,7 @@ app.MapQcEndpoints();
 app.MapNotificationEndpoints();
 app.MapSalesPdfEndpoints();
 app.MapSchedulingEndpoints();
+app.MapChassisStockEndpoints();
 app.MapAdminEndpoints();
 app.MapDrafterEndpoints();
 app.MapHub<KanbanHub>("/hubs/kanban");

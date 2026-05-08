@@ -54,6 +54,7 @@ public class NeeDbContext : DbContext
     // Scheduling
     public DbSet<ChassisInventory> ChassisInventory => Set<ChassisInventory>();
     public DbSet<CustomerApproval> CustomerApprovals => Set<CustomerApproval>();
+    public DbSet<ChassisStockUpload> ChassisStockUploads => Set<ChassisStockUpload>();
 
     // Audit
     public DbSet<DomainEvent> DomainEvents => Set<DomainEvent>();
@@ -321,6 +322,16 @@ public class NeeDbContext : DbContext
             b.ToTable("chassis_inventory");
             b.HasKey(x => x.Id);
             b.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            b.HasOne(x => x.AllocatedRo).WithMany().HasForeignKey(x => x.AllocatedToRo);
+        });
+
+        mb.Entity<ChassisStockUpload>(b =>
+        {
+            b.ToTable("chassis_stock_uploads");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            b.Property(x => x.ParseErrors).HasColumnType("jsonb");
+            b.Property(x => x.UploadedAt).HasDefaultValueSql("now()");
         });
 
         mb.Entity<CustomerApproval>(b =>

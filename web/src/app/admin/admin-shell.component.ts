@@ -24,6 +24,7 @@ import { CustomerSummary } from './admin.service';
         @if (user(); as u) {
           <span class="user-label">{{ u.fullName }}</span>
         }
+        <a class="nav-link" (click)="router.navigate(['/admin/chassis-stock'])">Chassis stock</a>
         <a class="nav-link" (click)="router.navigate(['/dashboard'])">Dashboard</a>
         <button class="logout" (click)="logout()">Sign out</button>
       </div>
