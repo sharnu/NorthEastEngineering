@@ -52,7 +52,7 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
               Tasks at this station for {{ card()?.roNumber }}
             </div>
             <div class="task-list-full">
-              @for (task of card()?.tasks ?? []; track task.id) {
+              @for (task of localTasks(); track task.id) {
                 <div class="task-row-wrapper">
                   <div class="task-row"
                        [class.done]="task.status === 'COMPLETED'"
@@ -581,6 +581,16 @@ export class CardDrawerComponent {
   advanceReason    = signal('Manually confirmed by supervisor');
   advancing        = signal(false);
   advanceError     = signal<string | null>(null);
+  private assignmentOverrides = signal<Record<string, Partial<KanbanCardTaskDto>>>({});
+  // Computed so it reacts to both card input changes and local assignment patches immediately
+  localTasks = computed<KanbanCardTaskDto[]>(() => {
+    const tasks     = this.card()?.tasks ?? [];
+    const overrides = this.assignmentOverrides();
+    return tasks.map(t => {
+      const o = overrides[t.id];
+      return o ? { ...t, ...o } : t;
+    });
+  });
   private pdfTimer: ReturnType<typeof setTimeout> | null = null;
 
   isSupervisor = computed(() => {
@@ -601,6 +611,7 @@ export class CardDrawerComponent {
         this.activeMenuTaskId.set(null);
         this.technicians.set([]);
         this.assignResult.set(null);
+        this.assignmentOverrides.set({});
         this.advanceConfirm.set(false);
         this.advanceReason.set('Manually confirmed by supervisor');
         this.advanceError.set(null);
@@ -622,6 +633,11 @@ export class CardDrawerComponent {
     this.svc.assignTask(task.id, uid).subscribe({
       next: () => {
         const name = this.technicians().find(t => t.userId === uid)?.fullName ?? null;
+        // Optimistically patch so the drawer reflects the change immediately
+        this.assignmentOverrides.update(m => ({
+          ...m,
+          [task.id]: { assignedToUserId: uid, assignedToName: name },
+        }));
         this.assignResult.set({
           taskId: task.id,
           ok:     true,
