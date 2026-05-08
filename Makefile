@@ -30,6 +30,7 @@ down:
 seed:
 	@echo "Loading seed data..."
 	docker exec -i nee-postgres psql -U nee -d nee < db/migrations/002_seed_data.sql
+	docker exec -i nee-postgres psql -U nee -d nee < db/seeds/update_ro_chassis_fields.sql
 	@echo "Seed loaded. Run 'make hash-pw' next to set the dev passwords."
 
 demo:
