@@ -12,6 +12,7 @@ using Nee.Api.Data;
 using Nee.Api.Domain;
 using Nee.Api.Domain.Sales;
 using Nee.Api.Endpoints;
+using Nee.Api.Hubs;
 using Nee.Api.Services;
 using Npgsql;
 using Serilog;
@@ -52,7 +53,8 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddSingleton<PdfParserService>();
 builder.Services.AddScoped<PdfScoringService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<IGateEvaluator, StubGateEvaluator>();
+builder.Services.AddScoped<IGateEvaluator, GateEvaluator>();
+builder.Services.AddSignalR();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -173,6 +175,7 @@ app.MapSalesPdfEndpoints();
 app.MapSchedulingEndpoints();
 app.MapAdminEndpoints();
 app.MapDrafterEndpoints();
+app.MapHub<KanbanHub>("/hubs/kanban");
 
 app.Run();
 

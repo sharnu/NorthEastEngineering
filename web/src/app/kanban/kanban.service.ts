@@ -108,4 +108,8 @@ export class KanbanService {
   assignTask(taskId: string, userId: string | null): Observable<void> {
     return this.http.put<void>(`/api/job-tasks/${taskId}/assign`, { userId });
   }
+
+  forceAdvance(roId: string, stationId: number, reason: string): Observable<void> {
+    return this.http.post<void>(`/api/kanban/ros/${roId}/force-advance`, { stationId, reason });
+  }
 }

@@ -2,12 +2,7 @@ namespace Nee.Api.Services;
 
 public interface IGateEvaluator
 {
-    (string State, string? Reason) Evaluate(Guid roId, short stationId);
+    Task<GateResult> Evaluate(Guid roId, short stationId, CancellationToken ct);
 }
 
-// E24-S1 will replace this with real gate logic.
-public class StubGateEvaluator : IGateEvaluator
-{
-    public (string State, string? Reason) Evaluate(Guid roId, short stationId)
-        => ("IN_PROGRESS", null);
-}
+public record GateResult(string State, string? Reason);

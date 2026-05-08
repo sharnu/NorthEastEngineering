@@ -102,6 +102,14 @@ public static class KanbanEndpoints
                     .ToDictionary(g => g.Key, g => $"/uploads/{g.First().BlobPath}")
                 : new Dictionary<Guid, string>();
 
+            // Evaluate gate state for each card (async, sequential to share one DbContext)
+            var gateByGroup = new Dictionary<(Guid RoId, short StationId), GateResult>();
+            foreach (var g in groups)
+            {
+                var sid = (short)g.StationId;
+                gateByGroup[(g.RoId, sid)] = await gateEvaluator.Evaluate(g.RoId, sid, ct);
+            }
+
             var result = new
             {
                 Stations = stations.Select(s =>
@@ -121,7 +129,7 @@ public static class KanbanEndpoints
                             var tracks = taskList.Select(t => t.FlowTrack).Distinct().ToList();
                             var track  = tracks.Count == 1 ? tracks[0] : "MIXED";
 
-                            var (gateState, gateReason) = gateEvaluator.Evaluate(roId, sid);
+                            var gate = gateByGroup.GetValueOrDefault((roId, sid), new GateResult("IN_PROGRESS", null));
 
                             pdfByRo.TryGetValue(roId, out var sourcePdfUrl);
 
@@ -136,8 +144,8 @@ public static class KanbanEndpoints
                                 StationId:        sid,
                                 StationCode:      s.Code,
                                 StationName:      s.Name,
-                                GateState:        gateState,
-                                GateReason:       gateReason,
+                                GateState:        gate.State,
+                                GateReason:       gate.Reason,
                                 EstimatedHours:   taskList.Sum(t => t.EstimatedHours),
                                 ActualHours:      taskList.Sum(t => t.ActualHours),
                                 TotalTasks:       taskList.Count,
@@ -185,14 +193,114 @@ public static class KanbanEndpoints
             return Results.Ok(stages);
         }).WithName("GetKanbanStages");
 
-        // POST /api/kanban/ros/{id}/override-stage (E14-S4)
+        // POST /api/kanban/ros/{id}/force-advance (E24-S4 — renamed from override-stage)
+        grp.MapPost("/ros/{id:guid}/force-advance", async (
+            Guid id,
+            ForceAdvanceRequest req,
+            ClaimsPrincipal principal,
+            NeeDbContext db,
+            IGateEvaluator gateEvaluator,
+            CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(req.Reason) || req.Reason.Trim().Length < 10)
+                return Results.UnprocessableEntity(new { message = "Reason must be at least 10 characters." });
+
+            var ro = await db.RepairOrders.FindAsync(new object[] { id }, ct);
+            if (ro is null) return Results.NotFound();
+            if (ro.Status is "COMPLETED" or "CANCELLED")
+                return Results.Conflict(new { message = "Cannot advance a completed or cancelled repair order." });
+
+            short targetStageId;
+
+            if (req.StageId.HasValue)
+            {
+                // Direct stage override: supervisor chose a specific stage
+                var targetStage = await db.KanbanStages.FindAsync(new object[] { req.StageId.Value }, ct);
+                if (targetStage is null)
+                    return Results.UnprocessableEntity(new { message = "Stage not found." });
+                targetStageId = req.StageId.Value;
+            }
+            else if (req.StationId.HasValue)
+            {
+                // Compute next stage from current station via flow_definitions
+                if (ro.BodyType is null)
+                    return Results.UnprocessableEntity(new { message = "Repair order has no body type; cannot auto-compute next stage." });
+
+                var currentFlow = await db.FlowDefinitions
+                    .Where(fd => fd.BodyType == ro.BodyType && fd.StationId == req.StationId.Value)
+                    .OrderBy(fd => fd.SortOrder)
+                    .FirstOrDefaultAsync(ct);
+
+                if (currentFlow is null)
+                    return Results.UnprocessableEntity(new { message = "No flow definition found for this station and body type." });
+
+                var nextFlow = await db.FlowDefinitions
+                    .Where(fd => fd.BodyType == ro.BodyType
+                              && fd.Track == currentFlow.Track
+                              && fd.SortOrder > currentFlow.SortOrder)
+                    .OrderBy(fd => fd.SortOrder)
+                    .FirstOrDefaultAsync(ct);
+
+                if (nextFlow is null)
+                    return Results.UnprocessableEntity(new { message = "No next stage in flow; track ends at this station." });
+
+                var nextSortOrder = await db.Stations
+                    .Where(s => s.Id == nextFlow.StationId)
+                    .Select(s => s.SortOrder)
+                    .FirstAsync(ct);
+
+                targetStageId = StationSortOrderToKanbanStage((int)nextSortOrder);
+            }
+            else
+            {
+                return Results.UnprocessableEntity(new { message = "Provide either stageId or stationId." });
+            }
+
+            var state = await db.RoKanbanStates.FirstOrDefaultAsync(s => s.RoId == id, ct);
+            short fromStageId = 0;
+            if (state is null)
+            {
+                state = new Nee.Api.Domain.RoKanbanState
+                {
+                    RoId           = id,
+                    CurrentStageId = targetStageId,
+                    EnteredStageAt = DateTimeOffset.UtcNow,
+                    UpdatedAt      = DateTimeOffset.UtcNow,
+                };
+                db.RoKanbanStates.Add(state);
+            }
+            else
+            {
+                fromStageId          = state.CurrentStageId;
+                state.CurrentStageId = targetStageId;
+                state.EnteredStageAt = DateTimeOffset.UtcNow;
+                state.UpdatedAt      = DateTimeOffset.UtcNow;
+            }
+
+            var userId = GetKanbanCallerId(principal);
+
+            state.LastOverrideAt     = DateTimeOffset.UtcNow;
+            state.LastOverrideReason = req.Reason.Trim();
+            state.LastOverrideBy     = userId;
+
+            RoLifecycleEvents.EmitRoStageForceAdvanced(db, id, userId, fromStageId, targetStageId, req.Reason.Trim());
+
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        })
+        .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "ADMIN"))
+        .WithName("ForceAdvanceKanbanStage");
+
+        // POST /api/kanban/ros/{id}/override-stage — backward-compat alias (remove in E26-S3)
         grp.MapPost("/ros/{id:guid}/override-stage", async (
             Guid id,
             OverrideStageRequest req,
             ClaimsPrincipal principal,
             NeeDbContext db,
+            IGateEvaluator gateEvaluator,
             CancellationToken ct) =>
         {
+            // Delegate to force-advance logic with the provided stageId
             if (string.IsNullOrWhiteSpace(req.Reason) || req.Reason.Trim().Length < 10)
                 return Results.UnprocessableEntity(new { message = "Reason must be at least 10 characters." });
 
@@ -211,19 +319,19 @@ public static class KanbanEndpoints
             {
                 state = new Nee.Api.Domain.RoKanbanState
                 {
-                    RoId             = id,
-                    CurrentStageId   = req.StageId,
-                    EnteredStageAt   = DateTimeOffset.UtcNow,
-                    UpdatedAt        = DateTimeOffset.UtcNow,
+                    RoId           = id,
+                    CurrentStageId = req.StageId,
+                    EnteredStageAt = DateTimeOffset.UtcNow,
+                    UpdatedAt      = DateTimeOffset.UtcNow,
                 };
                 db.RoKanbanStates.Add(state);
             }
             else
             {
-                fromStageId            = state.CurrentStageId;
-                state.CurrentStageId   = req.StageId;
-                state.EnteredStageAt   = DateTimeOffset.UtcNow;
-                state.UpdatedAt        = DateTimeOffset.UtcNow;
+                fromStageId          = state.CurrentStageId;
+                state.CurrentStageId = req.StageId;
+                state.EnteredStageAt = DateTimeOffset.UtcNow;
+                state.UpdatedAt      = DateTimeOffset.UtcNow;
             }
 
             var userId = GetKanbanCallerId(principal);
@@ -232,7 +340,7 @@ public static class KanbanEndpoints
             state.LastOverrideReason = req.Reason.Trim();
             state.LastOverrideBy     = userId;
 
-            RoLifecycleEvents.EmitKanbanStageOverride(db, id, userId, fromStageId, req.StageId, req.Reason.Trim());
+            RoLifecycleEvents.EmitRoStageForceAdvanced(db, id, userId, fromStageId, req.StageId, req.Reason.Trim());
 
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
@@ -246,6 +354,19 @@ public static class KanbanEndpoints
         var sub = p.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
         return Guid.TryParse(sub, out var g) ? g : null;
     }
+
+    internal static short StationSortOrderToKanbanStage(int sortOrder) => sortOrder switch
+    {
+        <= 15 => 30,  // MAT_PROCESSING
+        <= 25 => 40,  // FABRICATION
+        <= 35 => 50,  // PAINTING
+        <= 65 => 60,  // AFTER_PAINT_HY
+        <= 75 => 70,  // FITOUT
+        <= 82 => 80,  // BODY_MOUNTING
+        <= 87 => 85,  // ACCESSORIES
+        <= 93 => 90,  // FINAL_QC
+        _     => 99,  // COMPLETE
+    };
 }
 
 public record KanbanCardTaskDto(
@@ -283,3 +404,4 @@ public record KanbanCardDto(
     KanbanCardTaskDto[] Tasks);
 
 public record OverrideStageRequest(short StageId, string Reason);
+public record ForceAdvanceRequest(string Reason, short? StageId = null, short? StationId = null);

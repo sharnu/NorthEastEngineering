@@ -98,7 +98,7 @@ public class RoLifecycleEventsTests(ApiFixture fixture)
             $"/api/repair-orders/{roId}/tasks/{addedTask!.Id}");
         removeResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // ── Step 6: Override kanban stage → KanbanStageOverride ──────────────
+        // ── Step 6: Override kanban stage → RoStageForceAdvanced ─────────────
         var stages = await SupervisorClient().GetFromJsonAsync<StageItem[]>("/api/kanban/stages");
         var target  = stages!.First(s => s.Code == "FINAL_QC");
         var overrideResp = await SupervisorClient().PostAsJsonAsync(
@@ -130,7 +130,7 @@ public class RoLifecycleEventsTests(ApiFixture fixture)
             "RoTaskAdded",
             "RoTaskReordered",
             "RoTaskRemoved",
-            "KanbanStageOverride",
+            "RoStageForceAdvanced",
             "RoCancelled",
             "RoReopened",
         };
@@ -151,7 +151,7 @@ public class RoLifecycleEventsTests(ApiFixture fixture)
         taskAdded.Payload.RootElement.GetProperty("operationId").GetInt16().Should().BeGreaterThan(0);
 
         var stageOverride = db.DomainEvents
-            .First(e => e.AggregateId == roId && e.EventType == "KanbanStageOverride");
+            .First(e => e.AggregateId == roId && e.EventType == "RoStageForceAdvanced");
         stageOverride.Payload.RootElement.GetProperty("toStageId").GetInt16().Should().Be(target.Id);
         stageOverride.Payload.RootElement.GetProperty("fromStageId").GetInt16().Should().BeGreaterThanOrEqualTo(0);
         stageOverride.Payload.RootElement.GetProperty("reason").GetString().Should().Contain("Final QC");

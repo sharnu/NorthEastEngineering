@@ -4,9 +4,15 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 
-import { KanbanBoardComponent } from './kanban-board.component';
+import { KanbanBoardComponent, KANBAN_HUB_FACTORY } from './kanban-board.component';
 import { KanbanService, KanbanBoardDto, KanbanCardDto } from './kanban.service';
 import { AuthService } from '../core/auth.service';
+
+const noopHubFactory = () => ({
+  on:   jasmine.createSpy('on'),
+  start: jasmine.createSpy('start').and.returnValue(Promise.resolve()),
+  stop:  jasmine.createSpy('stop').and.returnValue(Promise.resolve()),
+});
 
 const MOCK_USER = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -72,6 +78,7 @@ describe('KanbanBoardComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: KanbanService, useValue: buildSvc(getBoardSpy) },
+        { provide: KANBAN_HUB_FACTORY, useValue: noopHubFactory },
         {
           provide: AuthService,
           useValue: {

@@ -81,11 +81,11 @@ import { AuthService } from '../core/auth.service';
                           <span class="task-row-menu-loading">No technicians at this station.</span>
                         } @else {
                           <select class="task-row-menu-select"
-                                  [value]="task.assignedToUserId ?? ''"
                                   (change)="assignTechnician(task, $any($event.target).value)">
-                            <option value="">Unassign</option>
+                            <option value="" [selected]="!task.assignedToUserId">Unassign</option>
                             @for (t of technicians(); track t.userId) {
-                              <option [value]="t.userId">
+                              <option [value]="t.userId"
+                                      [selected]="task.assignedToUserId === t.userId">
                                 {{ t.fullName }}{{ t.isPrimary ? ' ★' : '' }}
                               </option>
                             }
@@ -144,10 +144,34 @@ import { AuthService } from '../core/auth.service';
 
           <!-- Footer -->
           <div class="drawer-foot">
-            <span class="advance-hint">
-              Card advances automatically when all tasks at this station complete.
-            </span>
-            <button class="advance-btn" disabled>{{ advanceBtnLabel() }}</button>
+            @if (advanceConfirm()) {
+              <div class="advance-modal">
+                <span class="advance-modal-label">Reason for advance</span>
+                <input class="advance-modal-input"
+                       [value]="advanceReason()"
+                       (input)="advanceReason.set($any($event.target).value)"
+                       placeholder="Minimum 10 characters" />
+                <div class="advance-modal-actions">
+                  <button class="advance-modal-cancel" (click)="advanceConfirm.set(false)">Cancel</button>
+                  <button class="advance-modal-confirm"
+                          [disabled]="advancing() || advanceReason().length < 10"
+                          (click)="doAdvance()">
+                    {{ advancing() ? 'Advancing…' : 'Confirm advance →' }}
+                  </button>
+                </div>
+                @if (advanceError()) {
+                  <span class="advance-modal-error">{{ advanceError() }}</span>
+                }
+              </div>
+            } @else {
+              <span class="advance-hint">{{ advanceHintText() }}</span>
+              <button class="advance-btn"
+                      [disabled]="!canAdvance()"
+                      [title]="advanceBtnTooltip()"
+                      (click)="onAdvanceClick()">
+                {{ advanceBtnLabel() }}
+              </button>
+            }
           </div>
 
         </div>
@@ -481,6 +505,58 @@ import { AuthService } from '../core/auth.service';
       color: var(--ink-3);
       cursor: not-allowed;
     }
+    .advance-modal {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .advance-modal-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--ink-3);
+    }
+    .advance-modal-input {
+      padding: 8px 10px;
+      border: 0.5px solid var(--rule-strong);
+      border-radius: 6px;
+      font-size: 13px;
+      background: var(--paper);
+      color: var(--ink);
+      width: 100%;
+      box-sizing: border-box;
+      font-family: var(--sans);
+    }
+    .advance-modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .advance-modal-cancel {
+      background: transparent;
+      border: 0.5px solid var(--rule-strong);
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--ink-3);
+      font-family: var(--sans);
+    }
+    .advance-modal-confirm {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 7px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--sans);
+    }
+    .advance-modal-confirm:disabled { background: var(--paper-3); color: var(--ink-3); cursor: not-allowed; }
+    .advance-modal-error { font-size: 11px; color: var(--bad); font-family: var(--mono); }
   `],
 })
 export class CardDrawerComponent {
@@ -497,6 +573,10 @@ export class CardDrawerComponent {
   technicians      = signal<StationTechnicianDto[]>([]);
   loadingTechs     = signal(false);
   assignResult     = signal<{ taskId: string; ok: boolean; msg: string } | null>(null);
+  advanceConfirm   = signal(false);
+  advanceReason    = signal('Manually confirmed by supervisor');
+  advancing        = signal(false);
+  advanceError     = signal<string | null>(null);
   private pdfTimer: ReturnType<typeof setTimeout> | null = null;
 
   isSupervisor = computed(() => {
@@ -517,6 +597,9 @@ export class CardDrawerComponent {
         this.activeMenuTaskId.set(null);
         this.technicians.set([]);
         this.assignResult.set(null);
+        this.advanceConfirm.set(false);
+        this.advanceReason.set('Manually confirmed by supervisor');
+        this.advanceError.set(null);
       }
     }, { allowSignalWrites: true });
   }
@@ -604,6 +687,29 @@ export class CardDrawerComponent {
     return `Advance · ${n} task${n !== 1 ? 's' : ''} pending`;
   });
 
+  canAdvance = computed(() =>
+    this.isSupervisor() && this.card()?.gateState === 'COMPLETE',
+  );
+
+  advanceBtnTooltip = computed(() => {
+    if (!this.isSupervisor()) return 'Only supervisors can advance';
+    const state = this.card()?.gateState;
+    if (state === 'COMPLETE') return 'Click to advance this card to the next stage';
+    const n = this.pendingCount();
+    return `${n} task${n !== 1 ? 's' : ''} must complete before advancing`;
+  });
+
+  advanceHintText = computed(() => {
+    const c = this.card();
+    if (!c) return '';
+    switch (c.gateState) {
+      case 'COMPLETE':    return 'All tasks complete. Card is ready to advance to the next stage.';
+      case 'GATED':       return c.gateReason ?? 'Card is gated — upstream work not yet complete.';
+      case 'READY':       return 'Upstream work complete. Card advances automatically when all tasks here complete.';
+      default:            return 'Card advances automatically when all tasks at this station complete.';
+    }
+  });
+
   gateBannerTitle = computed(() => {
     switch (this.card()?.gateState) {
       case 'GATED': return 'Gated — prerequisite not met';
@@ -637,6 +743,29 @@ export class CardDrawerComponent {
   hoursDisplay(task: KanbanCardTaskDto): string {
     if (task.status === 'PENDING') return `— / ${task.estimatedHours} h`;
     return `${task.actualHours} / ${task.estimatedHours} h`;
+  }
+
+  onAdvanceClick(): void {
+    if (!this.canAdvance()) return;
+    this.advanceError.set(null);
+    this.advanceConfirm.set(true);
+  }
+
+  doAdvance(): void {
+    const card = this.card();
+    if (!card) return;
+    this.advancing.set(true);
+    this.svc.forceAdvance(card.roId, card.stationId, this.advanceReason()).subscribe({
+      next: () => {
+        this.advancing.set(false);
+        this.advanceConfirm.set(false);
+        this.closed.emit();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.advancing.set(false);
+        this.advanceError.set(err?.error?.message ?? 'Advance failed. Please try again.');
+      },
+    });
   }
 
   openPdfTab(): void {

@@ -1,8 +1,11 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Nee.Api.Data;
 using Nee.Api.Domain;
+using Nee.Api.Domain.Events;
+using Nee.Api.Hubs;
 using Nee.Api.Services;
 
 namespace Nee.Api.Endpoints;
@@ -304,6 +307,8 @@ public static class TechEndpoints
             ClaimsPrincipal principal,
             NeeDbContext db,
             INotificationService notifications,
+            IGateEvaluator gateEvaluator,
+            IHubContext<KanbanHub> hub,
             CancellationToken ct) =>
         {
             var currentUserId = GetUserId(principal);
@@ -380,44 +385,32 @@ public static class TechEndpoints
             };
             db.DomainEvents.Add(completedEvt);
 
+            // Open an explicit transaction so task completion + stage advance are atomic.
+            // Two SaveChangesAsync calls are required: the gate evaluator must query the DB
+            // and see the task as COMPLETED before deciding whether to advance the stage.
+            // Both SaveChangesAsync calls execute within the same transaction and are not
+            // visible to other connections until CommitAsync, satisfying atomicity.
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            // Commit 1: persist task + variance + event so gate evaluator sees COMPLETED status
             await db.SaveChangesAsync(ct);
 
-            // Kanban stage advance
-            var allDone = await db.JobTasks
-                .Where(t => t.RoId == task.RoId && t.StationId == task.StationId)
-                .AllAsync(t => t.Status == "COMPLETED" || t.Status == "CANCELLED", ct);
+            // Stage kanban advance (queries DB via same in-transaction connection)
+            await AutoAdvanceStageAsync(db, gateEvaluator, task, currentUserId, id, ct);
 
-            if (allDone)
-            {
-                // Find next station with non-completed tasks
-                var currentSortOrder = (int)task.Station.SortOrder;
+            // Commit 2: persist stage advance entities (if any)
+            await db.SaveChangesAsync(ct);
 
-                var nextStation = await db.JobTasks
-                    .Where(t => t.RoId == task.RoId
-                             && t.Station.SortOrder > currentSortOrder
-                             && t.Status != "COMPLETED"
-                             && t.Status != "CANCELLED")
-                    .OrderBy(t => t.Station.SortOrder)
-                    .Select(t => new { SortOrder = (int)t.Station.SortOrder })
-                    .FirstOrDefaultAsync(ct);
+            // Atomically publish both commits
+            await tx.CommitAsync(ct);
 
-                var newStageId = nextStation is not null
-                    ? StationSortOrderToKanbanStage(nextStation.SortOrder)
-                    : (short)99;
-
-                await db.Database.ExecuteSqlRawAsync(
-                    @"INSERT INTO ro_kanban_state (ro_id, current_stage_id)
-                      VALUES ({0}, {1})
-                      ON CONFLICT (ro_id) DO UPDATE
-                        SET current_stage_id = EXCLUDED.current_stage_id,
-                            updated_at = now()",
-                    task.RoId, newStageId);
-            }
-
-            // Load reason name
+            // Post-commit: load display values, send notifications, push SignalR
             var reason = await db.VarianceReasons.FindAsync([req.VarianceReasonId], ct);
 
             await notifications.FanOutAsync(completedEvt, ct);
+
+            // Fire-and-forget: board clients refresh on stage change or task completion
+            _ = hub.Clients.All.SendAsync("KanbanUpdated", new { roId = task.RoId }, CancellationToken.None);
 
             return Results.Ok(new
             {
@@ -627,6 +620,115 @@ public static class TechEndpoints
         <= 93 => 90,  // FINAL_QC
         _     => 99,  // COMPLETE
     };
+
+    private static async Task AutoAdvanceStageAsync(
+        NeeDbContext db, IGateEvaluator gateEvaluator,
+        JobTask task, Guid currentUserId, Guid triggeringTaskId, CancellationToken ct)
+    {
+        // Only advance when gate says this station is fully complete
+        var gate = await gateEvaluator.Evaluate(task.RoId, task.StationId, ct);
+        if (gate.State != "COMPLETE") return;
+
+        var ro = task.RepairOrder;
+        if (ro.BodyType is null) return;
+
+        // Find current station's flow entry for this task's track
+        var currentFlow = await db.FlowDefinitions
+            .Where(fd => fd.BodyType == ro.BodyType && fd.Track == task.FlowTrack && fd.StationId == task.StationId)
+            .FirstOrDefaultAsync(ct);
+
+        if (currentFlow is null)
+        {
+            // Station not in flow definitions for this body type — advance to next kanban stage by sort order
+            var sortOrder = await db.Stations
+                .Where(s => s.Id == task.StationId)
+                .Select(s => s.SortOrder)
+                .FirstOrDefaultAsync(ct);
+            if (sortOrder == 0) return;
+            var currentStageId = StationSortOrderToKanbanStage((int)sortOrder);
+            var nextStageId = await db.KanbanStages
+                .Where(ks => ks.Id > currentStageId && !ks.IsTerminal && ks.Id != 95)
+                .OrderBy(ks => ks.Id)
+                .Select(ks => ks.Id)
+                .FirstOrDefaultAsync(ct);
+            if (nextStageId == 0) return;
+            await ApplyStageAdvanceAsync(db, task.RoId, nextStageId, ct);
+            RoLifecycleEvents.EmitRoStageAutoAdvanced(db, task.RoId, currentUserId, task.StationId, task.StationId, triggeringTaskId);
+            return;
+        }
+
+        // Find next station on this track
+        var nextFlow = await db.FlowDefinitions
+            .Where(fd => fd.BodyType == ro.BodyType && fd.Track == task.FlowTrack && fd.SortOrder > currentFlow.SortOrder)
+            .OrderBy(fd => fd.SortOrder)
+            .FirstOrDefaultAsync(ct);
+
+        if (nextFlow is null) return; // Track terminates here; merge station handles the advance
+
+        var nextStationSortOrder = await db.Stations
+            .Where(s => s.Id == nextFlow.StationId)
+            .Select(s => s.SortOrder)
+            .FirstAsync(ct);
+
+        var newStageId = StationSortOrderToKanbanStage((int)nextStationSortOrder);
+
+        bool nextIsMerge = await db.KanbanStages
+            .AnyAsync(ks => ks.Id == nextFlow.StationId && ks.IsMergePoint, ct);
+
+        if (nextIsMerge)
+        {
+            // Re-evaluate the merge station to see if all tracks have arrived
+            var mergeGate = await gateEvaluator.Evaluate(task.RoId, nextFlow.StationId, ct);
+
+            if (mergeGate.State == "READY" || mergeGate.State == "COMPLETE")
+            {
+                // All tracks ready at merge — advance the stage
+                await ApplyStageAdvanceAsync(db, task.RoId, newStageId, ct);
+
+                var completedTracks = await db.FlowDefinitions
+                    .Where(fd => fd.BodyType == ro.BodyType && fd.StationId == nextFlow.StationId)
+                    .Select(fd => fd.Track)
+                    .ToListAsync(ct);
+
+                RoLifecycleEvents.EmitRoMergeReached(db, task.RoId, currentUserId, nextFlow.StationId, completedTracks.ToArray());
+            }
+            else
+            {
+                // This track arrived but others haven't
+                RoLifecycleEvents.EmitRoTrackArrivedAtMerge(db, task.RoId, currentUserId, nextFlow.StationId, task.FlowTrack);
+            }
+        }
+        else
+        {
+            // Non-merge: advance directly
+            await ApplyStageAdvanceAsync(db, task.RoId, newStageId, ct);
+            RoLifecycleEvents.EmitRoStageAutoAdvanced(db, task.RoId, currentUserId, task.StationId, nextFlow.StationId, triggeringTaskId);
+        }
+        // Caller (complete handler) does the single SaveChangesAsync
+    }
+
+    private static async Task ApplyStageAdvanceAsync(NeeDbContext db, Guid roId, short newStageId, CancellationToken ct)
+    {
+        var state = await db.RoKanbanStates.FindAsync([roId], ct);
+        if (state is not null && state.CurrentStageId >= newStageId) return; // Idempotent
+
+        if (state is null)
+        {
+            db.RoKanbanStates.Add(new RoKanbanState
+            {
+                RoId           = roId,
+                CurrentStageId = newStageId,
+                EnteredStageAt = DateTimeOffset.UtcNow,
+                UpdatedAt      = DateTimeOffset.UtcNow,
+            });
+        }
+        else
+        {
+            state.CurrentStageId = newStageId;
+            state.EnteredStageAt = DateTimeOffset.UtcNow;
+            state.UpdatedAt      = DateTimeOffset.UtcNow;
+        }
+    }
 }
 
 public record CompleteTaskRequest(short VarianceReasonId, string? Notes);

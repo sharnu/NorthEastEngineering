@@ -27,6 +27,18 @@ public static class RoLifecycleEvents
     public static void EmitKanbanStageOverride(NeeDbContext db, Guid roId, Guid? userId, short fromStageId, short toStageId, string reason) =>
         Emit(db, "KanbanStageOverride", roId, userId, new { fromStageId, toStageId, reason });
 
+    public static void EmitRoStageForceAdvanced(NeeDbContext db, Guid roId, Guid? userId, short fromStageId, short toStageId, string reason) =>
+        Emit(db, "RoStageForceAdvanced", roId, userId, new { fromStageId, toStageId, reason });
+
+    public static void EmitRoStageAutoAdvanced(NeeDbContext db, Guid roId, Guid? userId, short fromStationId, short toStationId, Guid triggeringTaskId) =>
+        Emit(db, "RoStageAutoAdvanced", roId, userId, new { fromStationId, toStationId, reason = "auto", triggeringTaskId });
+
+    public static void EmitRoTrackArrivedAtMerge(NeeDbContext db, Guid roId, Guid? userId, short mergeStationId, string arrivedTrack) =>
+        Emit(db, "RoTrackArrivedAtMerge", roId, userId, new { mergeStationId, arrivedTrack });
+
+    public static void EmitRoMergeReached(NeeDbContext db, Guid roId, Guid? userId, short mergeStationId, string[] completedTracks) =>
+        Emit(db, "RoMergeReached", roId, userId, new { mergeStationId, completedTracks });
+
     private static void Emit(NeeDbContext db, string eventType, Guid roId, Guid? userId, object payload) =>
         db.DomainEvents.Add(new DomainEvent
         {

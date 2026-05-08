@@ -92,7 +92,7 @@ public class KanbanOverrideTests(ApiFixture fixture)
 
         using var db = fixture.CreateDbContext();
         var events = db.DomainEvents
-            .Where(e => e.AggregateId == roId && e.EventType == "KanbanStageOverride")
+            .Where(e => e.AggregateId == roId && e.EventType == "RoStageForceAdvanced")
             .ToList();
         events.Should().HaveCountGreaterThan(0);
         var last = events.Last();

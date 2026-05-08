@@ -1,5 +1,5 @@
 import {
-  Component, OnInit, inject, signal, computed, DestroyRef,
+  Component, OnInit, inject, signal, computed, DestroyRef, InjectionToken,
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
@@ -7,8 +7,27 @@ import { interval, firstValueFrom } from 'rxjs';
 import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import * as signalR from '@microsoft/signalr';
 import { AuthService } from '../core/auth.service';
 import { KanbanService, KanbanStationDto, KanbanCardDto } from './kanban.service';
+
+export interface KanbanHubConnection {
+  on(methodName: string, newMethod: (...args: unknown[]) => void): void;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+}
+
+export const KANBAN_HUB_FACTORY = new InjectionToken<() => KanbanHubConnection>(
+  'KANBAN_HUB_FACTORY',
+  {
+    providedIn: 'root',
+    factory: () => () =>
+      new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/kanban')
+        .withAutomaticReconnect()
+        .build() as unknown as KanbanHubConnection,
+  },
+);
 import { StationCardComponent } from './station-card.component';
 import { CardDrawerComponent } from './card-drawer.component';
 import { NotificationBellComponent } from '../core/notification-bell.component';
@@ -192,6 +211,7 @@ export class KanbanBoardComponent implements OnInit {
   router             = inject(Router);
   private svc        = inject(KanbanService);
   private destroyRef = inject(DestroyRef);
+  private hubFactory = inject(KANBAN_HUB_FACTORY);
 
   user         = this.auth.user;
   isSupervisor = computed(() => {
@@ -209,7 +229,10 @@ export class KanbanBoardComponent implements OnInit {
   selectedCard = signal<KanbanCardDto | null>(null);
   isDrawerOpen = signal(false);
 
+  private hubConnection: KanbanHubConnection | null = null;
+
   ngOnInit() {
+    this.connectRealtime();
     interval(30_000).pipe(
       startWith(0),
       switchMap(() => {
@@ -228,6 +251,14 @@ export class KanbanBoardComponent implements OnInit {
       this.displayedStations.set(board.stations);
       this.lastUpdated.set(new Date());
     });
+  }
+
+  private connectRealtime(): void {
+    const conn = this.hubFactory();
+    conn.on('KanbanUpdated', () => this.refresh());
+    conn.start().catch(err => console.error('[KanbanHub]', err));
+    this.hubConnection = conn;
+    this.destroyRef.onDestroy(() => conn.stop());
   }
 
   loadBoard(stationId?: number) {
