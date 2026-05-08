@@ -22,9 +22,10 @@ public static class ChassisStockEndpoints
         ["tag"] = "tag_number", ["tag no"] = "tag_number", ["tag number"] = "tag_number",
         ["key"] = "tag_number", ["key no"] = "tag_number", ["key number"] = "tag_number",
         ["tag_number"] = "tag_number",
-        ["arrival date"] = "arrival_date", ["arrived"]  = "arrival_date",
-        ["received"]     = "arrival_date", ["eta"]       = "arrival_date",
-        ["arrival_date"] = "arrival_date",
+        ["arrival date"]     = "arrival_date", ["arrived"]       = "arrival_date",
+        ["received"]         = "arrival_date", ["eta"]           = "arrival_date",
+        ["est. arrival date"]= "arrival_date", ["est arrival date"] = "arrival_date",
+        ["arrival_date"]     = "arrival_date",
     };
 
     public static void MapChassisStockEndpoints(this WebApplication app)
