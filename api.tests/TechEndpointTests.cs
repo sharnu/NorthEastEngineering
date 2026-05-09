@@ -239,10 +239,26 @@ public class TechEndpointTests(ApiFixture fixture)
         var taskId = await GetFirstFabTaskId(roId);
         await AssignTaskToPeter(taskId);
 
+        // Capture the kanban stage *before* blocking so we can assert the
+        // unblock restores it (not the static fallback value).
+        short stageBeforeBlock;
+        await using (var dbBefore = fixture.CreateDbContext())
+        {
+            var s = await dbBefore.RoKanbanStates.FindAsync(roId);
+            stageBeforeBlock = s?.CurrentStageId ?? (short)10;
+        }
+
         // Block first
         var peter = Client(PeterId, "TECHNICIAN");
         await peter.PostAsJsonAsync($"/api/tech/tasks/{taskId}/block",
             new { Reason = "Waiting for parts to arrive before fabrication can start" });
+
+        // Sanity: blocking parked the RO in HOSPITAL (stage 95)
+        await using (var dbBlocked = fixture.CreateDbContext())
+        {
+            var s = await dbBlocked.RoKanbanStates.FindAsync(roId);
+            s!.CurrentStageId.Should().Be((short)95);
+        }
 
         // Unblock as supervisor
         var sup  = Client(SupervisorId, "SUPERVISOR");
@@ -257,6 +273,12 @@ public class TechEndpointTests(ApiFixture fixture)
         var ro = await db.RepairOrders.FindAsync(roId);
         ro!.Status.Should().Be("IN_PROGRESS");
 
+        // Stage is restored to whatever it was before blocking — NOT 95
+        var kanban = await db.RoKanbanStates.FindAsync(roId);
+        kanban!.CurrentStageId.Should().Be(stageBeforeBlock,
+            "unblock must restore the previousStageId saved on TaskBlocked");
+        kanban.CurrentStageId.Should().NotBe((short)95);
+
         // A TaskUnblocked domain event was emitted with the resolution notes
         var ev = await db.DomainEvents
             .Where(e => e.AggregateId == taskId && e.EventType == "TaskUnblocked")
@@ -265,6 +287,8 @@ public class TechEndpointTests(ApiFixture fixture)
         ev.Should().NotBeNull();
         ev!.Payload.RootElement.GetProperty("resolutionNotes").GetString()
             .Should().Be("Parts arrived on dock, technician can resume");
+        ev.Payload.RootElement.GetProperty("restoredStageId").GetInt16()
+            .Should().Be(stageBeforeBlock);
     }
 
     [Fact]
@@ -296,13 +320,32 @@ public class TechEndpointTests(ApiFixture fixture)
         await peter.PostAsJsonAsync($"/api/tech/tasks/{taskId}/block",
             new { Reason = blockReason });
 
-        var resp = await peter.GetAsync("/api/tech/tasks/");
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var tasks = await peter.GetFromJsonAsync<MyTasksItem[]>("/api/tech/tasks/");
+        tasks.Should().NotBeNull();
 
-        var json = await resp.Content.ReadAsStringAsync();
-        json.Should().Contain("\"status\":\"BLOCKED\"");
-        json.Should().Contain($"\"blockedReason\":\"{blockReason}\"");
+        var blocked = tasks!.FirstOrDefault(t => t.Id == taskId);
+        blocked.Should().NotBeNull("the BLOCKED task should appear on the technician's list");
+        blocked!.Status.Should().Be("BLOCKED");
+        blocked.BlockedReason.Should().Be(blockReason);
+        blocked.BlockedAt.Should().NotBeNull();
     }
+
+    private record MyTasksItem(
+        Guid Id,
+        Guid RoId,
+        string RoNumber,
+        int Sequence,
+        string OperationName,
+        string StationName,
+        decimal EstimatedHours,
+        decimal ActualHours,
+        string Status,
+        int Priority,
+        string CustomerName,
+        DateTimeOffset? RequiredDate,
+        DateTimeOffset? ClockedInSince,
+        string? BlockedReason,
+        DateTimeOffset? BlockedAt);
 
     // ── 12. KanbanStageAdvances_WhenAllStationTasksComplete ──────────────────
 

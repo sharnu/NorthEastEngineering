@@ -923,13 +923,15 @@ export class CardDrawerComponent {
         this.unblockTaskId.set(null);
         this.unblockNotes.set('');
         // Patch localTasks via the assignmentOverrides backing signal so the
-        // drawer reflects the new status immediately. SignalR will trigger a
-        // full board refresh shortly after.
+        // drawer reflects the new status immediately. SignalR (KanbanCardUpdated)
+        // will trigger a board refresh shortly after, which updates the
+        // surrounding RO card (HOSPITAL badge clears, etc.). We deliberately
+        // keep the drawer OPEN — the supervisor may want to address other
+        // tasks on the same RO.
         this.assignmentOverrides.update(prev => ({
           ...prev,
           [taskId]: { ...(prev[taskId] ?? {}), status: 'PAUSED', blockedReason: null, blockedAt: null },
         }));
-        this.closed.emit();
       },
       error: (err: { error?: { message?: string } }) => {
         this.unblockSaving.set(false);

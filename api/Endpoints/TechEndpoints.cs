@@ -597,6 +597,8 @@ public static class TechEndpoints
             UnblockTaskRequest req,
             ClaimsPrincipal principal,
             NeeDbContext db,
+            INotificationService notifications,
+            IHubContext<KanbanHub> hub,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(req.ResolutionNotes) || req.ResolutionNotes.Trim().Length < 10)
@@ -652,7 +654,7 @@ public static class TechEndpoints
                         updated_at = now()",
                 task.RoId, previousStageId);
 
-            db.DomainEvents.Add(new DomainEvent
+            var unblockedEvt = new DomainEvent
             {
                 EventType     = "TaskUnblocked",
                 AggregateType = "JobTask",
@@ -669,9 +671,17 @@ public static class TechEndpoints
                     unblockedByUserId,
                 })),
                 UserId = unblockedByUserId,
-            });
+            };
+            db.DomainEvents.Add(unblockedEvt);
 
             await db.SaveChangesAsync(ct);
+
+            // Mirror the /block side: notify stakeholders (e.g. the assigned
+            // technician that their task is resumable) and push a kanban
+            // card update so connected boards refresh in real time instead
+            // of waiting for the 30s poll.
+            await notifications.FanOutAsync(unblockedEvt, ct);
+            _ = hub.NotifyCardUpdated(task.RoId, task.StationId);
 
             return Results.Ok();
         })
