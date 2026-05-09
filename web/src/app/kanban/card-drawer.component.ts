@@ -275,14 +275,14 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
     }
 
     .gate-banner {
-      background: white;
+      background: var(--paper);
       border-left: 3px solid var(--good);
       border-radius: 0 8px 8px 0;
       padding: 12px 16px;
       margin-bottom: 18px;
     }
-    .gate-banner.gated    { border-left-color: var(--warn); background: #fff8ef; }
-    .gate-banner.complete { border-left-color: var(--good); background: #f0fdf4; }
+    .gate-banner.gated    { border-left-color: var(--warn); background: rgba(217,119,6,0.07); }
+    .gate-banner.complete { border-left-color: var(--good); background: rgba(22,163,74,0.07); }
     .gate-banner-title  { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
     .gate-banner-detail { font-size: 12px; color: var(--ink-3); }
 
@@ -293,7 +293,7 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
     .task-row.progress:hover { background: rgba(219,234,254,0.6); }
     .task-row.menu-open { border-radius: 8px 8px 0 0; border-bottom-color: var(--rule-strong); }
     .task-row-menu {
-      background: white;
+      background: var(--paper);
       border: 0.5px solid var(--rule-strong);
       border-top: none;
       border-radius: 0 0 8px 8px;
@@ -396,7 +396,7 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
     /* PDF pane */
     .drawer-pdf {
       grid-area: pdf;
-      background: #f7f4ec;
+      background: var(--paper-2);
       padding: 22px 24px;
       overflow: hidden;
       border-left: 0.5px solid var(--rule);
@@ -413,7 +413,7 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
     .pdf-head-name { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
     .pdf-head-actions { display: flex; gap: 6px; }
     .pdf-head-btn {
-      background: white;
+      background: var(--paper);
       border: 0.5px solid var(--rule);
       border-radius: 5px;
       padding: 4px 10px;
@@ -482,7 +482,7 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
     .drawer-foot {
       grid-area: foot;
       border-top: 0.5px solid var(--rule);
-      background: white;
+      background: var(--paper);
       padding: 14px 24px;
       display: flex;
       justify-content: space-between;
