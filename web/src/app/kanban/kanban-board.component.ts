@@ -125,18 +125,8 @@ function formatWeekLabel(yyyymmdd: string, isoWeek?: number, isoYear?: number): 
         <select class="week-filter" [value]="selectedWeek()"
                 (change)="onWeekChange($any($event.target).value)"
                 title="Filter by scheduled week">
-          <option value="">All scheduled weeks</option>
-          <option value="backlog">Backlog · unscheduled ({{ backlogCount() }})</option>
-          <!-- Fallback option for the currently-selected week before the
-               availableWeeks list has loaded (avoids the <select> showing
-               the wrong option on first paint). -->
-          @if (showSelectedWeekFallback()) {
-            <option [value]="selectedWeek()">{{ selectedWeekLabel() }}</option>
-          }
-          @for (w of availableWeeks(); track w.week) {
-            <option [value]="w.week">
-              {{ formatWeekOption(w) }}
-            </option>
+          @for (opt of weekOptions(); track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
           }
         </select>
 
@@ -453,13 +443,29 @@ export class KanbanBoardComponent implements OnInit {
     !this.isRefreshing() && this.totalCardCount() === 0
   );
 
-  /** True when selectedWeek is a date that isn't yet present in availableWeeks
-   *  (typically on first paint, before /weeks has resolved). The template
-   *  renders an inline <option> for it so the <select> shows the right label. */
-  showSelectedWeekFallback = computed(() => {
-    const w = this.selectedWeek();
-    if (!w || w === BACKLOG) return false;
-    return !this.availableWeeks().some(x => x.week === w);
+  /**
+   * Unified options list for the week dropdown. Built as a single computed so
+   * Angular's @for (track by value) reuses the same <option> DOM node across
+   * updates — critical for the case where selectedWeek is initialised from
+   * sessionStorage *before* /weeks has resolved. If we render two separate
+   * @if/@for blocks, the option's DOM node gets destroyed when /weeks lands
+   * and recreated under @for, which causes the <select> to lose its selection.
+   */
+  weekOptions = computed(() => {
+    const sel       = this.selectedWeek();
+    const available = this.availableWeeks();
+    const opts: { value: string; label: string }[] = [
+      { value: '',        label: 'All scheduled weeks' },
+      { value: BACKLOG,   label: `Backlog · unscheduled (${this.backlogCount()})` },
+    ];
+    for (const w of available) {
+      opts.push({ value: w.week, label: this.formatWeekOption(w) });
+    }
+    // Fallback if selectedWeek is a date not yet in availableWeeks
+    if (sel && sel !== BACKLOG && !available.some(w => w.week === sel)) {
+      opts.push({ value: sel, label: this.selectedWeekLabel() });
+    }
+    return opts;
   });
 
   selectedCard = signal<KanbanCardDto | null>(null);
