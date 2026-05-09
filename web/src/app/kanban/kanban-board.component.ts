@@ -51,6 +51,18 @@ const GATE_STATES: GateStateChip[] = [
 const WEEK_KEY = 'kanban.selectedWeek';
 const BACKLOG = 'backlog';
 
+/** Returns the Monday of the current week as `yyyy-MM-dd` in local time. */
+function currentMonday(): string {
+  const today = new Date();
+  const dow = today.getDay(); // Sunday=0, Monday=1, ...
+  const offset = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+  const yyyy = monday.getFullYear();
+  const mm = String(monday.getMonth() + 1).padStart(2, '0');
+  const dd = String(monday.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 /**
  * Format a week as "Week of May 11 · W20" (or "· W01 2027" when the ISO year
  * differs from the calendar year, e.g. Dec 30 falling into next ISO year).
@@ -115,6 +127,12 @@ function formatWeekLabel(yyyymmdd: string, isoWeek?: number, isoYear?: number): 
                 title="Filter by scheduled week">
           <option value="">All scheduled weeks</option>
           <option value="backlog">Backlog · unscheduled ({{ backlogCount() }})</option>
+          <!-- Fallback option for the currently-selected week before the
+               availableWeeks list has loaded (avoids the <select> showing
+               the wrong option on first paint). -->
+          @if (showSelectedWeekFallback()) {
+            <option [value]="selectedWeek()">{{ selectedWeekLabel() }}</option>
+          }
           @for (w of availableWeeks(); track w.week) {
             <option [value]="w.week">
               {{ formatWeekOption(w) }}
@@ -408,9 +426,9 @@ export class KanbanBoardComponent implements OnInit {
   boardRefreshCount = signal(0);
 
   // Week filter — persisted to sessionStorage so refresh keeps the user's choice.
-  // Default = "All scheduled weeks" (empty string). sessionStorage takes
-  // precedence so a per-tab pick survives reloads.
-  selectedWeek      = signal<string>(sessionStorage.getItem(WEEK_KEY) ?? '');
+  // Default = current Monday (Monday-based week, computed in local time).
+  // sessionStorage takes precedence so a per-tab pick survives reload.
+  selectedWeek      = signal<string>(sessionStorage.getItem(WEEK_KEY) ?? currentMonday());
   availableWeeks    = signal<ScheduledWeekDto[]>([]);
   backlogCount      = signal(0);
 
@@ -434,6 +452,15 @@ export class KanbanBoardComponent implements OnInit {
   showEmptyBanner = computed(() =>
     !this.isRefreshing() && this.totalCardCount() === 0
   );
+
+  /** True when selectedWeek is a date that isn't yet present in availableWeeks
+   *  (typically on first paint, before /weeks has resolved). The template
+   *  renders an inline <option> for it so the <select> shows the right label. */
+  showSelectedWeekFallback = computed(() => {
+    const w = this.selectedWeek();
+    if (!w || w === BACKLOG) return false;
+    return !this.availableWeeks().some(x => x.week === w);
+  });
 
   selectedCard = signal<KanbanCardDto | null>(null);
   isDrawerOpen = signal(false);
