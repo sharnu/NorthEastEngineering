@@ -114,10 +114,9 @@ import { bodyTypeShortCode } from './body-type.util';
       color: var(--ink);
       line-height: 1.2;
     }
-    .stn-card-source {
-      font-weight: 400;
-      color: var(--ink-3);
-    }
+    /* Source RO uses the exact same font style as the internal RO number
+       (mono, same weight, same colour). Just a "/" separator between. */
+    .stn-card-source { font: inherit; color: inherit; }
     .stn-card-ro small {
       display: block;
       font-family: var(--sans);

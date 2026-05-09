@@ -20,7 +20,9 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
           <!-- Head -->
           <div class="drawer-head">
             <div class="drawer-head-left">
-              <div class="drawer-head-ro">{{ card()?.roNumber }}</div>
+              <div class="drawer-head-ro">
+                {{ card()?.roNumber }}@if (card()?.sourceRoNumber) {<span>/{{ card()?.sourceRoNumber }}</span>}
+              </div>
               <div class="drawer-head-meta">{{ headMeta() }}</div>
             </div>
             <button class="drawer-close" (click)="closed.emit()">×</button>
