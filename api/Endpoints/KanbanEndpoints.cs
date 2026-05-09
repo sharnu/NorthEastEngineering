@@ -272,7 +272,7 @@ public static class KanbanEndpoints
             return Results.Ok(new { Weeks = weeks, BacklogCount = backlogCount });
         }).WithName("GetKanbanWeeks");
 
-        // GET /api/kanban/stages — list all stages for the override-stage form
+        // GET /api/kanban/stages — list all stages for the force-advance form
         grp.MapGet("/stages", async (NeeDbContext db, CancellationToken ct) =>
         {
             var stages = await db.KanbanStages

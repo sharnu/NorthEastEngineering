@@ -55,7 +55,7 @@ public class KanbanOverrideTests(ApiFixture fixture)
         var stages = await SupervisorClient().GetFromJsonAsync<StageItem[]>("/api/kanban/stages");
         var target = stages!.First(s => s.Code == "FINAL_QC");
 
-        var resp = await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/override-stage", new
+        var resp = await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/force-advance", new
         {
             stageId = target.Id,
             reason  = "Supervisor manually advancing this RO to Final QC stage",
@@ -77,14 +77,14 @@ public class KanbanOverrideTests(ApiFixture fixture)
         var target = stages!.First(s => s.Code == "FINAL_QC");
 
         // First override to set a known fromStageId
-        await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/override-stage", new
+        await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/force-advance", new
         {
             stageId = stages!.First(s => s.Code == "FABRICATION").Id,
             reason  = "Setting initial stage before testing event payload correctness",
         });
 
         var secondTarget = target;
-        await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/override-stage", new
+        await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/force-advance", new
         {
             stageId = secondTarget.Id,
             reason  = "Second override to verify from/to event payload fields",
@@ -107,7 +107,7 @@ public class KanbanOverrideTests(ApiFixture fixture)
         var stages = await SalesClient().GetFromJsonAsync<StageItem[]>("/api/kanban/stages");
         var target = stages!.First();
 
-        var resp = await SalesClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/override-stage", new
+        var resp = await SalesClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/force-advance", new
         {
             stageId = target.Id,
             reason  = "Sales user should not be able to override kanban stage",
@@ -128,7 +128,7 @@ public class KanbanOverrideTests(ApiFixture fixture)
 
         var stages = await SupervisorClient().GetFromJsonAsync<StageItem[]>("/api/kanban/stages");
         var target = stages!.First();
-        var resp = await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/override-stage", new
+        var resp = await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/force-advance", new
         {
             stageId = target.Id,
             reason  = "Should be blocked for completed RO override attempt",
@@ -141,7 +141,7 @@ public class KanbanOverrideTests(ApiFixture fixture)
     {
         var roId = await CreateRoAsync();
         var stages = await SupervisorClient().GetFromJsonAsync<StageItem[]>("/api/kanban/stages");
-        var resp = await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/override-stage", new
+        var resp = await SupervisorClient().PostAsJsonAsync($"/api/kanban/ros/{roId}/force-advance", new
         {
             stageId = stages![0].Id,
             reason  = "Short",

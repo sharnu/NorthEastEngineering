@@ -759,7 +759,7 @@ export class RoDetailComponent implements OnInit {
     this.overrideSaving.set(true);
     this.overrideError.set(null);
     try {
-      await firstValueFrom(this.http.post(`/api/kanban/ros/${this.ro()!.id}/override-stage`, {
+      await firstValueFrom(this.http.post(`/api/kanban/ros/${this.ro()!.id}/force-advance`, {
         stageId: Number(this.overrideStageId),
         reason:  this.overrideReason.trim(),
       }));
