@@ -1,5 +1,5 @@
 import {
-  Component, OnInit, inject, signal, DestroyRef,
+  Component, OnInit, inject, signal, computed, DestroyRef,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -345,7 +345,7 @@ interface TemplateDetail extends TemplateSummary { operations: TemplateOperation
               @if (templates().length === 0) {
                 <p class="empty-text">No templates found.</p>
               }
-              @for (t of templates(); track t.code) {
+              @for (t of orderedTemplates(); track t.code) {
                 <div class="template-card" [class.selected]="selectedTemplate()?.code === t.code"
                      (click)="selectTemplate(t.code)">
                   <div class="tpl-main">
@@ -496,6 +496,17 @@ export class PdfReviewComponent implements OnInit {
   jobTypes = signal<JobType[]>([]);
   templates = signal<TemplateSummary[]>([]);
   selectedTemplate = signal<TemplateDetail | null>(null);
+  /** Selected template floats to the top of the picker so a user who
+   *  uploaded a PDF that auto-matched can see / confirm the choice without
+   *  scrolling. */
+  orderedTemplates = computed<TemplateSummary[]>(() => {
+    const list = this.templates();
+    const sel  = this.selectedTemplate();
+    if (!sel) return list;
+    const idx = list.findIndex(t => t.code === sel.code);
+    if (idx <= 0) return list;
+    return [list[idx], ...list.slice(0, idx), ...list.slice(idx + 1)];
+  });
   submitting = signal(false);
   apiError = signal<string | null>(null);
   search$ = new Subject<string>();
