@@ -71,6 +71,31 @@ test.describe('week filter dropdown', () => {
     const displayedText = await select.evaluate((el: HTMLSelectElement) => el.options[el.selectedIndex]?.text ?? '');
     expect(displayedText).toContain('Week of');
 
+    // The default must equal the current Monday — no silent snap-forward.
+    expect(value).toBe(monday);
+
+    // The label should include "W##" even though this week has no scheduled
+    // data (formatWeekLabel computes ISO week locally when API didn't supply).
+    expect(displayedText).toMatch(/W\d{2}/);
+
+    // Page caption should agree with the dropdown
+    const captionText = (await page.locator('.page-caption').textContent()) ?? '';
+    expect(captionText).toContain('Week of');
+    expect(captionText).toMatch(/W\d{2}/);
+
+    // If the current week has no scheduled work in seed data, the empty
+    // banner should appear (instead of being teleported to another week).
+    const cardCount = await page.locator('app-station-card').count();
+    if (cardCount === 0) {
+      const banner = page.locator('.empty-banner');
+      await expect(banner).toBeVisible();
+      await expect(banner).toContainText('No ROs');
+      console.log(`[verified] current week empty → banner shown (no silent snap-forward)`);
+    } else {
+      console.log(`[verified] current week has ${cardCount} cards`);
+    }
+
+    await page.screenshot({ path: '/tmp/kanban-current-week.png', fullPage: false });
     console.log(`[verified] dropdown value=${value} (browser current Monday=${monday}) text="${displayedText}"`);
   });
 });
