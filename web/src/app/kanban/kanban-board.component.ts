@@ -48,7 +48,10 @@ const GATE_STATES: GateStateChip[] = [
   { value: 'COMPLETE',    label: 'Complete',    activeClass: 'chip-complete'   },
 ];
 
-const WEEK_KEY = 'kanban.selectedWeek';
+// v2 (2026-05): bumped to discard stale values left by the old reconcile
+// snap-forward bug, where ROs in HOSPITAL stuck the persisted pick on a
+// future week. v1 ('kanban.selectedWeek') is no longer read.
+const WEEK_KEY = 'kanban.selectedWeek.v2';
 const BACKLOG = 'backlog';
 
 /** Returns the Monday of the current week as `yyyy-MM-dd` in local time. */
