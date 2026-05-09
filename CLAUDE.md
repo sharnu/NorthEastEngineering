@@ -55,9 +55,13 @@ Angular 18 standalone components (no NgModule). State is managed with `signal()`
 
 Feature folders: `auth/` `dashboard/` `kanban/` `sales/` `tech/` `admin/` `core/`
 
+**Theme system**: Two themes (`light` default, `saas`) toggled via `data-theme` on `<html>`. All colour values are CSS custom properties in `web/src/styles.css` — feature components must use `var(--paper)`, `var(--ink)`, `var(--topbar-*)` etc., never hardcoded hex/rgba. Theme state lives in `core/theme.service.ts` (signal + localStorage). `core/theme-switcher.component.ts` is a sun/moon toggle button that should be in every topbar's right-side actions.
+
+**App shell**: Desktop routes are nested under `AppShellComponent` (`core/shell/`) via a parent route with `path: ''`. In SaaS theme it renders a 64px `SidebarComponent` + `<router-outlet>`; in light theme it falls through to a bare outlet so each feature renders its own topbar. The rule `[data-theme="saas"] .topbar { display: none; }` in styles.css hides feature topbars in SaaS mode without per-component changes. Mobile/standalone routes (`tech/*`, `_dev/*`, `login`) must be declared **before** the `path: ''` AppShell route in `app.routes.ts` — prefix matching on `''` swallows everything that comes after it.
+
 ### Database
 
-PostgreSQL 16. Migrations are plain numbered `.sql` files in `db/migrations/` (currently `001`–`013`). **Never run `dotnet ef migrations add`** — EF Core is used only as a query layer. Add schema changes by creating a new numbered `.sql` file and applying it with `docker exec … psql`.
+PostgreSQL 16. Migrations are plain numbered `.sql` files in `db/migrations/` (currently `001`–`023`). **Never run `dotnet ef migrations add`** — EF Core is used only as a query layer. Add schema changes by creating a new numbered `.sql` file and applying it with `docker exec … psql`.
 
 Docker Compose mounts the entire `db/migrations/` directory to `/docker-entrypoint-initdb.d`, so `make reset` automatically applies all files in order on a fresh volume.
 
@@ -74,6 +78,10 @@ Key tables: `repair_orders` → `job_tasks` (1:many) · `ro_kanban_state` · `ti
 **Npgsql 8.x + CITEXT**: The `email` column in `users` is `CITEXT`. In Npgsql 8.x, reading CITEXT columns via LINQ projections (`Select(u => new { u.Email })`) fails unless the app uses `NpgsqlDataSourceBuilder` instead of a raw connection string. `Program.cs` already does this; the test fixture's `CreateDbContext()` also uses a data source. Do not revert to `UseNpgsql(connectionString)` on either side.
 
 **Angular popovers in scrollable tables**: `overflow-x: auto` on a container implicitly sets `overflow-y: auto` (CSS spec), clipping `position: absolute` children. Use `position: fixed` overlays anchored via `getBoundingClientRect()` stored in a `signal<DOMRect | null>`.
+
+**Flexbox children that contain wide content**: Flex items default to `min-width: auto`, which lets a child grow as wide as its content. When a child contains horizontally scrolling regions (e.g. `min-width: max-content` kanban columns), the parent expands beyond the viewport unless the flex child has `min-width: 0`. `core/shell/app-shell.component.ts` sets this on `.shell-main` for that reason — keep it; removing it pushes feature page-headers off screen in SaaS mode.
+
+**Theme-aware colours**: When editing component CSS, use the existing CSS variables (`var(--paper)`, `var(--paper-2)`, `var(--ink)`, `var(--ink-2)`, `var(--ink-3)`, `var(--accent)`, `var(--good/warn/bad/info)`, `var(--topbar-bg/text/muted/sub/border/hover)`, `var(--rule)`, `var(--rule-strong)`). Hardcoded `white`, `#f5f2ea`, `rgba(245,242,234,…)` etc. break the SaaS theme — see `card-drawer.component.ts` for the pattern of which colours stay solid (e.g. white task cards as cards-on-paper) versus which use tokens.
 
 **After seeding**: Seed SQL uses a placeholder password hash. Always run `make hash-pw` after `make seed` or `make reset` before logging in.
 
