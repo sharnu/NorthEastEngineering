@@ -122,11 +122,13 @@ function formatWeekLabel(yyyymmdd: string, isoWeek?: number, isoYear?: number): 
         </p>
       </div>
       <div class="header-controls">
-        <select class="week-filter" [value]="selectedWeek()"
+        <select class="week-filter"
                 (change)="onWeekChange($any($event.target).value)"
                 title="Filter by scheduled week">
           @for (opt of weekOptions(); track opt.value) {
-            <option [value]="opt.value">{{ opt.label }}</option>
+            <option [value]="opt.value" [selected]="opt.value === selectedWeek()">
+              {{ opt.label }}
+            </option>
           }
         </select>
 
