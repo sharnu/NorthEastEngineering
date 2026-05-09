@@ -246,7 +246,8 @@ public class TechEndpointTests(ApiFixture fixture)
 
         // Unblock as supervisor
         var sup  = Client(SupervisorId, "SUPERVISOR");
-        var resp = await sup.PostAsJsonAsync($"/api/tech/tasks/{taskId}/unblock", new { });
+        var resp = await sup.PostAsJsonAsync($"/api/tech/tasks/{taskId}/unblock",
+            new { ResolutionNotes = "Parts arrived on dock, technician can resume" });
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
 
         await using var db = fixture.CreateDbContext();
@@ -255,6 +256,52 @@ public class TechEndpointTests(ApiFixture fixture)
 
         var ro = await db.RepairOrders.FindAsync(roId);
         ro!.Status.Should().Be("IN_PROGRESS");
+
+        // A TaskUnblocked domain event was emitted with the resolution notes
+        var ev = await db.DomainEvents
+            .Where(e => e.AggregateId == taskId && e.EventType == "TaskUnblocked")
+            .OrderByDescending(e => e.Id)
+            .FirstOrDefaultAsync();
+        ev.Should().NotBeNull();
+        ev!.Payload.RootElement.GetProperty("resolutionNotes").GetString()
+            .Should().Be("Parts arrived on dock, technician can resume");
+    }
+
+    [Fact]
+    public async Task UnblockTask_ShortNotes_Returns422()
+    {
+        var roId   = await CreateAndApproveRo("UNBL002");
+        var taskId = await GetFirstFabTaskId(roId);
+        await AssignTaskToPeter(taskId);
+
+        var peter = Client(PeterId, "TECHNICIAN");
+        await peter.PostAsJsonAsync($"/api/tech/tasks/{taskId}/block",
+            new { Reason = "Waiting for parts to arrive before fabrication can start" });
+
+        var sup  = Client(SupervisorId, "SUPERVISOR");
+        var resp = await sup.PostAsJsonAsync($"/api/tech/tasks/{taskId}/unblock",
+            new { ResolutionNotes = "ok" });
+        resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task GetMyTasks_IncludesBlockedTasks_WithReason()
+    {
+        var roId   = await CreateAndApproveRo("UNBL003");
+        var taskId = await GetFirstFabTaskId(roId);
+        await AssignTaskToPeter(taskId);
+
+        var peter = Client(PeterId, "TECHNICIAN");
+        var blockReason = "Drilling jig is broken — need replacement";
+        await peter.PostAsJsonAsync($"/api/tech/tasks/{taskId}/block",
+            new { Reason = blockReason });
+
+        var resp = await peter.GetAsync("/api/tech/tasks/");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var json = await resp.Content.ReadAsStringAsync();
+        json.Should().Contain("\"status\":\"BLOCKED\"");
+        json.Should().Contain($"\"blockedReason\":\"{blockReason}\"");
     }
 
     // ── 12. KanbanStageAdvances_WhenAllStationTasksComplete ──────────────────

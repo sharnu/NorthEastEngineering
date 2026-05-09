@@ -16,6 +16,8 @@ export interface TechTask {
   customerName: string;
   requiredDate: string | null;
   clockedInSince: string | null;
+  blockedReason: string | null;
+  blockedAt: string | null;
 }
 
 export interface TimeEntryItem {

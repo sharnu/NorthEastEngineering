@@ -14,6 +14,8 @@ export interface KanbanCardTaskDto {
   status: string;
   flowTrack: string;
   notes: string | null;
+  blockedReason: string | null;
+  blockedAt: string | null;
 }
 
 export interface KanbanCardDto {
@@ -150,6 +152,10 @@ export class KanbanService {
 
   forceAdvance(roId: string, stationId: number, reason: string): Observable<void> {
     return this.http.post<void>(`/api/kanban/ros/${roId}/force-advance`, { stationId, reason });
+  }
+
+  unblockTask(taskId: string, resolutionNotes: string): Observable<void> {
+    return this.http.post<void>(`/api/tech/tasks/${taskId}/unblock`, { resolutionNotes });
   }
 
   getFlow(roId: string): Observable<FlowData> {

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Nee.Api.Data;
@@ -164,6 +165,33 @@ public static class KanbanEndpoints
                     .ToListAsync(ct)).ToHashSet()
                 : new HashSet<Guid>();
 
+            // Latest block reason per BLOCKED task — surfaces on the card
+            // task list so supervisors see why a task was blocked when they
+            // open the drawer to unblock it.
+            var blockedTaskIds = tasks
+                .Where(t => t.Status == "BLOCKED")
+                .Select(t => t.Id)
+                .Distinct()
+                .ToList();
+            var blockReasonByTask = new Dictionary<Guid, (string? Reason, DateTimeOffset BlockedAt)>();
+            if (blockedTaskIds.Count > 0)
+            {
+                var blockEvents = await db.DomainEvents
+                    .Where(e => e.EventType == "TaskBlocked" && blockedTaskIds.Contains(e.AggregateId))
+                    .OrderByDescending(e => e.Id)
+                    .Select(e => new { e.AggregateId, e.Payload, e.OccurredAt })
+                    .ToListAsync(ct);
+                foreach (var ev in blockEvents)
+                {
+                    if (blockReasonByTask.ContainsKey(ev.AggregateId)) continue;
+                    string? reason = null;
+                    if (ev.Payload.RootElement.TryGetProperty("reason", out var p)
+                        && p.ValueKind == JsonValueKind.String)
+                        reason = p.GetString();
+                    blockReasonByTask[ev.AggregateId] = (reason, ev.OccurredAt);
+                }
+            }
+
             // Source PDF attachments (one per RO, first wins on duplicates)
             var pdfByRo = boardRoIds.Count > 0
                 ? (await db.Attachments
@@ -228,19 +256,25 @@ public static class KanbanEndpoints
                                 SourcePdfUrl:      sourcePdfUrl,
                                 HasManualOverride: overrideRoIds.Contains(roId),
                                 IsHospital:        hospitalRoIdsForCards.Contains(roId),
-                                Tasks: taskList.Select(t => new KanbanCardTaskDto(
-                                    Id:              t.Id,
-                                    Sequence:        t.Sequence,
-                                    JobCodeLine:     t.JobCodeLine,
-                                    OperationName:   t.OperationName,
-                                    AssignedToUserId: t.AssignedToUserId,
-                                    AssignedToName:  t.AssignedToName,
-                                    EstimatedHours:  t.EstimatedHours,
-                                    ActualHours:     t.ActualHours,
-                                    Status:          t.Status,
-                                    FlowTrack:       t.FlowTrack,
-                                    Notes:           t.Notes
-                                )).ToArray()
+                                Tasks: taskList.Select(t =>
+                                {
+                                    blockReasonByTask.TryGetValue(t.Id, out var blk);
+                                    return new KanbanCardTaskDto(
+                                        Id:              t.Id,
+                                        Sequence:        t.Sequence,
+                                        JobCodeLine:     t.JobCodeLine,
+                                        OperationName:   t.OperationName,
+                                        AssignedToUserId: t.AssignedToUserId,
+                                        AssignedToName:  t.AssignedToName,
+                                        EstimatedHours:  t.EstimatedHours,
+                                        ActualHours:     t.ActualHours,
+                                        Status:          t.Status,
+                                        FlowTrack:       t.FlowTrack,
+                                        Notes:           t.Notes,
+                                        BlockedReason:   t.Status == "BLOCKED" ? blk.Reason : null,
+                                        BlockedAt:       t.Status == "BLOCKED" && blk.Reason != null ? blk.BlockedAt : null
+                                    );
+                                }).ToArray()
                             );
                         })
                         .ToArray();
@@ -428,7 +462,9 @@ public record KanbanCardTaskDto(
     decimal ActualHours,
     string Status,
     string FlowTrack,
-    string? Notes);
+    string? Notes,
+    string? BlockedReason,
+    DateTimeOffset? BlockedAt);
 
 public record KanbanCardDto(
     Guid RoId,

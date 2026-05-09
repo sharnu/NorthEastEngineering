@@ -22,7 +22,9 @@ public static class TechEndpoints
         {
             var currentUserId = GetUserId(principal);
 
-            var activeStatuses = new[] { "ASSIGNED", "IN_PROGRESS", "PAUSED" };
+            // Active statuses include BLOCKED so the technician can see what's
+            // pending supervisor unblock — rendered read-only in the UI.
+            var activeStatuses = new[] { "ASSIGNED", "IN_PROGRESS", "PAUSED", "BLOCKED" };
 
             var tasks = await db.JobTasks
                 .Where(t => t.AssignedToUserId == currentUserId && activeStatuses.Contains(t.Status))
@@ -47,29 +49,59 @@ public static class TechEndpoints
                 })
                 .ToListAsync(ct);
 
+            // For BLOCKED tasks, attach the latest TaskBlocked event reason
+            var blockedIds = tasks.Where(t => t.Status == "BLOCKED").Select(t => t.Id).ToList();
+            var blockInfo = new Dictionary<Guid, (string? Reason, DateTimeOffset At)>();
+            if (blockedIds.Count > 0)
+            {
+                var events = await db.DomainEvents
+                    .Where(e => e.EventType == "TaskBlocked" && blockedIds.Contains(e.AggregateId))
+                    .OrderByDescending(e => e.Id)
+                    .Select(e => new { e.AggregateId, e.Payload, e.OccurredAt })
+                    .ToListAsync(ct);
+                foreach (var ev in events)
+                {
+                    if (blockInfo.ContainsKey(ev.AggregateId)) continue;
+                    string? reason = null;
+                    if (ev.Payload.RootElement.TryGetProperty("reason", out var p)
+                        && p.ValueKind == JsonValueKind.String)
+                        reason = p.GetString();
+                    blockInfo[ev.AggregateId] = (reason, ev.OccurredAt);
+                }
+            }
+
             var ordered = tasks
                 .OrderBy(t => t.Status switch
                 {
                     "IN_PROGRESS" => 1,
                     "PAUSED"      => 2,
-                    _             => 3,
+                    "ASSIGNED"    => 3,
+                    "BLOCKED"     => 4,
+                    _             => 5,
                 })
                 .ThenBy(t => t.Priority)
-                .Select(t => new
+                .Select(t =>
                 {
-                    t.Id,
-                    t.RoId,
-                    t.RoNumber,
-                    t.Sequence,
-                    t.OperationName,
-                    t.StationName,
-                    t.EstimatedHours,
-                    t.ActualHours,
-                    t.Status,
-                    t.Priority,
-                    t.CustomerName,
-                    t.RequiredDate,
-                    t.ClockedInSince,
+                    blockInfo.TryGetValue(t.Id, out var blk);
+                    return new
+                    {
+                        t.Id,
+                        t.RoId,
+                        t.RoNumber,
+                        t.Sequence,
+                        t.OperationName,
+                        t.StationName,
+                        t.EstimatedHours,
+                        t.ActualHours,
+                        t.Status,
+                        t.Priority,
+                        t.CustomerName,
+                        t.RequiredDate,
+                        t.ClockedInSince,
+                        BlockedReason = t.Status == "BLOCKED" ? blk.Reason : null,
+                        BlockedAt     = t.Status == "BLOCKED" && blk.Reason != null
+                                            ? (DateTimeOffset?)blk.At : null,
+                    };
                 });
 
             return Results.Ok(ordered);
@@ -562,10 +594,14 @@ public static class TechEndpoints
         // ── POST /api/tech/tasks/{id}/unblock ─────────────────────────────────
         tech.MapPost("/{id:guid}/unblock", async (
             Guid id,
+            UnblockTaskRequest req,
             ClaimsPrincipal principal,
             NeeDbContext db,
             CancellationToken ct) =>
         {
+            if (string.IsNullOrWhiteSpace(req.ResolutionNotes) || req.ResolutionNotes.Trim().Length < 10)
+                return Results.UnprocessableEntity(new { message = "Resolution notes must be at least 10 characters." });
+
             var task = await db.JobTasks
                 .Include(t => t.RepairOrder)
                 .FirstOrDefaultAsync(t => t.Id == id, ct);
@@ -581,15 +617,22 @@ public static class TechEndpoints
                 .FirstOrDefaultAsync(ct);
 
             short previousStageId = 10;
+            string? originalReason = null;
             if (blockEvent is not null)
             {
                 var doc = blockEvent.Payload.RootElement;
                 if (doc.TryGetProperty("previousStageId", out var prop)
                     && prop.ValueKind != JsonValueKind.Null)
                     previousStageId = prop.GetInt16();
+                if (doc.TryGetProperty("reason", out var reasonProp)
+                    && reasonProp.ValueKind == JsonValueKind.String)
+                    originalReason = reasonProp.GetString();
             }
 
             var now = DateTimeOffset.UtcNow;
+            var unblockedByUserId = GetUserId(principal);
+            var resolution = req.ResolutionNotes.Trim();
+
             task.Status    = "PAUSED";
             task.UpdatedAt = now;
 
@@ -609,11 +652,30 @@ public static class TechEndpoints
                         updated_at = now()",
                 task.RoId, previousStageId);
 
+            db.DomainEvents.Add(new DomainEvent
+            {
+                EventType     = "TaskUnblocked",
+                AggregateType = "JobTask",
+                AggregateId   = id,
+                Payload       = JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    taskId             = id,
+                    roId               = task.RoId,
+                    roNumber           = task.RepairOrder.RoNumber,
+                    operationName      = task.OperationName,
+                    originalReason,
+                    resolutionNotes    = resolution,
+                    restoredStageId    = previousStageId,
+                    unblockedByUserId,
+                })),
+                UserId = unblockedByUserId,
+            });
+
             await db.SaveChangesAsync(ct);
 
             return Results.Ok();
         })
-        .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "STATION_OWNER"));
+        .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "STATION_OWNER", "ADMIN"));
 
         // ── GET /api/variance-reasons ─────────────────────────────────────────
         variance.MapGet("/variance-reasons", async (NeeDbContext db, CancellationToken ct) =>
@@ -778,3 +840,4 @@ public static class TechEndpoints
 
 public record CompleteTaskRequest(short VarianceReasonId, string? Notes);
 public record BlockTaskRequest(string Reason);
+public record UnblockTaskRequest(string ResolutionNotes);

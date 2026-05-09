@@ -26,10 +26,10 @@ function card(overrides: Partial<KanbanCardDto>): KanbanCardDto {
     isHospital: false,
     hasManualOverride: false,
     tasks: [
-      { id: 't1', sequence: 1, jobCodeLine: 'TP42N-001', operationName: 'CNC + base', assignedToUserId: null, assignedToName: null, estimatedHours: 5.5, actualHours: 5.5, status: 'COMPLETED', flowTrack: 'BODY', notes: null },
-      { id: 't2', sequence: 2, jobCodeLine: 'TP42N-002', operationName: 'Mfr headboard', assignedToUserId: null, assignedToName: 'Peter Rogers', estimatedHours: 2.5, actualHours: 0, status: 'ASSIGNED', flowTrack: 'BODY', notes: null },
-      { id: 't3', sequence: 3, jobCodeLine: 'TP42N-003', operationName: 'Mfr dropsides', assignedToUserId: null, assignedToName: null, estimatedHours: 4, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null },
-      { id: 't4', sequence: 4, jobCodeLine: 'TP42N-004', operationName: 'Fab line assy', assignedToUserId: null, assignedToName: null, estimatedHours: 2, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null },
+      { id: 't1', sequence: 1, jobCodeLine: 'TP42N-001', operationName: 'CNC + base', assignedToUserId: null, assignedToName: null, estimatedHours: 5.5, actualHours: 5.5, status: 'COMPLETED', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
+      { id: 't2', sequence: 2, jobCodeLine: 'TP42N-002', operationName: 'Mfr headboard', assignedToUserId: null, assignedToName: 'Peter Rogers', estimatedHours: 2.5, actualHours: 0, status: 'ASSIGNED', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
+      { id: 't3', sequence: 3, jobCodeLine: 'TP42N-003', operationName: 'Mfr dropsides', assignedToUserId: null, assignedToName: null, estimatedHours: 4, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
+      { id: 't4', sequence: 4, jobCodeLine: 'TP42N-004', operationName: 'Fab line assy', assignedToUserId: null, assignedToName: null, estimatedHours: 2, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
     ],
     ...overrides,
   };
@@ -41,10 +41,10 @@ const READY_CARD = card({
   completedTasks: 4,
   actualHours: 14,
   tasks: [
-    { id: 'r1', sequence: 1, jobCodeLine: 'L1', operationName: 'CNC + base', assignedToUserId: null, assignedToName: null, estimatedHours: 5.5, actualHours: 5.5, status: 'COMPLETED', flowTrack: 'BODY', notes: null },
-    { id: 'r2', sequence: 2, jobCodeLine: 'L2', operationName: 'Mfr headboard', assignedToUserId: null, assignedToName: null, estimatedHours: 2.5, actualHours: 2.5, status: 'COMPLETED', flowTrack: 'BODY', notes: null },
-    { id: 'r3', sequence: 3, jobCodeLine: 'L3', operationName: 'Mfr dropsides', assignedToUserId: null, assignedToName: null, estimatedHours: 4, actualHours: 4, status: 'COMPLETED', flowTrack: 'BODY', notes: null },
-    { id: 'r4', sequence: 4, jobCodeLine: 'L4', operationName: 'Fab line assy', assignedToUserId: null, assignedToName: null, estimatedHours: 2, actualHours: 2, status: 'COMPLETED', flowTrack: 'BODY', notes: null },
+    { id: 'r1', sequence: 1, jobCodeLine: 'L1', operationName: 'CNC + base', assignedToUserId: null, assignedToName: null, estimatedHours: 5.5, actualHours: 5.5, status: 'COMPLETED', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
+    { id: 'r2', sequence: 2, jobCodeLine: 'L2', operationName: 'Mfr headboard', assignedToUserId: null, assignedToName: null, estimatedHours: 2.5, actualHours: 2.5, status: 'COMPLETED', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
+    { id: 'r3', sequence: 3, jobCodeLine: 'L3', operationName: 'Mfr dropsides', assignedToUserId: null, assignedToName: null, estimatedHours: 4, actualHours: 4, status: 'COMPLETED', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
+    { id: 'r4', sequence: 4, jobCodeLine: 'L4', operationName: 'Fab line assy', assignedToUserId: null, assignedToName: null, estimatedHours: 2, actualHours: 2, status: 'COMPLETED', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
   ],
 });
 
@@ -64,11 +64,11 @@ const MIXED_CARD = card({
   totalTasks: 5,
   completedTasks: 2,
   tasks: [
-    { id: 'm1', sequence: 1, jobCodeLine: 'L1', operationName: 'Chassis prep', assignedToUserId: null, assignedToName: null, estimatedHours: 3, actualHours: 3, status: 'COMPLETED', flowTrack: 'CHASSIS', notes: null },
-    { id: 'm2', sequence: 2, jobCodeLine: 'L2', operationName: 'Hyva kit fit', assignedToUserId: null, assignedToName: null, estimatedHours: 4, actualHours: 4, status: 'COMPLETED', flowTrack: 'CHASSIS', notes: null },
-    { id: 'm3', sequence: 3, jobCodeLine: 'L3', operationName: 'Body fitout', assignedToUserId: null, assignedToName: null, estimatedHours: 6, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null },
-    { id: 'm4', sequence: 4, jobCodeLine: 'L4', operationName: 'Curtain side install', assignedToUserId: null, assignedToName: null, estimatedHours: 3, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null },
-    { id: 'm5', sequence: 5, jobCodeLine: 'L5', operationName: 'Final fitment', assignedToUserId: null, assignedToName: null, estimatedHours: 2, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null },
+    { id: 'm1', sequence: 1, jobCodeLine: 'L1', operationName: 'Chassis prep', assignedToUserId: null, assignedToName: null, estimatedHours: 3, actualHours: 3, status: 'COMPLETED', flowTrack: 'CHASSIS', notes: null, blockedReason: null, blockedAt: null },
+    { id: 'm2', sequence: 2, jobCodeLine: 'L2', operationName: 'Hyva kit fit', assignedToUserId: null, assignedToName: null, estimatedHours: 4, actualHours: 4, status: 'COMPLETED', flowTrack: 'CHASSIS', notes: null, blockedReason: null, blockedAt: null },
+    { id: 'm3', sequence: 3, jobCodeLine: 'L3', operationName: 'Body fitout', assignedToUserId: null, assignedToName: null, estimatedHours: 6, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
+    { id: 'm4', sequence: 4, jobCodeLine: 'L4', operationName: 'Curtain side install', assignedToUserId: null, assignedToName: null, estimatedHours: 3, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
+    { id: 'm5', sequence: 5, jobCodeLine: 'L5', operationName: 'Final fitment', assignedToUserId: null, assignedToName: null, estimatedHours: 2, actualHours: 0, status: 'PENDING', flowTrack: 'BODY', notes: null, blockedReason: null, blockedAt: null },
   ],
 });
 

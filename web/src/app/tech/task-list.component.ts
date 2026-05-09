@@ -26,7 +26,8 @@ import { TechBottomNavComponent } from './tech-bottom-nav.component';
           <div class="empty-state">No tasks assigned. Ask your station owner.</div>
         } @else {
           @for (task of tasks(); track task.id) {
-            <div class="task-card" (click)="openTask(task.id)">
+            <div class="task-card" [class.blocked-card]="task.status === 'BLOCKED'"
+                 (click)="task.status === 'BLOCKED' ? null : openTask(task.id)">
               <div class="task-main">
                 <span class="op-name">{{ task.operationName }}</span>
                 <span class="status-pill" [class]="statusClass(task.status)">{{ task.status }}</span>
@@ -34,13 +35,27 @@ import { TechBottomNavComponent } from './tech-bottom-nav.component';
               <div class="task-sub">
                 <span class="ro-info">{{ task.roNumber }} &middot; {{ task.customerName }}</span>
               </div>
-              <div class="task-footer">
-                <span class="hours">Est {{ task.estimatedHours }}h / Act {{ task.actualHours }}h</span>
-                <button class="action-btn" [class]="task.status === 'IN_PROGRESS' ? 'btn-continue' : 'btn-clockin'"
-                  (click)="$event.stopPropagation(); openTask(task.id)">
-                  {{ task.status === 'IN_PROGRESS' ? 'Continue' : 'Clock In' }}
-                </button>
-              </div>
+
+              @if (task.status === 'BLOCKED') {
+                <div class="block-banner">
+                  <span class="block-banner-title">Awaiting supervisor</span>
+                  @if (task.blockedReason) {
+                    <span class="block-banner-reason">{{ task.blockedReason }}</span>
+                  }
+                </div>
+                <div class="task-footer">
+                  <span class="hours">Est {{ task.estimatedHours }}h</span>
+                  <span class="block-hint">No actions until unblocked</span>
+                </div>
+              } @else {
+                <div class="task-footer">
+                  <span class="hours">Est {{ task.estimatedHours }}h / Act {{ task.actualHours }}h</span>
+                  <button class="action-btn" [class]="task.status === 'IN_PROGRESS' ? 'btn-continue' : 'btn-clockin'"
+                    (click)="$event.stopPropagation(); openTask(task.id)">
+                    {{ task.status === 'IN_PROGRESS' ? 'Continue' : 'Clock In' }}
+                  </button>
+                </div>
+              }
             </div>
           }
         }
@@ -103,6 +118,22 @@ import { TechBottomNavComponent } from './tech-bottom-nav.component';
     .pill-in_progress { background: #dbeafe; color: var(--info); }
     .pill-paused { background: #fef9c3; color: var(--warn); }
     .pill-default { background: var(--paper-3); color: var(--ink-3); }
+    .pill-blocked { background: rgba(185,28,28,0.12); color: var(--bad); }
+
+    .blocked-card {
+      cursor: default !important;
+      border-color: rgba(185,28,28,0.35);
+      box-shadow: inset 3px 0 0 var(--bad);
+    }
+    .blocked-card:hover { border-color: rgba(185,28,28,0.35); box-shadow: inset 3px 0 0 var(--bad); }
+    .block-banner {
+      margin: 6px 0 10px; padding: 8px 10px;
+      background: rgba(185,28,28,0.06); border-radius: 6px;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .block-banner-title { font-size: 12px; font-weight: 600; color: var(--bad); }
+    .block-banner-reason { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+    .block-hint { font-family: var(--sans); font-size: 12px; color: var(--ink-3); font-style: italic; }
   `],
 })
 export class TechTaskListComponent implements OnInit, OnDestroy {
@@ -145,6 +176,7 @@ export class TechTaskListComponent implements OnInit, OnDestroy {
       case 'in_progress': return 'status-pill pill-in_progress';
       case 'paused':      return 'status-pill pill-paused';
       case 'assigned':    return 'status-pill pill-assigned';
+      case 'blocked':     return 'status-pill pill-blocked';
       default:            return 'status-pill pill-default';
     }
   }

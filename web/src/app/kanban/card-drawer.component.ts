@@ -57,12 +57,23 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
                   <div class="task-row"
                        [class.done]="task.status === 'COMPLETED'"
                        [class.progress]="task.status === 'ASSIGNED'"
+                       [class.blocked]="task.status === 'BLOCKED'"
                        [class.menu-open]="isSupervisor() && activeMenuTaskId() === task.id"
                        (click)="onTaskRowClick(task)">
                     <div class="task-row-check">{{ checkSymbol(task.status) }}</div>
                     <div class="task-row-body">
-                      <div class="task-row-name">{{ task.operationName }}</div>
+                      <div class="task-row-name">
+                        {{ task.operationName }}
+                        @if (task.status === 'BLOCKED') {
+                          <span class="task-row-pill blocked">BLOCKED</span>
+                        }
+                      </div>
                       <div class="task-row-meta">{{ taskMeta(task) }}</div>
+                      @if (task.status === 'BLOCKED' && task.blockedReason) {
+                        <div class="task-row-block-reason">
+                          <strong>Blocked because:</strong> {{ task.blockedReason }}
+                        </div>
+                      }
                     </div>
                     <div class="task-row-track"
                          [class.body]="task.flowTrack === 'BODY'"
@@ -72,6 +83,36 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
                     </div>
                     <div class="task-row-hours">{{ hoursDisplay(task) }}</div>
                   </div>
+
+                  @if (task.status === 'BLOCKED' && canUnblock()) {
+                    @if (unblockTaskId() === task.id) {
+                      <div class="unblock-form">
+                        <span class="unblock-label">Resolution notes</span>
+                        <textarea
+                          class="unblock-input"
+                          rows="2"
+                          [value]="unblockNotes()"
+                          (input)="unblockNotes.set($any($event.target).value)"
+                          placeholder="What was done to resolve the blocker? (min 10 chars)"></textarea>
+                        @if (unblockError()) {
+                          <span class="unblock-error">{{ unblockError() }}</span>
+                        }
+                        <div class="unblock-actions">
+                          <button class="unblock-cancel" (click)="cancelUnblock()" [disabled]="unblockSaving()">Cancel</button>
+                          <button class="unblock-confirm"
+                                  [disabled]="unblockSaving() || unblockNotes().trim().length < 10"
+                                  (click)="doUnblock(task.id)">
+                            {{ unblockSaving() ? 'Unblocking…' : 'Unblock task' }}
+                          </button>
+                        </div>
+                      </div>
+                    } @else {
+                      <button class="unblock-trigger" (click)="openUnblockForm(task.id)">
+                        Unblock task →
+                      </button>
+                    }
+                  }
+
                   @if (isSupervisor() && activeMenuTaskId() === task.id) {
                     <div class="task-row-menu">
                       <a class="task-row-menu-item" [routerLink]="['/tech/tasks', task.id]">
@@ -354,6 +395,53 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
     }
     .task-row.done     { background: rgba(220,252,231,0.35); border-color: #bbf7d0; }
     .task-row.progress { background: rgba(219,234,254,0.40); border-color: #93c5fd; }
+    .task-row.blocked  { background: rgba(185,28,28,0.06);   border-color: rgba(185,28,28,0.35); }
+    .task-row.blocked  .task-row-check { background: var(--bad); border-color: var(--bad); color: #fff; }
+    .task-row-pill {
+      display: inline-block; margin-left: 8px;
+      padding: 1px 6px; border-radius: 4px;
+      font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+    }
+    .task-row-pill.blocked { background: rgba(185,28,28,0.12); color: var(--bad);
+                             border: 0.5px solid rgba(185,28,28,0.3); }
+    .task-row-block-reason {
+      margin-top: 4px; font-size: 11px; color: var(--bad); font-family: var(--sans);
+    }
+    .task-row-block-reason strong { font-weight: 600; }
+
+    .unblock-trigger {
+      display: block; width: 100%;
+      margin: 4px 0 6px; padding: 6px 12px;
+      background: var(--bad); color: #fff; border: none;
+      border-radius: 6px; font-size: 12px; font-weight: 500; font-family: var(--sans);
+      cursor: pointer; text-align: left;
+    }
+    .unblock-trigger:hover { filter: brightness(0.95); }
+    .unblock-form {
+      margin: 4px 0 8px; padding: 12px;
+      background: var(--paper-2);
+      border: 0.5px solid rgba(185,28,28,0.25); border-radius: 8px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .unblock-label {
+      font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--ink-3);
+    }
+    .unblock-input {
+      padding: 8px 10px; border: 0.5px solid var(--rule-strong); border-radius: 6px;
+      font-family: var(--sans); font-size: 13px; color: var(--ink);
+      background: var(--paper); outline: none; resize: vertical;
+    }
+    .unblock-input:focus { border-color: var(--accent); }
+    .unblock-error { font-size: 11px; color: var(--bad); }
+    .unblock-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .unblock-cancel, .unblock-confirm {
+      padding: 6px 14px; border-radius: 6px; font-size: 12px; font-family: var(--sans);
+      font-weight: 500; cursor: pointer; border: 0.5px solid var(--rule-strong);
+    }
+    .unblock-cancel { background: transparent; color: var(--ink-2); }
+    .unblock-confirm { background: var(--bad); color: #fff; border-color: var(--bad); }
+    .unblock-confirm:disabled { background: var(--paper-3); color: var(--ink-3); border-color: var(--rule); cursor: not-allowed; }
     .task-row-check {
       width: 18px;
       height: 18px;
@@ -599,6 +687,19 @@ export class CardDrawerComponent {
     return roles.includes('SUPERVISOR') || roles.includes('ADMIN');
   });
 
+  /** Roles allowed to unblock a BLOCKED task (matches the API policy). */
+  canUnblock = computed(() => {
+    const roles = this.auth.user()?.roles ?? [];
+    return roles.includes('SUPERVISOR') || roles.includes('STATION_OWNER') || roles.includes('ADMIN');
+  });
+
+  // Inline unblock form state — keyed by taskId so opening it for one task
+  // doesn't carry resolution notes over to another.
+  unblockTaskId   = signal<string | null>(null);
+  unblockNotes    = signal('');
+  unblockSaving   = signal(false);
+  unblockError    = signal<string | null>(null);
+
   constructor() {
     effect(() => {
       const open = this.isOpen();
@@ -746,6 +847,7 @@ export class CardDrawerComponent {
   checkSymbol(status: string): string {
     if (status === 'COMPLETED') return '✓';
     if (status === 'ASSIGNED')  return '▶';
+    if (status === 'BLOCKED')   return '!';
     return '';
   }
 
@@ -792,5 +894,47 @@ export class CardDrawerComponent {
   openPdfTab(): void {
     const url = this.card()?.sourcePdfUrl;
     if (url) window.open(url, '_blank');
+  }
+
+  // ── Unblock workflow ─────────────────────────────────────────────────
+  openUnblockForm(taskId: string): void {
+    this.unblockTaskId.set(taskId);
+    this.unblockNotes.set('');
+    this.unblockError.set(null);
+  }
+
+  cancelUnblock(): void {
+    this.unblockTaskId.set(null);
+    this.unblockNotes.set('');
+    this.unblockError.set(null);
+  }
+
+  doUnblock(taskId: string): void {
+    const notes = this.unblockNotes().trim();
+    if (notes.length < 10) {
+      this.unblockError.set('Resolution notes must be at least 10 characters.');
+      return;
+    }
+    this.unblockSaving.set(true);
+    this.unblockError.set(null);
+    this.svc.unblockTask(taskId, notes).subscribe({
+      next: () => {
+        this.unblockSaving.set(false);
+        this.unblockTaskId.set(null);
+        this.unblockNotes.set('');
+        // Patch localTasks via the assignmentOverrides backing signal so the
+        // drawer reflects the new status immediately. SignalR will trigger a
+        // full board refresh shortly after.
+        this.assignmentOverrides.update(prev => ({
+          ...prev,
+          [taskId]: { ...(prev[taskId] ?? {}), status: 'PAUSED', blockedReason: null, blockedAt: null },
+        }));
+        this.closed.emit();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.unblockSaving.set(false);
+        this.unblockError.set(err?.error?.message ?? 'Unblock failed. Please try again.');
+      },
+    });
   }
 }
