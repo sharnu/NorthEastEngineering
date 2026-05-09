@@ -134,6 +134,7 @@ public static class RepairOrderEndpoints
 
             var query = db.RepairOrders
                 .Include(r => r.Customer)
+                .Include(r => r.JobType)
                 .Include(r => r.Template).ThenInclude(t => t.BodyType)
                 .Include(r => r.Tasks)
                 .Where(r => !excluded.Contains(r.Status));
@@ -170,6 +171,9 @@ public static class RepairOrderEndpoints
                 {
                     r.Id,
                     r.RoNumber,
+                    r.Rego,
+                    r.SourceRoNumber,
+                    JobTypeName = r.JobType != null ? r.JobType.Name : null,
                     CustomerName = r.Customer.Name,
                     r.TemplateCode,
                     BodyType = r.Template.BodyType.Name,

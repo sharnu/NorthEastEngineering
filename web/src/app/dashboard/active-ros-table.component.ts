@@ -31,7 +31,11 @@ type SortField = 'priority' | 'requiredDate' | 'status' | 'completionPct';
             <tr>
               <th (click)="sort('priority')" class="sortable">Priority {{ sortIcon('priority') }}</th>
               <th>RO #</th>
+              <th>Source RO #</th>
+              <th>Rego</th>
               <th>Customer</th>
+              <th>Job Type</th>
+              <th>Body Type</th>
               <th>Template</th>
               <th>Stage</th>
               <th (click)="sort('status')" class="sortable">Status {{ sortIcon('status') }}</th>
@@ -45,8 +49,12 @@ type SortField = 'priority' | 'requiredDate' | 'status' | 'completionPct';
               <tr (click)="navigate(row.id)" class="ro-row">
                 <td><span class="priority-badge" [class]="priorityClass(row.priority)">{{ priorityLabel(row.priority) }}</span></td>
                 <td class="mono">{{ row.roNumber }}</td>
+                <td class="mono">{{ row.sourceRoNumber ?? '—' }}</td>
+                <td class="mono">{{ row.rego ?? '—' }}</td>
                 <td>{{ row.customerName }}</td>
-                <td class="mono">{{ row.templateCode }} · {{ row.bodyType }}</td>
+                <td>{{ row.jobTypeName ?? '—' }}</td>
+                <td>{{ row.bodyType }}</td>
+                <td class="mono">{{ row.templateCode }}</td>
                 <td>{{ row.currentStage ?? '—' }}</td>
                 <td><span class="status-pill" [class]="statusClass(row.status)">{{ row.status }}</span></td>
                 <td>{{ row.requiredDate ? (row.requiredDate | date:'dd MMM yy') : '—' }}</td>

@@ -38,6 +38,9 @@ export interface TopVarianceItem {
 export interface ActiveRo {
   id: string;
   roNumber: string;
+  rego: string | null;
+  sourceRoNumber: string | null;
+  jobTypeName: string | null;
   customerName: string;
   templateCode: string;
   bodyType: string;
