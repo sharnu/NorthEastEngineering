@@ -41,9 +41,32 @@ export interface CommitResult {
   staleAfterUpload: number;
 }
 
+export interface ChassisRecord {
+  id: string;
+  chassisNumber: string;
+  description: string;
+  chassisClass: string;
+  status: 'AVAILABLE' | 'ALLOCATED' | 'DELIVERED';
+  bodyType: string | null;
+  colour: string | null;
+  tagNumber: string | null;
+  arrivalDate: string | null;
+  allocatedToRo: string | null;
+  lastSeenAt: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ChassisStockService {
   private http = inject(HttpClient);
+
+  getChassisRecords(status?: string, q?: string): Observable<ChassisRecord[]> {
+    const params: Record<string, string> = {};
+    if (status) params['status'] = status;
+    if (q) params['q'] = q;
+    return this.http.get<ChassisRecord[]>('/api/admin/chassis', { params });
+  }
 
   upload(file: File): Observable<DryRunResult> {
     const form = new FormData();

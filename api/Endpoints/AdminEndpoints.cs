@@ -499,6 +499,39 @@ public static class AdminEndpoints
                     new ActivityCounts(tasksCompleted, rosCreated, user.LastLoginAt)));
             })
             .WithName("AdminUserActivity");
+
+        // ── Chassis inventory list ──────────────────────────────────────────
+        grp.MapGet("/chassis", async (
+                string? status, string? q,
+                NeeDbContext db, CancellationToken ct) =>
+            {
+                var query = db.ChassisInventory.AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(status))
+                    query = query.Where(c => c.Status == status);
+
+                if (!string.IsNullOrWhiteSpace(q))
+                    query = query.Where(c =>
+                        EF.Functions.ILike(c.ChassisNumber, $"%{q}%") ||
+                        EF.Functions.ILike(c.Description,   $"%{q}%") ||
+                        (c.BodyType   != null && EF.Functions.ILike(c.BodyType,   $"%{q}%")) ||
+                        (c.Colour     != null && EF.Functions.ILike(c.Colour,     $"%{q}%")) ||
+                        (c.TagNumber  != null && EF.Functions.ILike(c.TagNumber,  $"%{q}%")));
+
+                var rows = await query
+                    .OrderBy(c => c.Status)
+                    .ThenBy(c => c.ChassisNumber)
+                    .Select(c => new {
+                        c.Id, c.ChassisNumber, c.Description, c.ChassisClass,
+                        c.Status, c.BodyType, c.Colour, c.TagNumber,
+                        c.ArrivalDate, c.AllocatedToRo, c.LastSeenAt,
+                        c.Notes, c.CreatedAt,
+                    })
+                    .ToListAsync(ct);
+
+                return Results.Ok(rows);
+            })
+            .WithName("ListChassisInventory");
     }
 
     private static Guid? GetCallerId(ClaimsPrincipal p)

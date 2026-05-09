@@ -32,6 +32,11 @@ const MAX_DISPLAY_ROWS = 100;
         </div>
       </div>
 
+      <div class="sub-tab-bar">
+        <button class="sub-tab sub-tab-active">Upload</button>
+        <button class="sub-tab" (click)="router.navigate(['/admin/chassis-stock/records'])">View Records</button>
+      </div>
+
       <main class="stage">
         <div class="content">
           <h2 class="section-title">Weekly Chassis Inventory Upload</h2>
@@ -242,6 +247,14 @@ const MAX_DISPLAY_ROWS = 100;
     .nav-link { font-size: 13px; color: var(--topbar-muted); cursor: pointer;
                 padding: 5px 0; border-bottom: 1px solid transparent; }
     .nav-link:hover { color: var(--topbar-text); border-bottom-color: var(--topbar-border); }
+    .sub-tab-bar { display: flex; gap: 2px; padding: 0 28px;
+                   border-bottom: 1px solid var(--rule); background: var(--paper); }
+    .sub-tab { background: none; border: none; padding: 10px 18px; font-size: 13px;
+               color: var(--ink-3); cursor: pointer; border-bottom: 2px solid transparent;
+               margin-bottom: -1px; transition: color 0.15s; }
+    .sub-tab:hover { color: var(--ink); }
+    .sub-tab-active { color: var(--ink) !important; border-bottom-color: var(--ink) !important;
+                      font-weight: 500; }
 
     .stage { background: var(--paper); min-height: calc(100vh - 57px); }
     .content { max-width: 1100px; margin: 0 auto; padding: 32px 28px; }
