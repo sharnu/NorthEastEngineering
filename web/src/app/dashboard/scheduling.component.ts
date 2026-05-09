@@ -14,6 +14,10 @@ interface GatesDto {
 interface SchedulingRow {
   roId: string;
   roNumber: string;
+  rego: string | null;
+  sourceRoNumber: string | null;
+  jobTypeName: string | null;
+  bodyType: string | null;
   customerName: string;
   templateCode: string;
   priority: number;
@@ -64,7 +68,11 @@ interface CapacityResponse {
           <thead>
             <tr>
               <th>RO</th>
+              <th>Source RO #</th>
+              <th>Rego</th>
               <th>Customer</th>
+              <th>Job Type</th>
+              <th>Body Type</th>
               <th>Template</th>
               <th>Priority</th>
               <th>Required</th>
@@ -80,7 +88,11 @@ interface CapacityResponse {
             @for (row of backlog(); track row.roId) {
               <tr [class.all-green]="row.gates.allGreen">
                 <td class="mono">{{ row.roNumber }}</td>
+                <td class="mono">{{ row.sourceRoNumber ?? '—' }}</td>
+                <td class="mono">{{ row.rego ?? '—' }}</td>
                 <td>{{ row.customerName }}</td>
+                <td>{{ row.jobTypeName ?? '—' }}</td>
+                <td>{{ row.bodyType ?? '—' }}</td>
                 <td class="mono">{{ row.templateCode }}</td>
                 <td><span class="pill" [class]="priorityClass(row.priority)">{{ priorityLabel(row.priority) }}</span></td>
                 <td class="mono">{{ row.requiredDate ? (row.requiredDate | date:'dd MMM yy') : '—' }}</td>

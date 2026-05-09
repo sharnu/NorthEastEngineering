@@ -21,6 +21,10 @@ public static class SchedulingEndpoints
                 {
                     r.Id,
                     r.RoNumber,
+                    r.Rego,
+                    r.SourceRoNumber,
+                    JobTypeName = r.JobType != null ? r.JobType.Name : null,
+                    BodyType = r.Template.BodyType.Name,
                     CustomerName = r.Customer.Name,
                     r.TemplateCode,
                     r.Priority,
@@ -41,6 +45,10 @@ public static class SchedulingEndpoints
                     {
                         roId = r.Id,
                         roNumber = r.RoNumber,
+                        rego = r.Rego,
+                        sourceRoNumber = r.SourceRoNumber,
+                        jobTypeName = r.JobTypeName,
+                        bodyType = r.BodyType,
                         customerName = r.CustomerName,
                         templateCode = r.TemplateCode,
                         priority = r.Priority,
