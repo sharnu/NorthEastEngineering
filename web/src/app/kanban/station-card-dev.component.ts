@@ -7,6 +7,7 @@ function card(overrides: Partial<KanbanCardDto>): KanbanCardDto {
   return {
     roId: 'aaaaaaaa-0000-0000-0000-000000000001',
     roNumber: 'RO00001',
+    sourceRoNumber: '58053',
     customerName: 'DFE',
     priority: 2,
     requiredDate: '2026-09-01T00:00:00Z',

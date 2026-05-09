@@ -24,7 +24,7 @@ import { bodyTypeShortCode } from './body-type.util';
     <!-- Header -->
     <div class="stn-card-head">
       <div class="stn-card-ro">
-        {{ card().roNumber }}
+        {{ card().roNumber }}@if (card().sourceRoNumber) {<span class="stn-card-source">/{{ card().sourceRoNumber }}</span>}
         <small>{{ card().customerName }} · {{ bodyTypeLabel() }}</small>
       </div>
       <div class="stn-card-tags">
@@ -113,6 +113,10 @@ import { bodyTypeShortCode } from './body-type.util';
       font-weight: 600;
       color: var(--ink);
       line-height: 1.2;
+    }
+    .stn-card-source {
+      font-weight: 400;
+      color: var(--ink-3);
     }
     .stn-card-ro small {
       display: block;

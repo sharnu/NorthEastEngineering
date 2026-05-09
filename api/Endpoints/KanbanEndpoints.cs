@@ -103,7 +103,8 @@ public static class KanbanEndpoints
                 {
                     t.Id,
                     t.RoId,
-                    RoNumber     = t.RepairOrder.RoNumber,
+                    RoNumber       = t.RepairOrder.RoNumber,
+                    SourceRoNumber = t.RepairOrder.SourceRoNumber,
                     t.Sequence,
                     t.JobCodeLine,
                     t.OperationName,
@@ -139,6 +140,7 @@ public static class KanbanEndpoints
                         Priority           = first.Priority,
                         RequiredDate       = first.RequiredDate,
                         RoNumber           = first.RoNumber,
+                        SourceRoNumber     = first.SourceRoNumber,
                         ScheduledStartWeek = first.ScheduledStartWeek,
                     };
                 })
@@ -238,6 +240,7 @@ public static class KanbanEndpoints
                             return new KanbanCardDto(
                                 RoId:               roId,
                                 RoNumber:           first.RoNumber,
+                                SourceRoNumber:     g.SourceRoNumber,
                                 CustomerName:       first.CustomerName,
                                 Priority:           first.Priority,
                                 RequiredDate:       first.RequiredDate,
@@ -469,6 +472,7 @@ public record KanbanCardTaskDto(
 public record KanbanCardDto(
     Guid RoId,
     string RoNumber,
+    string? SourceRoNumber,
     string CustomerName,
     short Priority,
     DateTimeOffset? RequiredDate,

@@ -21,6 +21,7 @@ export interface KanbanCardTaskDto {
 export interface KanbanCardDto {
   roId: string;
   roNumber: string;
+  sourceRoNumber: string | null;
   customerName: string;
   priority: number;
   requiredDate: string | null;
