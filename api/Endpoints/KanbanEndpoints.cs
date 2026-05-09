@@ -10,6 +10,8 @@ namespace Nee.Api.Endpoints;
 
 public static class KanbanEndpoints
 {
+    private const short HOSPITAL_STAGE_ID = 95;
+
     public static void MapKanbanEndpoints(this WebApplication app)
     {
         var grp = app.MapGroup("/api/kanban").RequireAuthorization().WithTags("Kanban");
@@ -55,7 +57,7 @@ public static class KanbanEndpoints
                         .ToListAsync(ct);
 
                     var hospitalIds = await db.RoKanbanStates
-                        .Where(s => s.CurrentStageId == 95)
+                        .Where(s => s.CurrentStageId == HOSPITAL_STAGE_ID)
                         .Select(s => s.RoId)
                         .ToListAsync(ct);
 
@@ -115,6 +117,7 @@ public static class KanbanEndpoints
                     CustomerName = t.RepairOrder.Customer.Name,
                     BodyType     = t.RepairOrder.BodyType,
                     t.RepairOrder.RequiredDate,
+                    t.RepairOrder.ScheduledStartWeek,
                     t.Notes,
                 })
                 .ToListAsync(ct);
@@ -129,12 +132,13 @@ public static class KanbanEndpoints
                     var first   = ordered[0];
                     return new
                     {
-                        RoId         = g.Key.RoId,
-                        StationId    = g.Key.StationId,
-                        Tasks        = ordered,
-                        Priority     = first.Priority,
-                        RequiredDate = first.RequiredDate,
-                        RoNumber     = first.RoNumber,
+                        RoId               = g.Key.RoId,
+                        StationId          = g.Key.StationId,
+                        Tasks              = ordered,
+                        Priority           = first.Priority,
+                        RequiredDate       = first.RequiredDate,
+                        RoNumber           = first.RoNumber,
+                        ScheduledStartWeek = first.ScheduledStartWeek,
                     };
                 })
                 .ToList();
@@ -193,14 +197,15 @@ public static class KanbanEndpoints
                             pdfByRo.TryGetValue(roId, out var sourcePdfUrl);
 
                             return new KanbanCardDto(
-                                RoId:             roId,
-                                RoNumber:         first.RoNumber,
-                                CustomerName:     first.CustomerName,
-                                Priority:         first.Priority,
-                                RequiredDate:     first.RequiredDate,
-                                BodyType:         first.BodyType,
-                                Track:            track,
-                                StationId:        sid,
+                                RoId:               roId,
+                                RoNumber:           first.RoNumber,
+                                CustomerName:       first.CustomerName,
+                                Priority:           first.Priority,
+                                RequiredDate:       first.RequiredDate,
+                                ScheduledStartWeek: g.ScheduledStartWeek,
+                                BodyType:           first.BodyType,
+                                Track:              track,
+                                StationId:          sid,
                                 StationCode:      s.Code,
                                 StationName:      s.Name,
                                 GateState:        gate.State,
@@ -419,6 +424,7 @@ public record KanbanCardDto(
     string CustomerName,
     short Priority,
     DateTimeOffset? RequiredDate,
+    DateOnly? ScheduledStartWeek,
     string? BodyType,
     string Track,
     short StationId,

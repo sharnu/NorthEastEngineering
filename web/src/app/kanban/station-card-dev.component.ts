@@ -10,6 +10,7 @@ function card(overrides: Partial<KanbanCardDto>): KanbanCardDto {
     customerName: 'DFE',
     priority: 2,
     requiredDate: '2026-09-01T00:00:00Z',
+    scheduledStartWeek: null,
     bodyType: 'TIPPER_CS',
     track: 'BODY',
     stationId: 20,

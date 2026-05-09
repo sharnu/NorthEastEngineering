@@ -22,6 +22,7 @@ export interface KanbanCardDto {
   customerName: string;
   priority: number;
   requiredDate: string | null;
+  scheduledStartWeek: string | null;  // yyyy-MM-dd (Monday) or null = backlog
   bodyType: string | null;
   track: string;
   stationId: number;

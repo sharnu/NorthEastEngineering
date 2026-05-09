@@ -25,6 +25,38 @@ public class KanbanEndpointTests(ApiFixture fixture)
         return client;
     }
 
+    /** Creates an RO via the sales API. The rego is suffixed with a guid stub
+        to avoid collisions across tests sharing the same Postgres instance. */
+    private async Task<(Guid RoId, string RoNumber)> CreateRoAsync(string regoPrefix)
+    {
+        var sales      = AuthClient(SalesUserId, "SALES");
+        var customers  = await sales.GetFromJsonAsync<CustomerItem[]>("/api/customers");
+        var customerId = customers!.First().Id;
+        var rego       = $"{regoPrefix}{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}";
+
+        var resp = await sales.PostAsJsonAsync("/api/repair-orders", new
+        {
+            CustomerId   = customerId,
+            JobTypeId    = 1,
+            TemplateCode = "TP42N",
+            Rego         = rego,
+            Priority     = 3,
+        });
+        resp.EnsureSuccessStatusCode();
+        var created = await resp.Content.ReadFromJsonAsync<CreateRoResult>();
+        return (created!.RoId, created.RoNumber);
+    }
+
+    /** Bypasses the schedule endpoint's gate validation by writing
+        scheduled_start_week directly via the DbContext. */
+    private async Task SetScheduledWeekAsync(Guid roId, DateOnly monday)
+    {
+        await using var db = fixture.CreateDbContext();
+        var ro = await db.RepairOrders.FindAsync(roId);
+        ro!.ScheduledStartWeek = monday;
+        await db.SaveChangesAsync();
+    }
+
     // ── GET /api/kanban ───────────────────────────────────────────────────────
 
     [Fact]
@@ -108,6 +140,101 @@ public class KanbanEndpointTests(ApiFixture fixture)
         doc.Should().NotBeNull();
         doc!.Weeks.Should().NotBeNull();
         doc.BacklogCount.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    // ── Week-filter behaviour (carryover, HOSPITAL, backlog) ──────────────────
+
+    [Fact]
+    public async Task WeekFilter_CarryoverRo_AppearsInLaterWeek()
+    {
+        var (roId, _) = await CreateRoAsync("WCARRY");
+        await SetScheduledWeekAsync(roId, new DateOnly(2026, 5, 4));   // earlier week
+
+        var client = AuthClient(SalesUserId, "SALES");
+        var board  = await client.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban?week=2026-05-11");
+
+        board!.Stations.SelectMany(s => s.Cards).Should().Contain(c => c.RoId == roId,
+            "an RO scheduled for an earlier week should still appear (carryover)");
+    }
+
+    [Fact]
+    public async Task WeekFilter_FutureRo_DoesNotAppear()
+    {
+        var (roId, _) = await CreateRoAsync("WFUT");
+        await SetScheduledWeekAsync(roId, new DateOnly(2026, 6, 1));   // later week
+
+        var client = AuthClient(SalesUserId, "SALES");
+        var board  = await client.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban?week=2026-05-11");
+
+        board!.Stations.SelectMany(s => s.Cards).Should().NotContain(c => c.RoId == roId);
+    }
+
+    [Fact]
+    public async Task WeekFilter_HospitalRo_AppearsRegardlessOfSchedule()
+    {
+        var (roId, _) = await CreateRoAsync("WHOSP");
+        // No scheduled_start_week, but force RO to HOSPITAL stage (id 95)
+        await using var db = fixture.CreateDbContext();
+        db.RoKanbanStates.Add(new Nee.Api.Domain.RoKanbanState
+        {
+            RoId           = roId,
+            CurrentStageId = 95,
+            EnteredStageAt = DateTimeOffset.UtcNow,
+            UpdatedAt      = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var client = AuthClient(SalesUserId, "SALES");
+        var board  = await client.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban?week=2026-05-11");
+
+        board!.Stations.SelectMany(s => s.Cards).Should().Contain(c => c.RoId == roId,
+            "HOSPITAL ROs surface in every week's view so supervisors can address them");
+    }
+
+    [Fact]
+    public async Task WeekFilter_BacklogMode_ExcludesScheduledRos()
+    {
+        var (scheduledId, _) = await CreateRoAsync("BSCH");
+        await SetScheduledWeekAsync(scheduledId, new DateOnly(2026, 5, 11));
+
+        var (backlogId, _) = await CreateRoAsync("BBKL");
+        // backlogId left unscheduled
+
+        var client = AuthClient(SalesUserId, "SALES");
+        var board  = await client.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban?week=backlog");
+
+        var roIds = board!.Stations.SelectMany(s => s.Cards).Select(c => c.RoId).ToList();
+        roIds.Should().Contain(backlogId);
+        roIds.Should().NotContain(scheduledId);
+    }
+
+    [Fact]
+    public async Task WeekFilter_CardCarriesScheduledStartWeek()
+    {
+        var (roId, _) = await CreateRoAsync("WCSW");
+        var monday = new DateOnly(2026, 5, 11);
+        await SetScheduledWeekAsync(roId, monday);
+
+        var client = AuthClient(SalesUserId, "SALES");
+        var board  = await client.GetFromJsonAsync<KanbanBoardResponse>("/api/kanban?week=2026-05-11");
+
+        var card = board!.Stations.SelectMany(s => s.Cards).FirstOrDefault(c => c.RoId == roId);
+        card.Should().NotBeNull();
+        card!.ScheduledStartWeek.Should().Be(monday);
+    }
+
+    [Fact]
+    public async Task WeeksEndpoint_IncludesScheduledWeeks()
+    {
+        var (roId, _) = await CreateRoAsync("WLIST");
+        var monday = new DateOnly(2026, 5, 18);
+        await SetScheduledWeekAsync(roId, monday);
+
+        var client = AuthClient(SalesUserId, "SALES");
+        var doc    = await client.GetFromJsonAsync<KanbanWeeksResponse>("/api/kanban/weeks");
+
+        doc!.Weeks.Should().Contain(w => w.Week == "2026-05-18",
+            "weeks endpoint should enumerate every distinct scheduled week present in non-complete ROs");
     }
 
     // ── GET /api/kanban?stationId=20 ──────────────────────────────────────────
@@ -445,6 +572,7 @@ public class KanbanEndpointTests(ApiFixture fixture)
         string CustomerName,
         short Priority,
         DateTimeOffset? RequiredDate,
+        DateOnly? ScheduledStartWeek,
         string? BodyType,
         string Track,
         short StationId,

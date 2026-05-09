@@ -26,9 +26,16 @@ import { bodyTypeShortCode } from './body-type.util';
         {{ card().roNumber }}
         <small>{{ card().customerName }} · {{ bodyTypeLabel() }}</small>
       </div>
-      @if (card().bodyType) {
-        <span class="stn-card-body-type">{{ bodyTypeCode() }}</span>
-      }
+      <div class="stn-card-tags">
+        @if (weekBadge(); as w) {
+          <span class="stn-card-week" [class.carryover]="isCarryover()" [title]="weekTooltip()">
+            {{ w }}
+          </span>
+        }
+        @if (card().bodyType) {
+          <span class="stn-card-body-type">{{ bodyTypeCode() }}</span>
+        }
+      </div>
     </div>
 
     <!-- Progress row -->
@@ -246,6 +253,20 @@ import { bodyTypeShortCode } from './body-type.util';
     .stn-gate-pill.advance     { background: var(--accent); color: white; cursor: pointer; }
     .stn-gate-pill.in-progress { background: #dbeafe; color: var(--info); }
 
+    .stn-card-tags { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .stn-card-week {
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 2px 6px; border-radius: 4px;
+      background: var(--paper-3); color: var(--ink-3);
+      border: 0.5px solid var(--rule);
+    }
+    .stn-card-week.carryover {
+      background: rgba(217,119,6,0.12);
+      color: var(--warn);
+      border-color: rgba(217,119,6,0.3);
+    }
+
     .stn-gate-tip {
       position: absolute;
       top: 100%;
@@ -266,9 +287,43 @@ import { bodyTypeShortCode } from './body-type.util';
   `],
 })
 export class StationCardComponent {
-  card      = input.required<KanbanCardDto>();
-  cardClick = output<void>();
-  pdfClick  = output<void>();
+  card         = input.required<KanbanCardDto>();
+  // Currently-selected week filter on the board ('' = all weeks, 'backlog' = unscheduled,
+  // or yyyy-MM-dd Monday). Used to flag carryover ROs (scheduled for an earlier week).
+  selectedWeek = input<string>('');
+  cardClick    = output<void>();
+  pdfClick     = output<void>();
+
+  weekBadge = computed(() => {
+    const w = this.card().scheduledStartWeek;
+    if (!w) return null;
+    return `W${this.isoWeekOf(w)}`;
+  });
+
+  isCarryover = computed(() => {
+    const cardWeek = this.card().scheduledStartWeek;
+    const sel      = this.selectedWeek();
+    if (!cardWeek || !sel || sel === 'backlog') return false;
+    return cardWeek < sel;  // lexicographic compare on yyyy-MM-dd works
+  });
+
+  weekTooltip = computed(() => {
+    const w = this.card().scheduledStartWeek;
+    if (!w) return '';
+    return this.isCarryover()
+      ? `Carryover · scheduled for week of ${w}`
+      : `Scheduled for week of ${w}`;
+  });
+
+  private isoWeekOf(yyyymmdd: string): number {
+    // Standard ISO 8601 week: Thursday of the week determines which week-of-year.
+    const [y, m, d] = yyyymmdd.split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d));
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
 
   visibleTasks  = computed(() => this.card().tasks.slice(0, 4));
   extraTaskCount = computed(() => Math.max(0, this.card().tasks.length - 4));

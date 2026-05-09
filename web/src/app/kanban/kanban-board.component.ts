@@ -63,6 +63,21 @@ function currentMonday(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/**
+ * Format a week as "Week of May 11 · W20" (or "· W01 2027" when the ISO year
+ * differs from the calendar year, e.g. Dec 30 falling into next ISO year).
+ */
+function formatWeekLabel(yyyymmdd: string, isoWeek?: number, isoYear?: number): string {
+  const [y, m, d] = yyyymmdd.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const month = date.toLocaleString('default', { month: 'short' });
+  if (!isoWeek) return `Week of ${month} ${d}`;
+  const wkPart = isoYear && isoYear !== y
+    ? `W${String(isoWeek).padStart(2, '0')} ${isoYear}`
+    : `W${String(isoWeek).padStart(2, '0')}`;
+  return `Week of ${month} ${d} · ${wkPart}`;
+}
+
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
@@ -98,14 +113,19 @@ function currentMonday(): string {
       <div class="page-title-block">
         <h1 class="page-title">Kanban Board</h1>
         <p class="page-caption">
-          Showing {{ weekCardCount() }} card{{ weekCardCount() === 1 ? '' : 's' }} ·
-          {{ selectedWeekLabel() }}
+          {{ selectedWeekLabel() }} ·
+          @if (visibleCardCount() === totalCardCount()) {
+            {{ totalCardCount() }} card{{ totalCardCount() === 1 ? '' : 's' }}
+          } @else {
+            {{ visibleCardCount() }} of {{ totalCardCount() }} cards visible
+          }
         </p>
       </div>
       <div class="header-controls">
         <select class="week-filter" [value]="selectedWeek()"
                 (change)="onWeekChange($any($event.target).value)"
                 title="Filter by scheduled week">
+          <option value="">All scheduled weeks</option>
           <option value="backlog">Backlog · unscheduled ({{ backlogCount() }})</option>
           @for (w of availableWeeks(); track w.week) {
             <option [value]="w.week">
@@ -168,6 +188,22 @@ function currentMonday(): string {
       <app-flow-ribbon [roId]="card.roId" [refreshAt]="boardRefreshCount()" />
     }
 
+    @if (showEmptyBanner()) {
+      <div class="empty-banner">
+        <p class="empty-title">No ROs in this view</p>
+        <p class="empty-detail">
+          @if (selectedWeek() === 'backlog') {
+            There are no unscheduled ROs in the backlog.
+          } @else if (selectedWeek() === '') {
+            No active repair orders.
+          } @else {
+            Nothing scheduled for {{ selectedWeekLabel() }}.
+            Try selecting a different week or "All scheduled weeks".
+          }
+        </p>
+      </div>
+    }
+
     <!-- Board -->
     <div class="board">
       <div class="board-columns">
@@ -189,6 +225,7 @@ function currentMonday(): string {
                 @for (card of station.cards; track card.roId) {
                   <app-station-card
                     [card]="card"
+                    [selectedWeek]="selectedWeek()"
                     (cardClick)="openCardDrawer(card)"
                     (pdfClick)="openPdfInTab(card)" />
                 }
@@ -242,6 +279,12 @@ function currentMonday(): string {
     .page-title-block { display: flex; flex-direction: column; gap: 4px; }
     .page-caption { font-size: 12px; color: var(--ink-3); margin: 0;
                     font-family: var(--mono); }
+    .empty-banner { margin: 12px 28px 0; padding: 28px;
+                    border: 0.5px dashed var(--rule-strong); border-radius: 10px;
+                    background: var(--paper-2); text-align: center; }
+    .empty-title  { font-family: var(--display); font-size: 18px; font-weight: 500;
+                    color: var(--ink); margin: 0 0 6px; }
+    .empty-detail { font-size: 13px; color: var(--ink-3); margin: 0; }
     .refresh-btn { padding: 8px 16px; border: 0.5px solid var(--rule-strong); border-radius: 999px;
                    font-size: 13px; font-weight: 500; background: transparent; color: var(--ink); cursor: pointer;
                    transition: background 0.15s, color 0.15s;
@@ -381,20 +424,26 @@ export class KanbanBoardComponent implements OnInit {
   availableWeeks    = signal<ScheduledWeekDto[]>([]);
   backlogCount      = signal(0);
 
-  weekCardCount = computed(() =>
+  /** Card count from server (pre-gate-filter / pre-bodytype-filter) */
+  totalCardCount = computed(() =>
     this.displayedStations().reduce((sum, s) => sum + s.cards.length, 0)
+  );
+  /** Card count after gate / body-type filters are applied */
+  visibleCardCount = computed(() =>
+    this.filteredStations().reduce((sum, s) => sum + s.cards.length, 0)
   );
 
   selectedWeekLabel = computed(() => {
     const w = this.selectedWeek();
+    if (w === '')     return 'All scheduled weeks';
     if (w === BACKLOG) return 'Backlog · unscheduled';
-    const [y, m, d] = w.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    const month = date.toLocaleString('default', { month: 'short' });
     const match = this.availableWeeks().find(x => x.week === w);
-    const iso = match ? ` · W${match.isoWeek}` : '';
-    return `Week of ${month} ${d}${iso}`;
+    return formatWeekLabel(w, match?.isoWeek, match?.isoYear);
   });
+
+  showEmptyBanner = computed(() =>
+    !this.isRefreshing() && this.totalCardCount() === 0
+  );
 
   selectedCard = signal<KanbanCardDto | null>(null);
   isDrawerOpen = signal(false);
@@ -468,12 +517,42 @@ export class KanbanBoardComponent implements OnInit {
     this.svc.getScheduledWeeks().subscribe(res => {
       this.availableWeeks.set(res.weeks);
       this.backlogCount.set(res.backlogCount);
+      this.reconcileSelectedWeek();
     });
+  }
+
+  /**
+   * If the persisted selectedWeek isn't in the available list (e.g. all ROs in
+   * that week have completed since last session), snap to the closest existing
+   * past-or-present week. Falls back to "all weeks" if there are none at all.
+   */
+  private reconcileSelectedWeek(): void {
+    const sel = this.selectedWeek();
+    if (sel === '' || sel === BACKLOG) return;
+
+    const weeks = this.availableWeeks();
+    if (weeks.some(w => w.week === sel)) return;
+
+    if (weeks.length === 0) {
+      this.selectedWeek.set('');
+      sessionStorage.removeItem(WEEK_KEY);
+      return;
+    }
+
+    // Pick the closest week ≤ sel; if none, the earliest available
+    const past = weeks.filter(w => w.week <= sel);
+    const next = past.length ? past[past.length - 1].week : weeks[0].week;
+    this.selectedWeek.set(next);
+    sessionStorage.setItem(WEEK_KEY, next);
+    this.loadBoard(this.selectedStationId() ?? undefined);
   }
 
   private connectRealtime(): void {
     const conn = this.hubFactory();
-    conn.on('KanbanUpdated', () => this.refresh());
+    conn.on('KanbanUpdated', () => {
+      this.refresh();
+      this.loadWeeks();  // schedule changes (RoScheduled, RO completed) may add/remove weeks
+    });
     conn.on('KanbanCardUpdated', () => this.cardUpdated$.next());
     conn.start().catch(err => console.error('[KanbanHub]', err));
     this.hubConnection = conn;
@@ -505,16 +584,15 @@ export class KanbanBoardComponent implements OnInit {
 
   onWeekChange(value: string) {
     this.selectedWeek.set(value);
-    sessionStorage.setItem(WEEK_KEY, value);
+    if (value) sessionStorage.setItem(WEEK_KEY, value);
+    else       sessionStorage.removeItem(WEEK_KEY);
     this.loadBoard(this.selectedStationId() ?? undefined);
-    this.loadWeeks();  // refresh counts after a possible navigation
+    // Note: don't reload /weeks here — week list only changes when ROs are
+    // scheduled/completed, which is signalled via SignalR or refresh().
   }
 
   formatWeekOption(w: ScheduledWeekDto): string {
-    const [y, m, d] = w.week.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    const month = date.toLocaleString('default', { month: 'short' });
-    return `Week of ${month} ${d} · W${w.isoWeek} (${w.roCount})`;
+    return `${formatWeekLabel(w.week, w.isoWeek, w.isoYear)} (${w.roCount})`;
   }
 
   toggleBodyType(bt: string): void {
