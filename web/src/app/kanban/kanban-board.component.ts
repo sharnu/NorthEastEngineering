@@ -404,6 +404,15 @@ function computeIsoWeek(yyyymmdd: string): { week: number; year: number } {
       background: #f0fdf4;
       border-color: #86efac;
     }
+    app-station-card.hospital {
+      border-color: var(--bad);
+      box-shadow: inset 3px 0 0 var(--bad);
+    }
+    app-station-card.hospital.ready,
+    app-station-card.hospital.gated,
+    app-station-card.hospital.complete {
+      box-shadow: inset 3px 0 0 var(--bad);  /* HOSPITAL takes precedence */
+    }
   `],
 })
 export class KanbanBoardComponent implements OnInit {
@@ -482,15 +491,27 @@ export class KanbanBoardComponent implements OnInit {
   weekOptions = computed(() => {
     const sel       = this.selectedWeek();
     const available = this.availableWeeks();
+    const cm        = currentMonday();
     const opts: { value: string; label: string }[] = [
       { value: '',        label: 'All scheduled weeks' },
       { value: BACKLOG,   label: `Backlog · unscheduled (${this.backlogCount()})` },
     ];
-    for (const w of available) {
-      opts.push({ value: w.week, label: this.formatWeekOption(w) });
+    const seen = new Set<string>();
+    // Always offer the current week so the supervisor can navigate back to it
+    if (!available.some(w => w.week === cm)) {
+      opts.push({ value: cm, label: `${formatWeekLabel(cm)} (current)` });
+      seen.add(cm);
     }
-    // Fallback if selectedWeek is a date not yet in availableWeeks
-    if (sel && sel !== BACKLOG && !available.some(w => w.week === sel)) {
+    for (const w of available) {
+      const label = w.week === cm
+        ? `${this.formatWeekOption(w)} · current`
+        : this.formatWeekOption(w);
+      opts.push({ value: w.week, label });
+      seen.add(w.week);
+    }
+    // Fallback for any selected week that's still not in the list
+    // (e.g. a past pick whose ROs all completed)
+    if (sel && sel !== BACKLOG && !seen.has(sel)) {
       opts.push({ value: sel, label: this.selectedWeekLabel() });
     }
     return opts;

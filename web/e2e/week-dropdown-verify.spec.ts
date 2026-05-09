@@ -97,5 +97,22 @@ test.describe('week filter dropdown', () => {
 
     await page.screenshot({ path: '/tmp/kanban-current-week.png', fullPage: false });
     console.log(`[verified] dropdown value=${value} (browser current Monday=${monday}) text="${displayedText}"`);
+
+    // Switching to a different week must NOT cause the current week to
+    // disappear from the dropdown (regression on a real bug)
+    const otherWeek = await select.evaluate((el: HTMLSelectElement) => {
+      const o = Array.from(el.options).find(x => /^\d{4}-\d{2}-\d{2}$/.test(x.value) && x.value !== el.value);
+      return o?.value ?? '';
+    });
+    if (otherWeek) {
+      await select.selectOption(otherWeek);
+      // Force a small settle for change detection
+      await page.waitForTimeout(200);
+      const valuesAfter = await select.evaluate((el: HTMLSelectElement) =>
+        Array.from(el.options).map(o => o.value)
+      );
+      expect(valuesAfter).toContain(monday);
+      console.log(`[verified] picked ${otherWeek} → dropdown still offers current Monday ${monday}`);
+    }
   });
 });

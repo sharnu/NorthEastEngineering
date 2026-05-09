@@ -14,6 +14,7 @@ import { bodyTypeShortCode } from './body-type.util';
     '[class.gated]':    'card().gateState === "GATED"',
     '[class.ready]':    'card().gateState === "READY"',
     '[class.complete]': 'card().gateState === "COMPLETE"',
+    '[class.hospital]': 'card().isHospital',
     '(click)': 'onCardClick()',
   },
   template: `
@@ -27,6 +28,9 @@ import { bodyTypeShortCode } from './body-type.util';
         <small>{{ card().customerName }} · {{ bodyTypeLabel() }}</small>
       </div>
       <div class="stn-card-tags">
+        @if (card().isHospital) {
+          <span class="stn-card-hospital" title="In HOSPITAL stage — surfaces in every week">HOSPITAL</span>
+        }
         @if (weekBadge(); as w) {
           <span class="stn-card-week" [class.carryover]="isCarryover()" [title]="weekTooltip()">
             {{ w }}
@@ -265,6 +269,14 @@ import { bodyTypeShortCode } from './body-type.util';
       background: rgba(217,119,6,0.12);
       color: var(--warn);
       border-color: rgba(217,119,6,0.3);
+    }
+    .stn-card-hospital {
+      font-family: var(--mono); font-size: 10px; font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 6px; border-radius: 4px;
+      background: rgba(185,28,28,0.12);
+      color: var(--bad);
+      border: 0.5px solid rgba(185,28,28,0.3);
     }
 
     .stn-gate-tip {

@@ -153,6 +153,17 @@ public static class KanbanEndpoints
                     .ToListAsync(ct)).ToHashSet()
                 : new HashSet<Guid>();
 
+            // RO IDs currently parked in HOSPITAL — surfaced on the card so the
+            // UI can mark them visually (they appear in every week's view, so
+            // a clear "blocked / hospital" badge avoids confusing supervisors
+            // about why they're showing in a week they're not scheduled to)
+            var hospitalRoIdsForCards = boardRoIds.Count > 0
+                ? (await db.RoKanbanStates
+                    .Where(s => boardRoIds.Contains(s.RoId) && s.CurrentStageId == HOSPITAL_STAGE_ID)
+                    .Select(s => s.RoId)
+                    .ToListAsync(ct)).ToHashSet()
+                : new HashSet<Guid>();
+
             // Source PDF attachments (one per RO, first wins on duplicates)
             var pdfByRo = boardRoIds.Count > 0
                 ? (await db.Attachments
@@ -214,8 +225,9 @@ public static class KanbanEndpoints
                                 ActualHours:      taskList.Sum(t => t.ActualHours),
                                 TotalTasks:       taskList.Count,
                                 CompletedTasks:   taskList.Count(t => t.Status == "COMPLETED"),
-                                SourcePdfUrl:     sourcePdfUrl,
+                                SourcePdfUrl:      sourcePdfUrl,
                                 HasManualOverride: overrideRoIds.Contains(roId),
+                                IsHospital:        hospitalRoIdsForCards.Contains(roId),
                                 Tasks: taskList.Select(t => new KanbanCardTaskDto(
                                     Id:              t.Id,
                                     Sequence:        t.Sequence,
@@ -438,6 +450,7 @@ public record KanbanCardDto(
     int CompletedTasks,
     string? SourcePdfUrl,
     bool HasManualOverride,
+    bool IsHospital,
     KanbanCardTaskDto[] Tasks);
 
 public record ForceAdvanceRequest(string Reason, short? StageId = null, short? StationId = null);

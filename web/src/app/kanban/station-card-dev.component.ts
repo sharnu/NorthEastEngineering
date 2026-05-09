@@ -23,6 +23,7 @@ function card(overrides: Partial<KanbanCardDto>): KanbanCardDto {
     totalTasks: 4,
     completedTasks: 1,
     sourcePdfUrl: '/uploads/sample.pdf',
+    isHospital: false,
     hasManualOverride: false,
     tasks: [
       { id: 't1', sequence: 1, jobCodeLine: 'TP42N-001', operationName: 'CNC + base', assignedToUserId: null, assignedToName: null, estimatedHours: 5.5, actualHours: 5.5, status: 'COMPLETED', flowTrack: 'BODY', notes: null },

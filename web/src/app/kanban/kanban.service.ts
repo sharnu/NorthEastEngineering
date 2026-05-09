@@ -36,6 +36,7 @@ export interface KanbanCardDto {
   completedTasks: number;
   sourcePdfUrl: string | null;
   hasManualOverride: boolean;
+  isHospital: boolean;
   tasks: KanbanCardTaskDto[];
 }
 
