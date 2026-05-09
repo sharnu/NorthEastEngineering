@@ -292,6 +292,52 @@ public class TechEndpointTests(ApiFixture fixture)
     }
 
     [Fact]
+    public async Task ClockIn_OnBlockedTask_Returns409()
+    {
+        // Once a task is BLOCKED, the technician shouldn't be able to clock
+        // in until a supervisor unblocks. Server-side guard catches stale
+        // tabs that bypass the hidden UI button.
+        var roId   = await CreateAndApproveRo("BLOK_CI");
+        var taskId = await GetFirstFabTaskId(roId);
+        await AssignTaskToPeter(taskId);
+
+        var peter = Client(PeterId, "TECHNICIAN");
+        await peter.PostAsJsonAsync($"/api/tech/tasks/{taskId}/block",
+            new { Reason = "Stalled — waiting on chassis arrival from supplier" });
+
+        var resp = await peter.PostAsJsonAsync($"/api/tech/tasks/{taskId}/clock-in", new { });
+        resp.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task GetTaskDetail_ForBlockedTask_IncludesReasonAndTimestamp()
+    {
+        // Tom can now tap a BLOCKED row → detail page must render the banner
+        // with the reason + when. Endpoint must surface both fields.
+        var roId   = await CreateAndApproveRo("BLOK_DTL");
+        var taskId = await GetFirstFabTaskId(roId);
+        await AssignTaskToPeter(taskId);
+
+        var peter = Client(PeterId, "TECHNICIAN");
+        var reason = "Drilling jig is broken — need replacement before continuing";
+        await peter.PostAsJsonAsync($"/api/tech/tasks/{taskId}/block", new { Reason = reason });
+
+        var detail = await peter.GetFromJsonAsync<TaskDetailItem>($"/api/tech/tasks/{taskId}");
+        detail.Should().NotBeNull();
+        detail!.Status.Should().Be("BLOCKED");
+        detail.BlockedReason.Should().Be(reason);
+        detail.BlockedAt.Should().NotBeNull();
+    }
+
+    private record TaskDetailItem(
+        Guid Id,
+        Guid RoId,
+        string RoNumber,
+        string Status,
+        string? BlockedReason,
+        DateTimeOffset? BlockedAt);
+
+    [Fact]
     public async Task UnblockTask_ShortNotes_Returns422()
     {
         var roId   = await CreateAndApproveRo("UNBL002");

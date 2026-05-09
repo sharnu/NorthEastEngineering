@@ -37,6 +37,22 @@ function formatElapsed(seconds: number): string {
       @if (task()) {
         <main class="detail-scroll">
 
+          @if (task()!.status === 'BLOCKED') {
+            <section class="card blocked-card">
+              <div class="blocked-title">
+                <span class="blocked-pill">BLOCKED</span>
+                <span class="blocked-headline">Awaiting supervisor</span>
+              </div>
+              @if (task()!.blockedReason) {
+                <p class="blocked-reason"><strong>Reason:</strong> {{ task()!.blockedReason }}</p>
+              }
+              @if (task()!.blockedAt) {
+                <p class="blocked-when">Blocked {{ relativeTime(task()!.blockedAt!) }}</p>
+              }
+              <p class="blocked-hint">A supervisor must unblock this task before you can resume.</p>
+            </section>
+          }
+
           <!-- 1. Job header -->
           <section class="card">
             <h2 class="op-name">{{ task()!.operationName }}</h2>
@@ -164,7 +180,10 @@ function formatElapsed(seconds: number): string {
           @if (clockInError()) {
             <p class="clock-error">{{ clockInError() }}</p>
           }
-          @if (!clockedInSince() && task()!.status !== 'COMPLETED' && task()!.status !== 'CANCELLED') {
+          @if (!clockedInSince()
+                && task()!.status !== 'COMPLETED'
+                && task()!.status !== 'CANCELLED'
+                && task()!.status !== 'BLOCKED') {
             <button class="btn btn-clockin" (click)="handleClockIn()">Clock In</button>
             <button class="btn btn-complete" (click)="handleComplete()">Complete Task</button>
           }
@@ -173,7 +192,10 @@ function formatElapsed(seconds: number): string {
             <button class="btn btn-block" (click)="showBlockerModal.set(true)">Report Blocker</button>
           }
 
-          @if (task()!.operationId === 70 && task()!.status !== 'COMPLETED' && task()!.status !== 'CANCELLED') {
+          @if (task()!.operationId === 70
+                && task()!.status !== 'COMPLETED'
+                && task()!.status !== 'CANCELLED'
+                && task()!.status !== 'BLOCKED') {
             <button class="btn btn-qc" (click)="openQc()">Start QC &#8594;</button>
           }
         </div>
@@ -224,6 +246,24 @@ function formatElapsed(seconds: number): string {
     .pill-assigned { background: #e0e7ff; color: #3730a3; }
     .pill-in_progress { background: #dbeafe; color: var(--info); }
     .pill-paused { background: #fef9c3; color: var(--warn); }
+    .pill-blocked { background: rgba(185,28,28,0.12); color: var(--bad); }
+    .blocked-card {
+      border-color: rgba(185,28,28,0.35) !important;
+      background: rgba(185,28,28,0.04);
+      box-shadow: inset 3px 0 0 var(--bad);
+    }
+    .blocked-title { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .blocked-pill {
+      font-family: var(--mono); font-size: 10px; font-weight: 700;
+      letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px;
+      background: rgba(185,28,28,0.12); color: var(--bad);
+      border: 0.5px solid rgba(185,28,28,0.3);
+    }
+    .blocked-headline { font-size: 14px; font-weight: 600; color: var(--bad); }
+    .blocked-reason   { font-size: 13px; color: var(--ink-2); margin: 0 0 6px;
+                        word-break: break-word; }
+    .blocked-when     { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin: 0 0 6px; }
+    .blocked-hint     { font-size: 12px; color: var(--ink-3); margin: 0; font-style: italic; }
     .pill-blocked { background: #fee2e2; color: var(--bad); }
     .pill-default { background: var(--paper-3); color: var(--ink-3); }
     .progress-labels { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px;
@@ -451,6 +491,19 @@ export class TechTaskDetailComponent implements OnInit, OnDestroy {
       case 'blocked':     return 'status-pill pill-blocked';
       default:            return 'status-pill pill-default';
     }
+  }
+
+  /** "Blocked Xh ago" — chooses minutes / hours / days based on elapsed. */
+  relativeTime(iso: string): string {
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    const minutes = Math.floor((Date.now() - then) / 60000);
+    if (minutes < 1)    return 'just now';
+    if (minutes < 60)   return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24)     return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
   }
 
   formatBytes(n: number): string {

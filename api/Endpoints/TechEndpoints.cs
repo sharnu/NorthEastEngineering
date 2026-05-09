@@ -163,7 +163,37 @@ public static class TechEndpoints
             if (task is null) return Results.NotFound();
             if (task.AssignedToUserId != currentUserId) return Results.Forbid();
 
-            return Results.Ok(task);
+            // Attach the latest TaskBlocked event reason + timestamp when the
+            // task is currently BLOCKED, so the tech detail page can render
+            // the read-only "Awaiting supervisor" banner.
+            string? blockedReason = null;
+            DateTimeOffset? blockedAt = null;
+            if (task.Status == "BLOCKED")
+            {
+                var ev = await db.DomainEvents
+                    .Where(e => e.AggregateId == id && e.EventType == "TaskBlocked")
+                    .OrderByDescending(e => e.Id)
+                    .Select(e => new { e.Payload, e.OccurredAt })
+                    .FirstOrDefaultAsync(ct);
+                if (ev is not null)
+                {
+                    if (ev.Payload.RootElement.TryGetProperty("reason", out var p)
+                        && p.ValueKind == JsonValueKind.String)
+                        blockedReason = p.GetString();
+                    blockedAt = ev.OccurredAt;
+                }
+            }
+
+            return Results.Ok(new
+            {
+                task.Id, task.RoId, task.RoNumber, task.Sequence, task.OperationId,
+                task.OperationName, task.JobCodeLine, task.StationName,
+                task.EstimatedHours, task.ActualHours, task.Status, task.Priority,
+                task.CustomerName, task.RequiredDate, task.Notes, task.AssignedToUserId,
+                task.Ro, task.TimeEntries, task.ClockedInSince,
+                BlockedReason = blockedReason,
+                BlockedAt     = blockedAt,
+            });
         });
 
         // ── POST /api/tech/tasks/{id}/clock-in ───────────────────────────────
@@ -174,6 +204,9 @@ public static class TechEndpoints
             var task = await db.JobTasks.FindAsync([id], ct);
             if (task is null) return Results.NotFound();
             if (task.AssignedToUserId != currentUserId) return Results.Forbid();
+
+            if (task.Status == "BLOCKED")
+                return Results.Conflict(new { message = "Task is blocked. Awaiting supervisor unblock before you can clock in." });
 
             var terminalStatuses = new[] { "COMPLETED", "CANCELLED" };
             if (terminalStatuses.Contains(task.Status))
@@ -496,6 +529,7 @@ public static class TechEndpoints
             ClaimsPrincipal principal,
             NeeDbContext db,
             INotificationService notifications,
+            IHubContext<KanbanHub> hub,
             CancellationToken ct) =>
         {
             var currentUserId = GetUserId(principal);
@@ -556,7 +590,7 @@ public static class TechEndpoints
                   ON CONFLICT (ro_id) DO UPDATE
                     SET current_stage_id = EXCLUDED.current_stage_id,
                         updated_at = now()",
-                task.RoId, (short)95);
+                task.RoId, KanbanStageIds.Hospital);
 
             var blockedEvt = new DomainEvent
             {
@@ -582,6 +616,9 @@ public static class TechEndpoints
             await db.SaveChangesAsync(ct);
 
             await notifications.FanOutAsync(blockedEvt, ct);
+            // Push SignalR card update so connected boards see the HOSPITAL
+            // badge appear in real time, not after the 30s poll.
+            _ = hub.NotifyCardUpdated(task.RoId, task.StationId);
 
             return Results.Ok(new
             {
@@ -618,7 +655,7 @@ public static class TechEndpoints
                 .OrderByDescending(e => e.Id)
                 .FirstOrDefaultAsync(ct);
 
-            short previousStageId = 10;
+            short previousStageId = KanbanStageIds.DefaultEntry;
             string? originalReason = null;
             if (blockEvent is not null)
             {
@@ -764,7 +801,7 @@ public static class TechEndpoints
             if (sortOrder == 0) return;
             var currentStageId = StationSortOrderToKanbanStage((int)sortOrder);
             var nextStageId = await db.KanbanStages
-                .Where(ks => ks.Id > currentStageId && !ks.IsTerminal && ks.Id != 95)
+                .Where(ks => ks.Id > currentStageId && !ks.IsTerminal && ks.Id != KanbanStageIds.Hospital)
                 .OrderBy(ks => ks.Id)
                 .Select(ks => ks.Id)
                 .FirstOrDefaultAsync(ct);

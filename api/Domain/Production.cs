@@ -57,6 +57,21 @@ public class KanbanStage
     public bool IsMergePoint { get; set; }
 }
 
+/// <summary>
+/// Well-known kanban stage ids referenced from C# code. Mirror the seed in
+/// <c>db/migrations/001_initial_schema.sql</c>. Centralized so endpoints
+/// and tests don't sprinkle magic numbers.
+/// </summary>
+public static class KanbanStageIds
+{
+    /// <summary>Initial stage on RO creation (FAB_RECEIVED-equivalent).</summary>
+    public const short DefaultEntry = 10;
+    /// <summary>"Hospital" — an RO is parked here when one of its tasks is BLOCKED.</summary>
+    public const short Hospital     = 95;
+    /// <summary>Final completion stage.</summary>
+    public const short Complete     = 99;
+}
+
 public class RoKanbanState
 {
     public Guid RoId { get; set; }

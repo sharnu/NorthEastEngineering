@@ -27,7 +27,7 @@ import { TechBottomNavComponent } from './tech-bottom-nav.component';
         } @else {
           @for (task of tasks(); track task.id) {
             <div class="task-card" [class.blocked-card]="task.status === 'BLOCKED'"
-                 (click)="task.status === 'BLOCKED' ? null : openTask(task.id)">
+                 (click)="openTask(task.id)">
               <div class="task-main">
                 <span class="op-name">{{ task.operationName }}</span>
                 <span class="status-pill" [class]="statusClass(task.status)">{{ task.status }}</span>
@@ -38,14 +38,19 @@ import { TechBottomNavComponent } from './tech-bottom-nav.component';
 
               @if (task.status === 'BLOCKED') {
                 <div class="block-banner">
-                  <span class="block-banner-title">Awaiting supervisor</span>
+                  <span class="block-banner-title">
+                    Awaiting supervisor
+                    @if (task.blockedAt) {
+                      <span class="block-banner-when">· {{ relativeTime(task.blockedAt) }}</span>
+                    }
+                  </span>
                   @if (task.blockedReason) {
                     <span class="block-banner-reason">{{ task.blockedReason }}</span>
                   }
                 </div>
                 <div class="task-footer">
                   <span class="hours">Est {{ task.estimatedHours }}h</span>
-                  <span class="block-hint">No actions until unblocked</span>
+                  <span class="block-hint">Tap for details</span>
                 </div>
               } @else {
                 <div class="task-footer">
@@ -121,18 +126,24 @@ import { TechBottomNavComponent } from './tech-bottom-nav.component';
     .pill-blocked { background: rgba(185,28,28,0.12); color: var(--bad); }
 
     .blocked-card {
-      cursor: default !important;
       border-color: rgba(185,28,28,0.35);
       box-shadow: inset 3px 0 0 var(--bad);
     }
-    .blocked-card:hover { border-color: rgba(185,28,28,0.35); box-shadow: inset 3px 0 0 var(--bad); }
+    .blocked-card:hover { border-color: var(--bad); box-shadow: inset 3px 0 0 var(--bad), 0 2px 8px rgba(185,28,28,0.08); }
     .block-banner {
       margin: 6px 0 10px; padding: 8px 10px;
       background: rgba(185,28,28,0.06); border-radius: 6px;
       display: flex; flex-direction: column; gap: 2px;
     }
     .block-banner-title { font-size: 12px; font-weight: 600; color: var(--bad); }
-    .block-banner-reason { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+    .block-banner-when  { font-family: var(--mono); font-size: 11px; font-weight: 400;
+                          color: var(--ink-3); margin-left: 2px; }
+    .block-banner-reason {
+      font-size: 12px; color: var(--ink-2); line-height: 1.35;
+      word-break: break-word;
+      display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
     .block-hint { font-family: var(--sans); font-size: 12px; color: var(--ink-3); font-style: italic; }
   `],
 })
@@ -179,6 +190,18 @@ export class TechTaskListComponent implements OnInit, OnDestroy {
       case 'blocked':     return 'status-pill pill-blocked';
       default:            return 'status-pill pill-default';
     }
+  }
+
+  relativeTime(iso: string): string {
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    const minutes = Math.floor((Date.now() - then) / 60000);
+    if (minutes < 1)    return 'just now';
+    if (minutes < 60)   return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24)     return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   }
 
   private updateClock(): void {

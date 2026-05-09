@@ -406,6 +406,9 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
                              border: 0.5px solid rgba(185,28,28,0.3); }
     .task-row-block-reason {
       margin-top: 4px; font-size: 11px; color: var(--bad); font-family: var(--sans);
+      line-height: 1.35; word-break: break-word;
+      display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
+      -webkit-box-orient: vertical; overflow: hidden;
     }
     .task-row-block-reason strong { font-weight: 600; }
 

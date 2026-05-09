@@ -11,7 +11,7 @@ namespace Nee.Api.Endpoints;
 
 public static class KanbanEndpoints
 {
-    private const short HOSPITAL_STAGE_ID = 95;
+    private const short HOSPITAL_STAGE_ID = Nee.Api.Domain.KanbanStageIds.Hospital;
 
     public static void MapKanbanEndpoints(this WebApplication app)
     {
