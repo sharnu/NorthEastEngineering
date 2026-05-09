@@ -34,15 +34,19 @@ from typing import Optional
 from docx import Document
 
 # ─── Static reference data (mirrors the seed) ───────────────────────────────
-# Body type codes → DB body_types.id
+# Body type codes → (body_types.id, template_versions.body_type)
+# The second value MUST be one of the body_type strings used in
+# flow_definitions (TIPPER_CS, TAUTLINER, TRAY, PANTECH_AL, ...) — the
+# kanban stage-advancement query joins on this column, and a mismatch
+# manifests as "No flow definition found for this station and body type".
 BODY_TYPE_BY_PREFIX = {
-    "TR": (1, "TR"),  # Tray
-    "TP": (2, "TP"),  # Tipper
-    "TT": (3, "TT"),  # Tautliner
-    "DP": (4, "DP"),  # Drop-side / Pantech (also covers the BGT/IAL/DFE-DP variants)
-    "VP": (4, "DP"),  # Vacuum pantech maps to Drop-side / Pantech body type for now
-    "CH": (5, "CH"),  # Chipper
-    "TS": (6, "TS"),  # Tilt slider
+    "TR": (1, "TRAY"),
+    "TP": (2, "TIPPER_CS"),
+    "TT": (3, "TAUTLINER"),
+    "DP": (4, "PANTECH_AL"),
+    "VP": (4, "PANTECH_AL"),
+    "CH": (5, "CHIPPER_TIPPER_TRAY_CRANE"),
+    "TS": (6, "TILT_SLIDER"),
 }
 
 # Stations (id → label): only used in comments
@@ -199,12 +203,14 @@ JOB_TYPE_BODY_SWAP = 2
 
 def parse_code(code: str) -> tuple[str, Optional[str], str, int, Optional[str]]:
     """
-    Returns (base_code, customer_code, body_type_code, body_type_id, variant_suffix).
+    Returns (base_code, customer_code, body_type_name, body_type_id, variant_suffix).
+    body_type_name is the long-form body type used in flow_definitions
+    (TIPPER_CS, TAUTLINER, TRAY, ...).
     Examples:
-        "TP42N"            -> ("TP42N", None, "TP", 2, None)
-        "BGT-DP67F-SD"     -> ("DP67F-SD", "BGT", "DP", 4, "SD")
-        "TP32N-T600S300"   -> ("TP32N", None, "TP", 2, "T600S300")
-        "IAL-TT91F (Old Chassis)" -> ("TT91F", "IAL", "TT", 3, "OLD_CHASSIS")
+        "TP42N"            -> ("TP42N", None, "TIPPER_CS", 2, None)
+        "BGT-DP67F-SD"     -> ("DP67F-SD", "BGT", "PANTECH_AL", 4, "SD")
+        "TP32N-T600S300"   -> ("TP32N", None, "TIPPER_CS", 2, "T600S300")
+        "IAL-TT91F (Old Chassis)" -> ("TT91F", "IAL", "TAUTLINER", 3, "OLD_CHASSIS")
     """
     raw = code.strip()
     # Strip anything in parentheses; remember as variant suffix if useful
@@ -231,11 +237,11 @@ def parse_code(code: str) -> tuple[str, Optional[str], str, int, Optional[str]]:
         rest = raw
 
     # Now `rest` is e.g. "DP67F-SD" or "TP32N" or "TT91F"
-    body_type_code = rest[:2].upper()
-    if body_type_code not in BODY_TYPE_BY_PREFIX:
+    prefix = rest[:2].upper()
+    if prefix not in BODY_TYPE_BY_PREFIX:
         # Default: treat as Tray
-        body_type_code = "TR"
-    body_type_id, _ = BODY_TYPE_BY_PREFIX[body_type_code]
+        prefix = "TR"
+    body_type_id, body_type_name = BODY_TYPE_BY_PREFIX[prefix]
 
     # Base code = first segment; variant suffix = the rest, joined with "_"
     base_segments = rest.split("-")
@@ -244,7 +250,7 @@ def parse_code(code: str) -> tuple[str, Optional[str], str, int, Optional[str]]:
     if paren_suffix:
         variant_suffix = paren_suffix if not variant_suffix else f"{variant_suffix}-{paren_suffix}"
 
-    return base_code, customer, body_type_code, body_type_id, variant_suffix
+    return base_code, customer, body_type_name, body_type_id, variant_suffix
 
 
 # ─── Parser ─────────────────────────────────────────────────────────────────
@@ -262,6 +268,7 @@ class Template:
     description: str
     base_code: str
     customer: Optional[str]
+    # Long-form body type as used by flow_definitions (TIPPER_CS, TAUTLINER, ...)
     body_type_code: str
     body_type_id: int
     variant_suffix: Optional[str]
@@ -408,6 +415,47 @@ def sql_str(s: Optional[str]) -> str:
     return "'" + s.replace("'", "''") + "'"
 
 
+# Acronyms / model codes that should stay uppercase after title-casing.
+_KEEP_UPPER = {
+    "NPR", "FRR", "FXR", "FRD", "FYJ", "FRJ", "PTO", "QC", "ABN",
+    "DFE", "BGT", "IAL", "MRP", "PVC", "ADR", "NEPP", "AL",
+}
+
+
+def clean_name(description: str) -> str:
+    """Convert a doc description like
+        'MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY INC:'
+    into a picker-friendly name: '6 Pallet Traytop Body'.
+
+    Strips common boilerplate prefixes and trailing 'INC:' / colons,
+    then title-cases while preserving known acronyms.
+    """
+    s = description.strip()
+    for pattern in (
+        r"^MANUFACTURE\s+AND\s+FIT\s+",
+        r"^MANUFACTURE\s+",
+        r"^FIT\s+",
+        r"^ONE\s+",
+        r"^TWO\s+",
+        r"^THREE\s+",
+    ):
+        s = re.sub(pattern, "", s, count=1, flags=re.I)
+    # Strip trailing 'INC:' / 'INC.' / colons / commas
+    s = re.sub(r"\s*INC\.?\s*:?\s*$", "", s, flags=re.I)
+    s = s.rstrip(":,").strip()
+    if not s:
+        return description.strip()
+
+    parts = []
+    for word in s.split():
+        bare = re.sub(r"[^A-Za-z]", "", word).upper()
+        if bare in _KEEP_UPPER:
+            parts.append(word.upper())
+        else:
+            parts.append(word.lower().capitalize())
+    return " ".join(parts)
+
+
 def emit_migration(templates: list[Template], unmapped: list[tuple[Template, Op]]) -> str:
     # Build the set of template codes so base_code references are FK-safe.
     # The doc occasionally lists variants (e.g. TP42F-S300) without ever
@@ -466,7 +514,7 @@ def emit_migration(templates: list[Template], unmapped: list[tuple[Template, Op]
             f"(code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)\n"
             f"VALUES ({sql_str(t.code)}, {sql_str(base_for_sql)}, "
             f"{customer_clause}, {t.body_type_id}, {t.job_type_id}, "
-            f"{sql_str(t.code + ' — ' + t.description[:80])}, "
+            f"{sql_str(clean_name(t.description)[:80])}, "
             f"{sql_str(t.description)}, NULL, NULL, "
             f"{sql_str(t.variant_suffix)}, 1, TRUE)\n"
             f"ON CONFLICT (code) DO NOTHING;"

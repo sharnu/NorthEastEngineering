@@ -148,7 +148,7 @@ function futureDate(ctrl: AbstractControl): ValidationErrors | null {
                    placeholder="Search templates…" />
 
             <div class="template-list">
-              @if (templates().length === 0) {
+              @if (orderedTemplates().length === 0) {
                 <p class="empty-text">No templates found.</p>
               }
               @for (t of orderedTemplates(); track t.code) {
@@ -304,13 +304,25 @@ export class NewRoComponent implements OnInit {
   jobTypes = signal<JobType[]>([]);
   templates = signal<TemplateSummary[]>([]);
   selectedTemplate = signal<TemplateDetail | null>(null);
-  /** Selected template floats to the top of the picker. */
+  /** Selected template floats to the top of the picker. When a search
+   *  filter excludes it entirely, it's still pinned on top so the user
+   *  doesn't lose visual confirmation of their pick. */
   orderedTemplates = computed<TemplateSummary[]>(() => {
     const list = this.templates();
     const sel  = this.selectedTemplate();
     if (!sel) return list;
     const idx = list.findIndex(t => t.code === sel.code);
-    if (idx <= 0) return list;
+    if (idx === -1) {
+      const summary: TemplateSummary = {
+        code: sel.code,
+        displayName: sel.displayName,
+        bodyType: sel.bodyType,
+        customerVariant: sel.customerVariant,
+        totalHours: sel.totalHours,
+      };
+      return [summary, ...list];
+    }
+    if (idx === 0) return list;
     return [list[idx], ...list.slice(0, idx), ...list.slice(idx + 1)];
   });
   submitting = signal(false);

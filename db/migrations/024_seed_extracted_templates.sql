@@ -18,192 +18,192 @@ ON CONFLICT (code) DO NOTHING;
 
 -- ── Templates ──
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('BGT-DP42N', NULL, (SELECT id FROM customers WHERE code = 'BGT'), 4, 1, 'BGT-DP42N — MANUFACTURE AND FIT ONE 6 PALLET ALUMINIUM MONOPAN BODY:', 'MANUFACTURE AND FIT ONE 6 PALLET ALUMINIUM MONOPAN BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('BGT-DP42N', NULL, (SELECT id FROM customers WHERE code = 'BGT'), 4, 1, '6 Pallet Aluminium Monopan Body', 'MANUFACTURE AND FIT ONE 6 PALLET ALUMINIUM MONOPAN BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('CH29N', NULL, NULL, 5, 1, 'CH29N — MANUFACTURE AND FIT ONE CHIPPER BODY:', 'MANUFACTURE AND FIT ONE CHIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('CH29N', NULL, NULL, 5, 1, 'Chipper Body', 'MANUFACTURE AND FIT ONE CHIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('CH38F', NULL, NULL, 5, 1, 'CH38F — MANUFACTURE AND FIT ONE CHIPPER BODY:', 'MANUFACTURE AND FIT ONE CHIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('CH38F', NULL, NULL, 5, 1, 'Chipper Body', 'MANUFACTURE AND FIT ONE CHIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('DFE-DP42N', NULL, (SELECT id FROM customers WHERE code = 'DFE'), 4, 1, 'DFE-DP42N — MANUFACTURE AND FIT ONE 6 PALLET ALUMINIUM PANTECH AS PER SPECIFICATION INC EXTR', 'MANUFACTURE AND FIT ONE 6 PALLET ALUMINIUM PANTECH AS PER SPECIFICATION INC EXTRAS:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('DFE-DP42N', NULL, (SELECT id FROM customers WHERE code = 'DFE'), 4, 1, '6 Pallet Aluminium Pantech As Per Specification Inc Extras', 'MANUFACTURE AND FIT ONE 6 PALLET ALUMINIUM PANTECH AS PER SPECIFICATION INC EXTRAS:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('DFE-TT52N', NULL, (SELECT id FROM customers WHERE code = 'DFE'), 3, 1, 'DFE-TT52N — MANUFACTURE 1 X DFE-5 TAUTLINER BODY AS PER SPECIFICATION:', 'MANUFACTURE 1 X DFE-5 TAUTLINER BODY AS PER SPECIFICATION:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('DFE-TT52N', NULL, (SELECT id FROM customers WHERE code = 'DFE'), 3, 1, '1 X DFE-5 Tautliner Body As Per Specification', 'MANUFACTURE 1 X DFE-5 TAUTLINER BODY AS PER SPECIFICATION:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('DP43N', NULL, NULL, 4, 1, 'DP43N — MANUFACTURE AND FIT ONE 6 PALLET PANTECH BODY:', 'MANUFACTURE AND FIT ONE 6 PALLET PANTECH BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('DP43N', NULL, NULL, 4, 1, '6 Pallet Pantech Body', 'MANUFACTURE AND FIT ONE 6 PALLET PANTECH BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('DP67F', NULL, NULL, 4, 1, 'DP67F — MANUFACTURE AND FIT ONE 10 PALLET PANTECH BODY:', 'MANUFACTURE AND FIT ONE 10 PALLET PANTECH BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('DP67F', NULL, NULL, 4, 1, '10 Pallet Pantech Body', 'MANUFACTURE AND FIT ONE 10 PALLET PANTECH BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('IAL-TT55N', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, 'IAL-TT55N — MANUFACTURE AND FIT ONE 8 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 8 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('IAL-TT55N', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, '8 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 8 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('IAL-TT65FD', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, 'IAL-TT65FD — MANUFACTURE AND FIT ONE 10 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 10 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('IAL-TT65FD', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, '10 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 10 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('IAL-TT65FR', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, 'IAL-TT65FR — MANUFACTURE AND FIT ONE 10 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 10 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('IAL-TT65FR', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, '10 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 10 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('IAL-TT89F', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, 'IAL-TT89F — MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', NULL, NULL, 'NEW_CHASSIS', 1, TRUE)
+VALUES ('IAL-TT89F', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, '14 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', NULL, NULL, 'NEW_CHASSIS', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('IAL-VP42N', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 4, 1, 'IAL-VP42N — MANUFACTURE AND FIT VANPACK BODY AS PER SPECIFICATION INC EXTRAS:', 'MANUFACTURE AND FIT VANPACK BODY AS PER SPECIFICATION INC EXTRAS:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('IAL-VP42N', NULL, (SELECT id FROM customers WHERE code = 'IAL'), 4, 1, 'Vanpack Body As Per Specification Inc Extras', 'MANUFACTURE AND FIT VANPACK BODY AS PER SPECIFICATION INC EXTRAS:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP32N', NULL, NULL, 2, 1, 'TP32N — MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY:', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TP32N', NULL, NULL, 2, 1, '2-4 Tonne Tipper Body', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP40N', NULL, NULL, 2, 1, 'TP40N — MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY:', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TP40N', NULL, NULL, 2, 1, '2-4 Tonne Tipper Body', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP42F-S300', NULL, NULL, 2, 1, 'TP42F-S300 — MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 300MM SIGNRACK)', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 300MM SIGNRACK)', NULL, NULL, 'S300', 1, TRUE)
+VALUES ('TP42F-S300', NULL, NULL, 2, 1, '5-7 Tonne Tipper Body, (use Std. 300mm Signrack)', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 300MM SIGNRACK)', NULL, NULL, 'S300', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP42F-T600', NULL, NULL, 2, 1, 'TP42F-T600 — MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX)', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX)', NULL, NULL, 'T600', 1, TRUE)
+VALUES ('TP42F-T600', NULL, NULL, 2, 1, '5-7 Tonne Tipper Body, (use Std. 600mm Toolbox)', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX)', NULL, NULL, 'T600', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP42F-T600S300', NULL, NULL, 2, 1, 'TP42F-T600S300 — MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX, 300MM SIGNRA', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX, 300MM SIGNRACK)', NULL, NULL, 'T600S300', 1, TRUE)
+VALUES ('TP42F-T600S300', NULL, NULL, 2, 1, '5-7 Tonne Tipper Body, (use Std. 600mm Toolbox, 300mm Signrack)', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX, 300MM SIGNRACK)', NULL, NULL, 'T600S300', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 -- (skipping TP42N — already in seed 002)
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP46F', NULL, NULL, 2, 1, 'TP46F — MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TP46F', NULL, NULL, 2, 1, '5-7 Tonne Tipper Body', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP48F', NULL, NULL, 2, 1, 'TP48F — MANUFACTURE C/S TIPPER: 4800MM X 2480MM X 800MM (H) FIXED SIDES', 'MANUFACTURE C/S TIPPER: 4800MM X 2480MM X 800MM (H) FIXED SIDES', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TP48F', NULL, NULL, 2, 1, 'C/s Tipper: 4800mm X 2480mm X 800mm (h) Fixed Sides', 'MANUFACTURE C/S TIPPER: 4800MM X 2480MM X 800MM (H) FIXED SIDES', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP51F', NULL, NULL, 2, 1, 'TP51F — MANUFACTURE C/S TIPPER: 5100MM X 2480MM X 1000MM (H) FIXED SIDES', 'MANUFACTURE C/S TIPPER: 5100MM X 2480MM X 1000MM (H) FIXED SIDES', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TP51F', NULL, NULL, 2, 1, 'C/s Tipper: 5100mm X 2480mm X 1000mm (h) Fixed Sides', 'MANUFACTURE C/S TIPPER: 5100MM X 2480MM X 1000MM (H) FIXED SIDES', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP55F', NULL, NULL, 2, 1, 'TP55F — MANUFACTURE C/S TIPPER: 5500MM X 2480MM X 1200MM (H) FIXED SIDES', 'MANUFACTURE C/S TIPPER: 5500MM X 2480MM X 1200MM (H) FIXED SIDES', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TP55F', NULL, NULL, 2, 1, 'C/s Tipper: 5500mm X 2480mm X 1200mm (h) Fixed Sides', 'MANUFACTURE C/S TIPPER: 5500MM X 2480MM X 1200MM (H) FIXED SIDES', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP66F', NULL, NULL, 2, 1, 'TP66F — MANUFACTURE C/S TIPPER: 6600MM X 2480MM X 1200MM (H) FIXED SIDES', 'MANUFACTURE C/S TIPPER: 6600MM X 2480MM X 1200MM (H) FIXED SIDES', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TP66F', NULL, NULL, 2, 1, 'C/s Tipper: 6600mm X 2480mm X 1200mm (h) Fixed Sides', 'MANUFACTURE C/S TIPPER: 6600MM X 2480MM X 1200MM (H) FIXED SIDES', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TR45F', NULL, NULL, 1, 1, 'TR45F — MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY INC:', 'MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TR45F', NULL, NULL, 1, 1, '6 Pallet Traytop Body', 'MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TR45N', NULL, NULL, 1, 1, 'TR45N — MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY INC:', 'MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TR45N', NULL, NULL, 1, 1, '6 Pallet Traytop Body', 'MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TR56N', NULL, NULL, 1, 1, 'TR56N — MANUFACTURE AND FIT ONE 8 PALLET TRAYTOP BODY INC:', 'MANUFACTURE AND FIT ONE 8 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TR56N', NULL, NULL, 1, 1, '8 Pallet Traytop Body', 'MANUFACTURE AND FIT ONE 8 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TR65F', NULL, NULL, 1, 1, 'TR65F — MANUFACTURE AND FIT ONE 10 PALLET TRAYTOP BODY INC:', 'MANUFACTURE AND FIT ONE 10 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TR65F', NULL, NULL, 1, 1, '10 Pallet Traytop Body', 'MANUFACTURE AND FIT ONE 10 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TR75F', NULL, NULL, 1, 1, 'TR75F — MANUFACTURE AND FIT ONE 12 PALLET TRAYTOP BODY INC:', 'MANUFACTURE AND FIT ONE 12 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TR75F', NULL, NULL, 1, 1, '12 Pallet Traytop Body', 'MANUFACTURE AND FIT ONE 12 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TR91F', NULL, NULL, 1, 1, 'TR91F — MANUFACTURE AND FIT ONE 14 PALLET TRAYTOP BODY INC:', 'MANUFACTURE AND FIT ONE 14 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TR91F', NULL, NULL, 1, 1, '14 Pallet Traytop Body', 'MANUFACTURE AND FIT ONE 14 PALLET TRAYTOP BODY INC:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TS71F', NULL, NULL, 6, 1, 'TS71F — MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY:', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TS71F', NULL, NULL, 6, 1, '2-4 Tonne Tipper Body', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TT43N', NULL, NULL, 3, 1, 'TT43N — MANUFACTURE AND FIT ONE 6 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 6 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TT43N', NULL, NULL, 3, 1, '6 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 6 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TT56N', NULL, NULL, 3, 1, 'TT56N — MANUFACTURE AND FIT ONE 8 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 8 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TT56N', NULL, NULL, 3, 1, '8 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 8 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 -- (skipping TT67F — already in seed 002)
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TT80F', NULL, NULL, 3, 1, 'TT80F — MANUFACTURE AND FIT ONE 12 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 12 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TT80F', NULL, NULL, 3, 1, '12 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 12 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TT87F', NULL, NULL, 3, 1, 'TT87F — MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TT87F', NULL, NULL, 3, 1, '14 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TT91F', NULL, NULL, 3, 1, 'TT91F — MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
+VALUES ('TT91F', NULL, NULL, 3, 1, '14 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', NULL, NULL, NULL, 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('BGT-DP67F-SD', 'DP67F', (SELECT id FROM customers WHERE code = 'BGT'), 4, 1, 'BGT-DP67F-SD — MANUFACTURE AND FIT ONE 10 PALLET MONOPANEL RENTAL SPEC BODY AS PER SPECIFICATIO', 'MANUFACTURE AND FIT ONE 10 PALLET MONOPANEL RENTAL SPEC BODY AS PER SPECIFICATION INC EXTRAS:', NULL, NULL, 'SD', 1, TRUE)
+VALUES ('BGT-DP67F-SD', 'DP67F', (SELECT id FROM customers WHERE code = 'BGT'), 4, 1, '10 Pallet Monopanel Rental Spec Body As Per Specification Inc Extras', 'MANUFACTURE AND FIT ONE 10 PALLET MONOPANEL RENTAL SPEC BODY AS PER SPECIFICATION INC EXTRAS:', NULL, NULL, 'SD', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 -- (skipping DFE-TT67F — already in seed 002)
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('DP67F-SD', 'DP67F', NULL, 4, 1, 'DP67F-SD — MANUFACTURE AND FIT ONE 10 PALLET PANTECH BODY:', 'MANUFACTURE AND FIT ONE 10 PALLET PANTECH BODY:', NULL, NULL, 'SD', 1, TRUE)
+VALUES ('DP67F-SD', 'DP67F', NULL, 4, 1, '10 Pallet Pantech Body', 'MANUFACTURE AND FIT ONE 10 PALLET PANTECH BODY:', NULL, NULL, 'SD', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('IAL-TT91F', 'TT91F', (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, 'IAL-TT91F — MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', 'MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', NULL, NULL, 'OLD_CHASSIS', 1, TRUE)
+VALUES ('IAL-TT91F', 'TT91F', (SELECT id FROM customers WHERE code = 'IAL'), 3, 1, '14 Pallet Tautliner Body', 'MANUFACTURE AND FIT ONE 14 PALLET TAUTLINER BODY:', NULL, NULL, 'OLD_CHASSIS', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP32N-T600', 'TP32N', NULL, 2, 1, 'TP32N-T600 — MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX)', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX)', NULL, NULL, 'T600', 1, TRUE)
+VALUES ('TP32N-T600', 'TP32N', NULL, 2, 1, '2-4 Tonne Tipper Body, (use Std. 600mm Toolbox)', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX)', NULL, NULL, 'T600', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP32N-T600S300', 'TP32N', NULL, 2, 1, 'TP32N-T600S300 — MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX, 300MM SIGNRA', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX, 300MM SIGNRACK)', NULL, NULL, 'T600S300', 1, TRUE)
+VALUES ('TP32N-T600S300', 'TP32N', NULL, 2, 1, '2-4 Tonne Tipper Body, (use Std. 600mm Toolbox, 300mm Signrack)', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX, 300MM SIGNRACK)', NULL, NULL, 'T600S300', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP32N-T900', 'TP32N', NULL, 2, 1, 'TP32N-T900 — MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY, (USE STD. 900MM TOOLBOX)', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY, (USE STD. 900MM TOOLBOX)', NULL, NULL, 'T900', 1, TRUE)
+VALUES ('TP32N-T900', 'TP32N', NULL, 2, 1, '2-4 Tonne Tipper Body, (use Std. 900mm Toolbox)', 'MANUFACTURE AND FIT 2-4 TONNE TIPPER BODY, (USE STD. 900MM TOOLBOX)', NULL, NULL, 'T900', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP46F-T600', 'TP46F', NULL, 2, 1, 'TP46F-T600 — MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX)', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX)', NULL, NULL, 'T600', 1, TRUE)
+VALUES ('TP46F-T600', 'TP46F', NULL, 2, 1, '5-7 Tonne Tipper Body, (use Std. 600mm Toolbox)', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX)', NULL, NULL, 'T600', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TP46F-T600S300', 'TP46F', NULL, 2, 1, 'TP46F-T600S300 — MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX, 300MM SIGNRA', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX, 300MM SIGNRACK)', NULL, NULL, 'T600S300', 1, TRUE)
+VALUES ('TP46F-T600S300', 'TP46F', NULL, 2, 1, '5-7 Tonne Tipper Body, (use Std. 600mm Toolbox, 300mm Signrack)', 'MANUFACTURE AND FIT 5-7 TONNE TIPPER BODY, (USE STD. 600MM TOOLBOX, 300MM SIGNRACK)', NULL, NULL, 'T600S300', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TR45F-D', 'TR45F', NULL, 1, 1, 'TR45F-D — MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY WITH DROPSIDES INC:', 'MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY WITH DROPSIDES INC:', NULL, NULL, 'D', 1, TRUE)
+VALUES ('TR45F-D', 'TR45F', NULL, 1, 1, '6 Pallet Traytop Body With Dropsides', 'MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY WITH DROPSIDES INC:', NULL, NULL, 'D', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TR45N-D', 'TR45N', NULL, 1, 1, 'TR45N-D — MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY WITH DROPSIDES INC:', 'MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY WITH DROPSIDES INC:', NULL, NULL, 'D', 1, TRUE)
+VALUES ('TR45N-D', 'TR45N', NULL, 1, 1, '6 Pallet Traytop Body With Dropsides', 'MANUFACTURE AND FIT ONE 6 PALLET TRAYTOP BODY WITH DROPSIDES INC:', NULL, NULL, 'D', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 INSERT INTO job_code_templates (code, base_code, customer_id, body_type_id, job_type_id, name, description, body_size_mm, chassis_class, variant_suffix, current_version, is_active)
-VALUES ('TR56N-D', 'TR56N', NULL, 1, 1, 'TR56N-D — MANUFACTURE AND FIT ONE 8 PALLET TRAYTOP BODY WITH DROPSIDES INC:', 'MANUFACTURE AND FIT ONE 8 PALLET TRAYTOP BODY WITH DROPSIDES INC:', NULL, NULL, 'D', 1, TRUE)
+VALUES ('TR56N-D', 'TR56N', NULL, 1, 1, '8 Pallet Traytop Body With Dropsides', 'MANUFACTURE AND FIT ONE 8 PALLET TRAYTOP BODY WITH DROPSIDES INC:', NULL, NULL, 'D', 1, TRUE)
 ON CONFLICT (code) DO NOTHING;
 
 -- ── Versions (deterministic UUIDs based on code) ──
 INSERT INTO template_versions (id, template_code, version_number, effective_from, total_estimated_hours, body_type) VALUES
-  ('36286e1f-349d-b5bd-761e-316228685852', 'TR45N', 1, now(), 38.5, 'TR'),
-  ('d086b586-1ff8-8adf-9b54-38f7aca66b5f', 'TR45N-D', 1, now(), 48.5, 'TR'),
-  ('f73ecfd6-30c5-f1e1-624b-4237bd2087c8', 'TR56N', 1, now(), 40.25, 'TR'),
-  ('1b2e99e1-befc-04b4-ef0a-5313470bc6c6', 'TR56N-D', 1, now(), 49.25, 'TR'),
-  ('6f51b6ed-c491-523e-287a-6559ba2f6b89', 'TR45F', 1, now(), 39.0, 'TR'),
-  ('20a14947-1cda-3651-f348-525a6819b8af', 'TR45F-D', 1, now(), 48.5, 'TR'),
-  ('d9bc2207-8fc6-1b14-f250-214f35119963', 'TR65F', 1, now(), 40.5, 'TR'),
-  ('bacc0dd9-551f-f8d3-2f9f-96c529875df3', 'TR75F', 1, now(), 40.75, 'TR'),
-  ('5f970bfd-b625-d566-e899-3eb296dd66a3', 'TR91F', 1, now(), 43.0, 'TR'),
-  ('21537e25-369a-ca2d-f210-8aa379240ad0', 'TP32N', 1, now(), 66.0, 'TP'),
-  ('71aa12d1-8c1a-4464-7922-3f26c45105df', 'TP32N-T600', 1, now(), 67.5, 'TP'),
-  ('004e3110-e095-68c8-b4f1-e0384dbd1ffa', 'TP32N-T600S300', 1, now(), 67.5, 'TP'),
-  ('f3ddc8ac-f302-614a-a91b-ad2461cc03cc', 'TP32N-T900', 1, now(), 66.0, 'TP'),
-  ('7433dea0-61fd-59e0-6491-4c2a74c3d6a1', 'TP40N', 1, now(), 66.0, 'TP'),
-  ('66098136-46cd-3a1c-30f8-fc7fe78ef267', 'TP42F-S300', 1, now(), 66.0, 'TP'),
-  ('d68f1f67-38b0-8b3a-afeb-28d38f02da2a', 'TP42F-T600', 1, now(), 66.0, 'TP'),
-  ('d9223e72-ab0c-b5e8-a72c-1b363b2b93eb', 'TP42F-T600S300', 1, now(), 66.0, 'TP'),
-  ('33765920-78ce-9b25-4115-ae3d70e55329', 'TP46F', 1, now(), 66.0, 'TP'),
-  ('63d0ae3d-c9d2-aea4-205a-ce01865ef5df', 'TP46F-T600', 1, now(), 66.0, 'TP'),
-  ('7db918fe-5f23-bb72-5fe8-1250f79f3112', 'TP46F-T600S300', 1, now(), 66.0, 'TP'),
-  ('f6671287-c12e-238a-a05a-e682aa780045', 'TP48F', 1, now(), 64.0, 'TP'),
-  ('ea8027b7-373b-554d-5cd5-d49d8eaa61ce', 'TP51F', 1, now(), 64.0, 'TP'),
-  ('d89a313d-5c5e-0338-18b1-f036b3b7b425', 'TP55F', 1, now(), 64.0, 'TP'),
-  ('51aa5f12-7a4e-b63a-dccb-b3987fc3fa30', 'TP66F', 1, now(), 64.0, 'TP'),
-  ('d299fdab-8fdd-1759-c162-e56741580713', 'CH29N', 1, now(), 85.5, 'CH'),
-  ('94a1c80a-9222-55c5-6474-c138f5d1c6fa', 'CH38F', 1, now(), 85.5, 'CH'),
-  ('3d5b763b-5a7a-b20b-f8a9-6fabf7bde383', 'DP43N', 1, now(), 69.5, 'DP'),
-  ('f5dc27a9-8227-31bd-1b58-a41770e70fda', 'BGT-DP42N', 1, now(), 72.5, 'DP'),
-  ('2bfb5b27-4ec1-fc38-41df-8f66aeee1355', 'IAL-VP42N', 1, now(), 69.5, 'VP'),
-  ('a370520f-5430-1073-6b89-7a4f0d31ff4f', 'DFE-DP42N', 1, now(), 59.0, 'DP'),
-  ('527a9185-23fb-1964-9bce-0aafa2455600', 'DP67F-SD', 1, now(), 81.0, 'DP'),
-  ('9f63f02d-da12-d131-5136-d03ee2718dd0', 'DP67F', 1, now(), 79.0, 'DP'),
-  ('7616b3c7-9da8-fd3e-892d-a3a5494c915e', 'BGT-DP67F-SD', 1, now(), 85.5, 'DP'),
-  ('42c2d8c4-6ddf-9388-2ef7-cb444b977474', 'TT43N', 1, now(), 65.0, 'TT'),
-  ('fd697a17-164f-5719-a8ad-b633df5c316e', 'TT56N', 1, now(), 65.0, 'TT'),
-  ('e3efe622-a5b4-c771-6c54-ba785cbd3965', 'TT67F', 1, now(), 67.5, 'TT'),
-  ('9e62253e-0335-c561-3a93-8844fcf41aff', 'TT80F', 1, now(), 67.5, 'TT'),
-  ('008ad9cf-08f2-f597-cb74-498c3e698816', 'TT87F', 1, now(), 71.0, 'TT'),
-  ('e837257a-180b-df34-71c0-31f40f526a2e', 'TT91F', 1, now(), 71.0, 'TT'),
-  ('05645690-c28a-dbac-4091-9657ab46c803', 'IAL-TT91F', 1, now(), 87.0, 'TT'),
-  ('cc4e1a21-569f-a407-0d19-62f47bce348a', 'IAL-TT89F', 1, now(), 87.0, 'TT'),
-  ('902e6620-06b6-ea31-8dca-4a45a7980e40', 'IAL-TT55N', 1, now(), 87.0, 'TT'),
-  ('a691925e-0768-9c57-c1a3-82a656a92e40', 'IAL-TT65FR', 1, now(), 86.0, 'TT'),
-  ('953d4480-2172-a8c0-fd74-134ea29da33c', 'IAL-TT65FD', 1, now(), 86.0, 'TT'),
-  ('a186e14e-de31-58a4-866f-1159ec418fef', 'DFE-TT52N', 1, now(), 75.5, 'TT'),
-  ('d1b15f63-1776-ce6b-07d7-7768cfc30199', 'TS71F', 1, now(), 66.0, 'TS')
+  ('36286e1f-349d-b5bd-761e-316228685852', 'TR45N', 1, now(), 38.5, 'TRAY'),
+  ('d086b586-1ff8-8adf-9b54-38f7aca66b5f', 'TR45N-D', 1, now(), 48.5, 'TRAY'),
+  ('f73ecfd6-30c5-f1e1-624b-4237bd2087c8', 'TR56N', 1, now(), 40.25, 'TRAY'),
+  ('1b2e99e1-befc-04b4-ef0a-5313470bc6c6', 'TR56N-D', 1, now(), 49.25, 'TRAY'),
+  ('6f51b6ed-c491-523e-287a-6559ba2f6b89', 'TR45F', 1, now(), 39.0, 'TRAY'),
+  ('20a14947-1cda-3651-f348-525a6819b8af', 'TR45F-D', 1, now(), 48.5, 'TRAY'),
+  ('d9bc2207-8fc6-1b14-f250-214f35119963', 'TR65F', 1, now(), 40.5, 'TRAY'),
+  ('bacc0dd9-551f-f8d3-2f9f-96c529875df3', 'TR75F', 1, now(), 40.75, 'TRAY'),
+  ('5f970bfd-b625-d566-e899-3eb296dd66a3', 'TR91F', 1, now(), 43.0, 'TRAY'),
+  ('21537e25-369a-ca2d-f210-8aa379240ad0', 'TP32N', 1, now(), 66.0, 'TIPPER_CS'),
+  ('71aa12d1-8c1a-4464-7922-3f26c45105df', 'TP32N-T600', 1, now(), 67.5, 'TIPPER_CS'),
+  ('004e3110-e095-68c8-b4f1-e0384dbd1ffa', 'TP32N-T600S300', 1, now(), 67.5, 'TIPPER_CS'),
+  ('f3ddc8ac-f302-614a-a91b-ad2461cc03cc', 'TP32N-T900', 1, now(), 66.0, 'TIPPER_CS'),
+  ('7433dea0-61fd-59e0-6491-4c2a74c3d6a1', 'TP40N', 1, now(), 66.0, 'TIPPER_CS'),
+  ('66098136-46cd-3a1c-30f8-fc7fe78ef267', 'TP42F-S300', 1, now(), 66.0, 'TIPPER_CS'),
+  ('d68f1f67-38b0-8b3a-afeb-28d38f02da2a', 'TP42F-T600', 1, now(), 66.0, 'TIPPER_CS'),
+  ('d9223e72-ab0c-b5e8-a72c-1b363b2b93eb', 'TP42F-T600S300', 1, now(), 66.0, 'TIPPER_CS'),
+  ('33765920-78ce-9b25-4115-ae3d70e55329', 'TP46F', 1, now(), 66.0, 'TIPPER_CS'),
+  ('63d0ae3d-c9d2-aea4-205a-ce01865ef5df', 'TP46F-T600', 1, now(), 66.0, 'TIPPER_CS'),
+  ('7db918fe-5f23-bb72-5fe8-1250f79f3112', 'TP46F-T600S300', 1, now(), 66.0, 'TIPPER_CS'),
+  ('f6671287-c12e-238a-a05a-e682aa780045', 'TP48F', 1, now(), 64.0, 'TIPPER_CS'),
+  ('ea8027b7-373b-554d-5cd5-d49d8eaa61ce', 'TP51F', 1, now(), 64.0, 'TIPPER_CS'),
+  ('d89a313d-5c5e-0338-18b1-f036b3b7b425', 'TP55F', 1, now(), 64.0, 'TIPPER_CS'),
+  ('51aa5f12-7a4e-b63a-dccb-b3987fc3fa30', 'TP66F', 1, now(), 64.0, 'TIPPER_CS'),
+  ('d299fdab-8fdd-1759-c162-e56741580713', 'CH29N', 1, now(), 85.5, 'CHIPPER_TIPPER_TRAY_CRANE'),
+  ('94a1c80a-9222-55c5-6474-c138f5d1c6fa', 'CH38F', 1, now(), 85.5, 'CHIPPER_TIPPER_TRAY_CRANE'),
+  ('3d5b763b-5a7a-b20b-f8a9-6fabf7bde383', 'DP43N', 1, now(), 69.5, 'PANTECH_AL'),
+  ('f5dc27a9-8227-31bd-1b58-a41770e70fda', 'BGT-DP42N', 1, now(), 72.5, 'PANTECH_AL'),
+  ('2bfb5b27-4ec1-fc38-41df-8f66aeee1355', 'IAL-VP42N', 1, now(), 69.5, 'PANTECH_AL'),
+  ('a370520f-5430-1073-6b89-7a4f0d31ff4f', 'DFE-DP42N', 1, now(), 59.0, 'PANTECH_AL'),
+  ('527a9185-23fb-1964-9bce-0aafa2455600', 'DP67F-SD', 1, now(), 81.0, 'PANTECH_AL'),
+  ('9f63f02d-da12-d131-5136-d03ee2718dd0', 'DP67F', 1, now(), 79.0, 'PANTECH_AL'),
+  ('7616b3c7-9da8-fd3e-892d-a3a5494c915e', 'BGT-DP67F-SD', 1, now(), 85.5, 'PANTECH_AL'),
+  ('42c2d8c4-6ddf-9388-2ef7-cb444b977474', 'TT43N', 1, now(), 65.0, 'TAUTLINER'),
+  ('fd697a17-164f-5719-a8ad-b633df5c316e', 'TT56N', 1, now(), 65.0, 'TAUTLINER'),
+  ('e3efe622-a5b4-c771-6c54-ba785cbd3965', 'TT67F', 1, now(), 67.5, 'TAUTLINER'),
+  ('9e62253e-0335-c561-3a93-8844fcf41aff', 'TT80F', 1, now(), 67.5, 'TAUTLINER'),
+  ('008ad9cf-08f2-f597-cb74-498c3e698816', 'TT87F', 1, now(), 71.0, 'TAUTLINER'),
+  ('e837257a-180b-df34-71c0-31f40f526a2e', 'TT91F', 1, now(), 71.0, 'TAUTLINER'),
+  ('05645690-c28a-dbac-4091-9657ab46c803', 'IAL-TT91F', 1, now(), 87.0, 'TAUTLINER'),
+  ('cc4e1a21-569f-a407-0d19-62f47bce348a', 'IAL-TT89F', 1, now(), 87.0, 'TAUTLINER'),
+  ('902e6620-06b6-ea31-8dca-4a45a7980e40', 'IAL-TT55N', 1, now(), 87.0, 'TAUTLINER'),
+  ('a691925e-0768-9c57-c1a3-82a656a92e40', 'IAL-TT65FR', 1, now(), 86.0, 'TAUTLINER'),
+  ('953d4480-2172-a8c0-fd74-134ea29da33c', 'IAL-TT65FD', 1, now(), 86.0, 'TAUTLINER'),
+  ('a186e14e-de31-58a4-866f-1159ec418fef', 'DFE-TT52N', 1, now(), 75.5, 'TAUTLINER'),
+  ('d1b15f63-1776-ce6b-07d7-7768cfc30199', 'TS71F', 1, now(), 66.0, 'TILT_SLIDER')
 ON CONFLICT (template_code, version_number) DO NOTHING;
 
 -- ── Template operations ──

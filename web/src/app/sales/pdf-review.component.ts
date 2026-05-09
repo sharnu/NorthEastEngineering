@@ -342,7 +342,7 @@ interface TemplateDetail extends TemplateSummary { operations: TemplateOperation
                    placeholder="Search templates&#8230;" />
 
             <div class="template-list">
-              @if (templates().length === 0) {
+              @if (orderedTemplates().length === 0) {
                 <p class="empty-text">No templates found.</p>
               }
               @for (t of orderedTemplates(); track t.code) {
@@ -498,13 +498,24 @@ export class PdfReviewComponent implements OnInit {
   selectedTemplate = signal<TemplateDetail | null>(null);
   /** Selected template floats to the top of the picker so a user who
    *  uploaded a PDF that auto-matched can see / confirm the choice without
-   *  scrolling. */
+   *  scrolling. If a search filter excludes the selected template entirely,
+   *  it's still pinned on top so the user keeps visual confirmation. */
   orderedTemplates = computed<TemplateSummary[]>(() => {
     const list = this.templates();
     const sel  = this.selectedTemplate();
     if (!sel) return list;
     const idx = list.findIndex(t => t.code === sel.code);
-    if (idx <= 0) return list;
+    if (idx === -1) {
+      const summary: TemplateSummary = {
+        code: sel.code,
+        displayName: sel.displayName,
+        bodyType: sel.bodyType,
+        customerVariant: sel.customerVariant,
+        totalHours: sel.totalHours,
+      };
+      return [summary, ...list];
+    }
+    if (idx === 0) return list;
     return [list[idx], ...list.slice(0, idx), ...list.slice(idx + 1)];
   });
   submitting = signal(false);
