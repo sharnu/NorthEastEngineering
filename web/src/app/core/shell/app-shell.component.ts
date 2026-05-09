@@ -21,7 +21,11 @@ import { SidebarComponent } from './sidebar.component';
   `,
   styles: [`
     .shell { display: flex; min-height: 100vh; }
-    .shell-main { flex: 1; margin-left: 64px; }
+    /* min-width:0 overrides the flex default (min-width:auto) so this child
+       cannot grow wider than the remaining viewport space. overflow-x:hidden
+       clips page-level overflow while each component's own overflow-x:auto
+       scroll areas (e.g. kanban columns) still scroll independently. */
+    .shell-main { flex: 1; margin-left: 64px; min-width: 0; overflow-x: hidden; }
   `],
 })
 export class AppShellComponent {
