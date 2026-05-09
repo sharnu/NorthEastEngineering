@@ -1,9 +1,11 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, effect, untracked, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { ThemeSwitcherComponent } from '../core/theme-switcher.component';
 import { ChassisStockService, ChassisRecord } from './chassis-stock.service';
+
+const PAGE_SIZE = 20;
 
 @Component({
   selector: 'app-chassis-stock-view',
@@ -32,7 +34,7 @@ import { ChassisStockService, ChassisRecord } from './chassis-stock.service';
       </div>
 
       <main class="stage">
-        <!-- Summary chips -->
+        <!-- Filter bar -->
         <div class="summary-bar">
           @for (s of statusFilters; track s.value) {
             <button
@@ -84,7 +86,7 @@ import { ChassisStockService, ChassisRecord } from './chassis-stock.service';
                 </tr>
               </thead>
               <tbody>
-                @for (row of filtered(); track row.id) {
+                @for (row of page(); track row.id) {
                   <tr>
                     <td>
                       <span class="status-badge badge-{{ row.status.toLowerCase() }}">
@@ -105,7 +107,39 @@ import { ChassisStockService, ChassisRecord } from './chassis-stock.service';
               </tbody>
             </table>
           </div>
-          <p class="row-count">{{ filtered().length }} record{{ filtered().length === 1 ? '' : 's' }}</p>
+
+          <!-- Pagination footer -->
+          <div class="pagination">
+            <span class="page-info">
+              Showing {{ rangeStart() }}–{{ rangeEnd() }} of {{ filtered().length }} record{{ filtered().length === 1 ? '' : 's' }}
+            </span>
+
+            <div class="page-controls">
+              <button class="page-btn" [disabled]="currentPage() === 1" (click)="goTo(currentPage() - 1)">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M10 3L5 8l5 5"/>
+                </svg>
+              </button>
+
+              @for (p of pageNumbers(); track $index) {
+                @if (p === '...') {
+                  <span class="page-ellipsis">…</span>
+                } @else {
+                  <button
+                    class="page-btn"
+                    [class.page-btn-active]="p === currentPage()"
+                    (click)="goTo(+p)"
+                  >{{ p }}</button>
+                }
+              }
+
+              <button class="page-btn" [disabled]="currentPage() === totalPages()" (click)="goTo(currentPage() + 1)">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M6 3l5 5-5 5"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         }
       </main>
     </div>
@@ -123,8 +157,7 @@ import { ChassisStockService, ChassisRecord } from './chassis-stock.service';
     .topbar-right { display: flex; align-items: center; gap: 16px; }
     .user-label { font-size: 13px; color: var(--topbar-muted); }
     .nav-link { font-size: 13px; color: var(--topbar-muted); cursor: pointer;
-                text-decoration: none; padding-bottom: 1px;
-                border-bottom: 1px solid transparent; }
+                text-decoration: none; padding-bottom: 1px; border-bottom: 1px solid transparent; }
     .nav-link:hover { color: var(--topbar-text); border-bottom-color: var(--topbar-border); }
     .logout { background: transparent; border: 0.5px solid var(--topbar-border);
               color: var(--topbar-text); padding: 6px 14px; border-radius: 6px;
@@ -141,10 +174,9 @@ import { ChassisStockService, ChassisRecord } from './chassis-stock.service';
     .sub-tab-active { color: var(--ink) !important; border-bottom-color: var(--ink) !important;
                       font-weight: 500; }
 
-    /* Stage */
     .stage { padding: 24px 28px; flex: 1; }
 
-    /* Summary / filter bar */
+    /* Filter bar */
     .summary-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
     .chip { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px;
             border: 0.5px solid var(--rule-strong); background: var(--paper-2);
@@ -155,10 +187,10 @@ import { ChassisStockService, ChassisRecord } from './chassis-stock.service';
     .chip-active .chip-dot { border-color: var(--paper-2); }
     .chip-count { font-family: var(--mono); font-size: 11px; opacity: 0.75; }
     .chip-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--paper); }
-    .dot-all        { background: var(--ink-3); }
-    .dot-available  { background: var(--good); }
-    .dot-allocated  { background: var(--warn); }
-    .dot-delivered  { background: var(--ink-3); }
+    .dot-all       { background: var(--ink-3); }
+    .dot-available { background: var(--good); }
+    .dot-allocated { background: var(--warn); }
+    .dot-delivered { background: var(--ink-3); }
 
     /* Search */
     .search-wrap { position: relative; margin-left: auto; }
@@ -187,15 +219,29 @@ import { ChassisStockService, ChassisRecord } from './chassis-stock.service';
 
     /* Status badges */
     .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px;
-                    font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
-                    text-transform: uppercase; }
+                    font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
     .badge-available { background: rgba(22,163,74,0.12);  color: var(--good); }
     .badge-allocated  { background: rgba(217,119,6,0.12); color: var(--warn); }
     .badge-delivered  { background: var(--rule);           color: var(--ink-3); }
 
+    /* Pagination */
+    .pagination { display: flex; align-items: center; justify-content: space-between;
+                  margin-top: 16px; padding-top: 16px; border-top: 0.5px solid var(--rule); }
+    .page-info { font-size: 12px; color: var(--ink-3); font-family: var(--mono); }
+    .page-controls { display: flex; align-items: center; gap: 4px; }
+    .page-btn { min-width: 32px; height: 32px; padding: 0 6px; border-radius: 6px;
+                background: none; border: 0.5px solid var(--rule-strong);
+                color: var(--ink-2); font-size: 13px; font-family: var(--sans);
+                cursor: pointer; display: flex; align-items: center; justify-content: center;
+                transition: background 0.15s, border-color 0.15s, color 0.15s; }
+    .page-btn:hover:not(:disabled) { background: var(--paper-2); border-color: var(--ink-3); color: var(--ink); }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .page-btn-active { background: var(--ink) !important; border-color: var(--ink) !important;
+                       color: var(--paper) !important; font-weight: 600; }
+    .page-ellipsis { min-width: 32px; text-align: center; color: var(--ink-3);
+                     font-size: 13px; line-height: 32px; }
+
     .empty-msg { color: var(--ink-3); font-size: 13px; padding: 40px 0; text-align: center; }
-    .row-count { margin-top: 10px; font-size: 12px; color: var(--ink-3); text-align: right;
-                 font-family: var(--mono); }
   `],
 })
 export class ChassisStockViewComponent implements OnInit {
@@ -205,10 +251,11 @@ export class ChassisStockViewComponent implements OnInit {
 
   user = this.auth.user;
 
-  records = signal<ChassisRecord[]>([]);
-  loading = signal(true);
+  records     = signal<ChassisRecord[]>([]);
+  loading     = signal(true);
   statusFilter = signal<string>('ALL');
-  search = signal('');
+  search      = signal('');
+  currentPage = signal(1);
 
   statusFilters = [
     { value: 'ALL',       label: 'All' },
@@ -232,9 +279,47 @@ export class ChassisStockViewComponent implements OnInit {
     });
   });
 
+  totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / PAGE_SIZE)));
+
+  page = computed(() => {
+    const start = (this.currentPage() - 1) * PAGE_SIZE;
+    return this.filtered().slice(start, start + PAGE_SIZE);
+  });
+
+  rangeStart = computed(() => this.filtered().length === 0 ? 0 : (this.currentPage() - 1) * PAGE_SIZE + 1);
+  rangeEnd   = computed(() => Math.min(this.currentPage() * PAGE_SIZE, this.filtered().length));
+
+  pageNumbers = computed((): (number | '...')[] => {
+    const total   = this.totalPages();
+    const current = this.currentPage();
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+    const pages: (number | '...')[] = [1];
+    if (current > 3) pages.push('...');
+    const lo = Math.max(2, current - 1);
+    const hi = Math.min(total - 1, current + 1);
+    for (let p = lo; p <= hi; p++) pages.push(p);
+    if (current < total - 2) pages.push('...');
+    pages.push(total);
+    return pages;
+  });
+
+  constructor() {
+    // Reset to page 1 whenever the filter or search changes
+    effect(() => {
+      this.statusFilter();
+      this.search();
+      untracked(() => this.currentPage.set(1));
+    });
+  }
+
   countFor(status: string): number {
     if (status === 'ALL') return this.records().length;
     return this.records().filter(r => r.status === status).length;
+  }
+
+  goTo(p: number): void {
+    this.currentPage.set(Math.max(1, Math.min(p, this.totalPages())));
   }
 
   ngOnInit(): void {
