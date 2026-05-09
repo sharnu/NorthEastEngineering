@@ -103,7 +103,7 @@ import { ForecastWidgetComponent } from './forecast-widget.component';
             </tr>
           </thead>
           <tbody>
-            @for (row of filteredCalibration(); track row.templateCode + row.operationName) {
+            @for (row of pagedCalibration(); track row.templateCode + row.operationName) {
               <tr>
                 <td class="code-cell">{{ row.templateCode }}</td>
                 <td>{{ row.operationName }}</td>
@@ -148,6 +148,23 @@ import { ForecastWidgetComponent } from './forecast-widget.component';
             }
           </tbody>
         </table>
+
+        @if (totalPages() > 1) {
+          <div class="pager">
+            <span class="pager-summary">
+              Showing {{ pageStart() }}–{{ pageEnd() }} of {{ filteredCalibration().length }}
+            </span>
+            <div class="pager-controls">
+              <button class="pager-btn" (click)="prevPage()" [disabled]="currentPage() === 1">
+                &larr; Prev
+              </button>
+              <span class="pager-page">Page {{ currentPage() }} of {{ totalPages() }}</span>
+              <button class="pager-btn" (click)="nextPage()" [disabled]="currentPage() === totalPages()">
+                Next &rarr;
+              </button>
+            </div>
+          </div>
+        }
       }
     </section>
 
@@ -227,6 +244,19 @@ import { ForecastWidgetComponent } from './forecast-widget.component';
                         opacity: 0.7; }
     .actual-over  { background: var(--bad); }
     .actual-under { background: var(--good); }
+
+    /* ── Pager ── */
+    .pager { display: flex; justify-content: space-between; align-items: center;
+             padding-top: 14px; margin-top: 4px; gap: 16px; flex-wrap: wrap; }
+    .pager-summary  { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+    .pager-controls { display: flex; align-items: center; gap: 10px; }
+    .pager-page     { font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+                      min-width: 110px; text-align: center; }
+    .pager-btn { font-family: var(--mono); font-size: 11px; color: var(--ink);
+                 border: 0.5px solid var(--rule); border-radius: 5px;
+                 background: white; padding: 5px 12px; cursor: pointer; }
+    .pager-btn:hover:not(:disabled) { border-color: var(--ink-3); }
+    .pager-btn:disabled { color: var(--ink-3); opacity: 0.45; cursor: not-allowed; }
   `],
 })
 export class ReportsComponent implements OnInit {
@@ -254,6 +284,40 @@ export class ReportsComponent implements OnInit {
     const sel = this.selectedTemplate();
     return sel ? this.calibration().filter(r => r.templateCode === sel) : this.calibration();
   });
+
+  // ── Pagination ──
+  // Fixed at 20 rows per page so the calibration panel stays a sensible
+  // height; if the user filters mid-pagination we clamp the page back
+  // into range via `currentPage` (see onTemplateFilter / next-prev).
+  readonly pageSize = 20;
+  currentPage = signal(1);
+
+  totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredCalibration().length / this.pageSize))
+  );
+
+  pagedCalibration = computed(() => {
+    const start = (this.currentPage() - 1) * this.pageSize;
+    return this.filteredCalibration().slice(start, start + this.pageSize);
+  });
+
+  pageStart = computed(() =>
+    this.filteredCalibration().length === 0
+      ? 0
+      : (this.currentPage() - 1) * this.pageSize + 1
+  );
+
+  pageEnd = computed(() =>
+    Math.min(this.currentPage() * this.pageSize, this.filteredCalibration().length)
+  );
+
+  prevPage(): void {
+    this.currentPage.update(p => Math.max(1, p - 1));
+  }
+
+  nextPage(): void {
+    this.currentPage.update(p => Math.min(this.totalPages(), p + 1));
+  }
 
 
   downloadThroughputCsv(): void {
@@ -306,6 +370,7 @@ export class ReportsComponent implements OnInit {
 
   onTemplateFilter(event: Event) {
     this.selectedTemplate.set((event.target as HTMLSelectElement).value);
+    this.currentPage.set(1);  // reset paging when the filter narrows the list
   }
 
   private maxEstimate = computed(() =>
