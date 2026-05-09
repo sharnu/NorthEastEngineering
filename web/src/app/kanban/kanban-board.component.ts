@@ -51,18 +51,6 @@ const GATE_STATES: GateStateChip[] = [
 const WEEK_KEY = 'kanban.selectedWeek';
 const BACKLOG = 'backlog';
 
-/** Returns the Monday of the current week as `yyyy-MM-dd` in local time. */
-function currentMonday(): string {
-  const today = new Date();
-  const dow = today.getDay(); // Sunday=0, Monday=1, ...
-  const offset = dow === 0 ? -6 : 1 - dow;
-  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
-  const yyyy = monday.getFullYear();
-  const mm = String(monday.getMonth() + 1).padStart(2, '0');
-  const dd = String(monday.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 /**
  * Format a week as "Week of May 11 · W20" (or "· W01 2027" when the ISO year
  * differs from the calendar year, e.g. Dec 30 falling into next ISO year).
@@ -420,7 +408,9 @@ export class KanbanBoardComponent implements OnInit {
   boardRefreshCount = signal(0);
 
   // Week filter — persisted to sessionStorage so refresh keeps the user's choice.
-  selectedWeek      = signal<string>(sessionStorage.getItem(WEEK_KEY) ?? currentMonday());
+  // Default = "All scheduled weeks" (empty string). sessionStorage takes
+  // precedence so a per-tab pick survives reloads.
+  selectedWeek      = signal<string>(sessionStorage.getItem(WEEK_KEY) ?? '');
   availableWeeks    = signal<ScheduledWeekDto[]>([]);
   backlogCount      = signal(0);
 
