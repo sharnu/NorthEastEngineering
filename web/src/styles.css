@@ -30,6 +30,7 @@
   --topbar-border: rgba(245, 242, 234, 0.10);
   --topbar-hover:  rgba(245, 242, 234, 0.10);
   --logo-filter:   brightness(0) invert(1);
+  --sidebar-bg:    #0a0e0f;
 }
 
 /* ── SaaS theme ────────────────────────────────────────────────────── */
@@ -54,7 +55,10 @@
   --topbar-border:rgba(13, 27, 46, 0.08);
   --topbar-hover: rgba(13, 27, 46, 0.05);
   --logo-filter:  none;
+  --sidebar-bg:   #ffffff;
 }
+
+[data-theme="saas"] .topbar { display: none; }
 
 [data-theme="saas"] body::before { display: none; }
 
