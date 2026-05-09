@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-tech-bottom-nav',
@@ -15,10 +16,10 @@ import { RouterModule } from '@angular/router';
         <span class="nav-icon">&#128337;</span>
         <span class="nav-label">History</span>
       </a>
-      <a routerLink="/tech/profile" routerLinkActive="active" class="nav-tab">
-        <span class="nav-icon">&#128100;</span>
-        <span class="nav-label">Profile</span>
-      </a>
+      <button class="nav-tab nav-tab-button" (click)="logout()">
+        <span class="nav-icon">&#x21AA;</span>
+        <span class="nav-label">Sign out</span>
+      </button>
     </nav>
   `,
   styles: [`
@@ -72,6 +73,21 @@ import { RouterModule } from '@angular/router';
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
+    .nav-tab-button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      padding: 0;
+    }
   `],
 })
-export class TechBottomNavComponent {}
+export class TechBottomNavComponent {
+  private auth   = inject(AuthService);
+  private router = inject(Router);
+
+  logout(): void {
+    this.auth.logout();
+    this.router.navigate(['/login']);
+  }
+}

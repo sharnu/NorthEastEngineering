@@ -57,6 +57,10 @@ function formatElapsed(seconds: number): string {
           <section class="card">
             <h2 class="op-name">{{ task()!.operationName }}</h2>
             <div class="meta-row">
+              <span class="meta-label">Job Card</span>
+              <span class="mono">{{ task()!.roNumber }}@if (task()!.sourceRoNumber) {/{{ task()!.sourceRoNumber }}}</span>
+            </div>
+            <div class="meta-row">
               <span class="meta-label">Job Code</span>
               <span>{{ task()!.jobCodeLine }}</span>
             </div>

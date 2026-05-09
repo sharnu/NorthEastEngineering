@@ -33,7 +33,7 @@ import { TechBottomNavComponent } from './tech-bottom-nav.component';
                 <span class="status-pill" [class]="statusClass(task.status)">{{ task.status }}</span>
               </div>
               <div class="task-sub">
-                <span class="ro-info">{{ task.roNumber }} &middot; {{ task.customerName }}</span>
+                <span class="ro-info">{{ task.roNumber }}@if (task.sourceRoNumber) {/{{ task.sourceRoNumber }}} &middot; {{ task.customerName }}</span>
               </div>
 
               @if (task.status === 'BLOCKED') {

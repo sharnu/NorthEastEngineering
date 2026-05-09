@@ -33,6 +33,7 @@ public static class TechEndpoints
                     t.Id,
                     t.RoId,
                     RoNumber        = t.RepairOrder.RoNumber,
+                    SourceRoNumber  = t.RepairOrder.SourceRoNumber,
                     t.Sequence,
                     t.OperationName,
                     StationName     = t.Station.Name,
@@ -88,6 +89,7 @@ public static class TechEndpoints
                         t.Id,
                         t.RoId,
                         t.RoNumber,
+                        t.SourceRoNumber,
                         t.Sequence,
                         t.OperationName,
                         t.StationName,
@@ -119,6 +121,7 @@ public static class TechEndpoints
                     t.Id,
                     t.RoId,
                     RoNumber        = t.RepairOrder.RoNumber,
+                    SourceRoNumber  = t.RepairOrder.SourceRoNumber,
                     t.Sequence,
                     t.OperationId,
                     t.OperationName,
@@ -186,7 +189,8 @@ public static class TechEndpoints
 
             return Results.Ok(new
             {
-                task.Id, task.RoId, task.RoNumber, task.Sequence, task.OperationId,
+                task.Id, task.RoId, task.RoNumber, task.SourceRoNumber,
+                task.Sequence, task.OperationId,
                 task.OperationName, task.JobCodeLine, task.StationName,
                 task.EstimatedHours, task.ActualHours, task.Status, task.Priority,
                 task.CustomerName, task.RequiredDate, task.Notes, task.AssignedToUserId,

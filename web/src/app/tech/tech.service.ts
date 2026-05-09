@@ -6,6 +6,7 @@ export interface TechTask {
   id: string;
   roId: string;
   roNumber: string;
+  sourceRoNumber: string | null;
   sequence: number;
   operationName: string;
   stationName: string;
