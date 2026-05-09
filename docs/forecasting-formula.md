@@ -12,7 +12,7 @@ risk_score = capacity_overcommit + recent_variance + blocker_frequency + days_la
 
 | Factor | Cap | Formula |
 |---|---:|---|
-| `capacity_overcommit` | 30 | `min(30, 30 × overcommit_weeks_count / 4)` — number of weeks (in the next 4) any station on this RO's path is > 100% utilised |
+| `capacity_overcommit` | 30 | `min(30, 30 × overcommit_weeks_count / 4)` — number of weeks **across this RO's scheduled span** (capped at 12 weeks) where any station on its path is > 100% utilised |
 | `recent_variance` | 30 | `min(30, max(0, avg_delta_percent))` — average `variance_records.delta_percent` across all completed tasks for the same template in the last 60 days, clamped to non-negative |
 | `blocker_frequency` | 25 | `min(25, 5 × blocker_count)` — count of `TaskBlocked` domain events on tasks belonging to ROs of the same template in the last 60 days |
 | `days_late` | 15 | `min(15, max(0, projected − required))` — positive days the projected completion exceeds the required date |
@@ -60,6 +60,14 @@ projected_date      = May 11 + (80/40 × 1.18 × 7d) = May 11 + 17 d = May 28
 days_late           = max(0, May 28 − Jun 15) = 0
                                            total = 48  →  MED
 ```
+
+## Why the per-RO horizon matters
+
+Earlier versions of this formula used a fixed "next 4 weeks" capacity window.
+That silently produced `capacity_overcommit = 0` for any RO scheduled further
+out — even if its actual scheduled week was overbooked. The current version
+walks the RO's own span (`ceil(estimated_hours / 40)` weeks, capped at 12)
+starting from `scheduled_start_week`, so a W30 RO sees overcommit on W30.
 
 ## Calibration notes
 

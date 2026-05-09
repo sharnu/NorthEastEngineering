@@ -1,10 +1,13 @@
-import { Component, OnInit, inject, signal, computed, effect } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { catchError, debounceTime, distinctUntilChanged, of, switchMap, tap } from 'rxjs';
 import {
   DashboardService, VarianceFilters, VarianceGroupBy,
   VarianceReport, VarianceRecordsPage,
 } from './dashboard.service';
+import { saveBlob } from './save-blob.util';
 
 const GROUPS: { value: VarianceGroupBy; label: string }[] = [
   { value: 'reason',     label: 'Reason' },
@@ -181,7 +184,6 @@ export class VarianceRootCauseComponent implements OnInit {
   readonly groups = GROUPS;
   loading = signal(false);
   error   = signal(false);
-  report  = signal<VarianceReport | null>(null);
 
   groupBy       = signal<VarianceGroupBy>('reason');
   from          = signal<string>(this.daysAgo(90));
@@ -192,24 +194,50 @@ export class VarianceRootCauseComponent implements OnInit {
   records       = signal<VarianceRecordsPage | null>(null);
   recordsPage   = signal(1);
 
+  /**
+   * Single combined filter signal. Driving the fetch through toObservable +
+   * switchMap means rapid filter changes cancel any in-flight request, and
+   * Angular's takeUntilDestroyed equivalent (toSignal) cleans up subscription
+   * lifetime — replaces the previous `effect()` that subscribed inline and
+   * leaked overlapping HTTP requests when the user typed in the date inputs.
+   */
+  private filters = computed<VarianceFilters>(() => ({
+    from:          this.from(),
+    to:            this.to(),
+    groupBy:       this.groupBy(),
+    minSampleSize: this.minSampleSize(),
+  }));
+
+  report = toSignal<VarianceReport | null>(
+    toObservable(this.filters).pipe(
+      debounceTime(300),
+      distinctUntilChanged((a, b) =>
+        a.from === b.from && a.to === b.to &&
+        a.groupBy === b.groupBy && a.minSampleSize === b.minSampleSize),
+      tap(() => {
+        this.loading.set(true);
+        this.error.set(false);
+        // Filter change always invalidates an open drill-through
+        this.selectedKey.set(null);
+        this.records.set(null);
+      }),
+      switchMap(f => this.svc.getVarianceRootCause(f).pipe(
+        tap(() => this.loading.set(false)),
+        catchError(() => {
+          this.error.set(true);
+          this.loading.set(false);
+          return of(null);
+        }),
+      )),
+    ),
+    { initialValue: null },
+  );
+
   totalRecordsPages = computed(() => {
     const p = this.records();
     if (!p || p.totalCount === 0) return 1;
     return Math.max(1, Math.ceil(p.totalCount / p.pageSize));
   });
-
-  constructor() {
-    effect(() => {
-      // re-fetch report on filter change
-      const filters: VarianceFilters = {
-        from: this.from(), to: this.to(),
-        groupBy: this.groupBy(), minSampleSize: this.minSampleSize(),
-      };
-      this.fetchReport(filters);
-      this.selectedKey.set(null);
-      this.records.set(null);
-    });
-  }
 
   ngOnInit(): void {}
 
@@ -238,22 +266,12 @@ export class VarianceRootCauseComponent implements OnInit {
   }
 
   downloadCsv(): void {
-    const url = this.svc.varianceRootCauseCsvUrl({
+    this.svc.downloadVarianceRootCauseCsv({
       from: this.from(), to: this.to(),
       groupBy: this.groupBy(), minSampleSize: this.minSampleSize(),
-    });
-    const a = document.createElement('a');
-    a.href = url;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
-
-  private fetchReport(filters: VarianceFilters): void {
-    this.loading.set(true); this.error.set(false);
-    this.svc.getVarianceRootCause(filters).subscribe({
-      next: r => { this.report.set(r); this.loading.set(false); },
-      error: () => { this.error.set(true); this.loading.set(false); },
+    }).subscribe(blob => {
+      const fname = `variance-root-cause-${this.from()}_${this.to()}.csv`;
+      saveBlob(blob, fname);
     });
   }
 

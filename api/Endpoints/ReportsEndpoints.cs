@@ -381,17 +381,26 @@ public static class ReportsEndpoints
         {
             var (fromDate, toDate, periodKey) = ResolvePeriod(period);
 
-            var perCustomer = await db.RepairOrders
-                .Where(r => r.CreatedAt >= fromDate && r.CreatedAt < toDate
-                         && r.Status != "CANCELLED")
-                .GroupBy(r => new { r.CustomerId, r.Customer.Code, r.Customer.Name })
+            // Anchor on JobTask.CompletedAt, not RepairOrder.CreatedAt:
+            // we want hours actually delivered in the period. Using
+            // RO.CreatedAt would include in-flight ROs that have logged
+            // little work yet, and exclude ROs created earlier whose
+            // work was completed in the period. CANCELLED ROs are
+            // excluded because their task hours don't represent
+            // delivered work.
+            var perCustomer = await db.JobTasks
+                .Where(t => t.Status == "COMPLETED"
+                         && t.CompletedAt != null
+                         && t.CompletedAt >= fromDate && t.CompletedAt < toDate
+                         && t.RepairOrder.Status != "CANCELLED")
+                .GroupBy(t => new { t.RepairOrder.CustomerId, t.RepairOrder.Customer.Code, t.RepairOrder.Customer.Name })
                 .Select(g => new
                 {
                     CustomerId   = g.Key.CustomerId,
                     CustomerCode = g.Key.Code,
                     CustomerName = g.Key.Name,
-                    RoCount      = g.Count(),
-                    TotalHours   = g.SelectMany(r => r.Tasks).Sum(t => t.ActualHours),
+                    RoCount      = g.Select(t => t.RoId).Distinct().Count(),
+                    TotalHours   = g.Sum(t => t.ActualHours),
                 })
                 .ToListAsync(ct);
 
@@ -433,6 +442,10 @@ public static class ReportsEndpoints
         grp.MapGet("/customer-concentration/trend",
             async (Guid customerId, NeeDbContext db, CancellationToken ct) =>
         {
+            var customerExists = await db.Customers.AnyAsync(c => c.Id == customerId, ct);
+            if (!customerExists)
+                return Results.NotFound(new { message = "Customer not found." });
+
             var nowUtc = DateTime.UtcNow.Date;
             var quarters = new List<(string Label, DateTime Start, DateTime EndExcl)>();
             for (int i = 7; i >= 0; i--)
@@ -443,21 +456,26 @@ public static class ReportsEndpoints
                 quarters.Add((label, qStart, qEnd));
             }
 
-            var ros = await db.RepairOrders
-                .Where(r => r.CustomerId == customerId
-                         && r.CreatedAt >= quarters[0].Start
-                         && r.Status != "CANCELLED")
-                .Select(r => new { r.CreatedAt, Hours = r.Tasks.Sum(t => t.ActualHours) })
+            // Same anchor as the headline endpoint — completed tasks in window
+            var tasks = await db.JobTasks
+                .Where(t => t.RepairOrder.CustomerId == customerId
+                         && t.Status == "COMPLETED"
+                         && t.CompletedAt != null
+                         && t.CompletedAt >= quarters[0].Start
+                         && t.RepairOrder.Status != "CANCELLED")
+                .Select(t => new { CompletedAt = t.CompletedAt!.Value, t.RoId, t.ActualHours })
                 .ToListAsync(ct);
 
-            var points = quarters.Select(q => new
+            var points = quarters.Select(q =>
             {
-                QuarterLabel = q.Label,
-                QuarterStart = DateOnly.FromDateTime(q.Start),
-                RoCount      = ros.Count(r => r.CreatedAt >= q.Start && r.CreatedAt < q.EndExcl),
-                TotalHours   = Math.Round(
-                    ros.Where(r => r.CreatedAt >= q.Start && r.CreatedAt < q.EndExcl)
-                       .Sum(r => r.Hours), 1),
+                var inWindow = tasks.Where(t => t.CompletedAt >= q.Start && t.CompletedAt < q.EndExcl).ToList();
+                return new
+                {
+                    QuarterLabel = q.Label,
+                    QuarterStart = DateOnly.FromDateTime(q.Start),
+                    RoCount      = inWindow.Select(t => t.RoId).Distinct().Count(),
+                    TotalHours   = Math.Round(inWindow.Sum(t => t.ActualHours), 1),
+                };
             }).ToList();
 
             return Results.Ok(new { CustomerId = customerId, Quarters = points });
@@ -468,15 +486,19 @@ public static class ReportsEndpoints
         {
             var (fromDate, toDate, periodKey) = ResolvePeriod(period);
 
-            var perCustomer = await db.RepairOrders
-                .Where(r => r.CreatedAt >= fromDate && r.CreatedAt < toDate && r.Status != "CANCELLED")
-                .GroupBy(r => new { r.Customer.Code, r.Customer.Name })
+            // Same per-task completion anchor as the JSON endpoint.
+            var perCustomer = await db.JobTasks
+                .Where(t => t.Status == "COMPLETED"
+                         && t.CompletedAt != null
+                         && t.CompletedAt >= fromDate && t.CompletedAt < toDate
+                         && t.RepairOrder.Status != "CANCELLED")
+                .GroupBy(t => new { t.RepairOrder.Customer.Code, t.RepairOrder.Customer.Name })
                 .Select(g => new
                 {
                     Code  = g.Key.Code,
                     Name  = g.Key.Name,
-                    Count = g.Count(),
-                    Hours = g.SelectMany(r => r.Tasks).Sum(t => t.ActualHours),
+                    Count = g.Select(t => t.RoId).Distinct().Count(),
+                    Hours = g.Sum(t => t.ActualHours),
                 })
                 .OrderByDescending(c => c.Hours)
                 .ToListAsync(ct);
@@ -532,15 +554,11 @@ public static class ReportsEndpoints
                 })
                 .ToListAsync(ct);
 
-            // Capacity heatmap: hours scheduled per (stationId, weekStart) for the next 4 weeks
-            var weekStarts = Enumerable.Range(0, 4)
-                .Select(i => IsoWeekStart(DateTimeOffset.UtcNow).AddDays(7 * i))
-                .ToList();
-
+            // Capacity heatmap covering the full horizon any active RO is
+            // scheduled into (no longer a fixed 4-week window — that silently
+            // produced a 0 capacity score for ROs scheduled further out).
             var capacityRaw = await db.JobTasks
                 .Where(t => t.RepairOrder.ScheduledStartWeek != null
-                         && t.RepairOrder.ScheduledStartWeek >= weekStarts.First()
-                         && t.RepairOrder.ScheduledStartWeek <= weekStarts.Last()
                          && t.RepairOrder.Status != "COMPLETED"
                          && t.RepairOrder.Status != "CANCELLED")
                 .Select(t => new
@@ -552,14 +570,14 @@ public static class ReportsEndpoints
                 .ToListAsync(ct);
 
             const decimal weeklyCapacity = 40m;
-            var stationOvercommit = capacityRaw
+            // Map (stationId, week) -> bool overcommitted? — used per-RO so
+            // an RO scheduled to W30 sees overcommit on W30 even though it's
+            // not in the next-4-weeks window.
+            var overcommittedSet = capacityRaw
                 .GroupBy(c => new { c.StationId, c.Week })
                 .Where(g => g.Sum(x => x.EstimatedHours) > weeklyCapacity)
-                .GroupBy(g => g.Key.StationId)
-                .ToDictionary(
-                    g => g.Key,
-                    g => g.Count()  // number of weeks the station is overcommitted
-                );
+                .Select(g => (g.Key.StationId, g.Key.Week))
+                .ToHashSet();
 
             var stationNames = await db.Stations
                 .ToDictionaryAsync(s => s.Id, s => s.Name, ct);
@@ -584,29 +602,43 @@ public static class ReportsEndpoints
                 var factors = new List<object>();
                 int score = 0;
 
-                // Capacity overcommit
+                // Capacity overcommit — count overcommitted weeks across the
+                // span this RO is expected to run, per station on its path.
                 int capacityScore = 0;
                 short? bottleneckId = null;
                 string? bottleneckName = null;
                 if (r.Stations.Count > 0)
                 {
-                    var overWeeks = r.Stations
-                        .Select(sid => new { sid, w = stationOvercommit.GetValueOrDefault(sid, 0) })
-                        .Where(x => x.w > 0)
+                    // Estimate the RO's execution span: ceil(estimatedHours / weeklyCapacity)
+                    // weeks starting from scheduledStartWeek, minimum 1 week.
+                    var weeksNeededInt = Math.Max(1,
+                        (int)Math.Ceiling((double)(r.EstimatedHours / weeklyCapacity)));
+                    // Cap span at 12 weeks to avoid pathological estimates blowing up the score.
+                    weeksNeededInt = Math.Min(12, weeksNeededInt);
+                    var roWeeks = Enumerable.Range(0, weeksNeededInt)
+                        .Select(i => r.ScheduledStartWeek!.Value.AddDays(7 * i))
                         .ToList();
-                    if (overWeeks.Count > 0)
+
+                    var perStationOver = r.Stations
+                        .Select(sid => new {
+                            sid,
+                            count = roWeeks.Count(w => overcommittedSet.Contains((sid, w))),
+                        })
+                        .Where(x => x.count > 0)
+                        .ToList();
+                    if (perStationOver.Count > 0)
                     {
-                        var maxOver = overWeeks.OrderByDescending(x => x.w).First();
-                        bottleneckId = maxOver.sid;
-                        bottleneckName = stationNames.GetValueOrDefault(maxOver.sid);
-                        var totalOverWeeks = overWeeks.Sum(x => x.w);
+                        var max = perStationOver.OrderByDescending(x => x.count).First();
+                        bottleneckId = max.sid;
+                        bottleneckName = stationNames.GetValueOrDefault(max.sid);
+                        var totalOverWeeks = perStationOver.Sum(x => x.count);
                         capacityScore = (int)Math.Min(FORECAST_FACTOR_CAPACITY,
                             FORECAST_FACTOR_CAPACITY * totalOverWeeks / 4);
                         if (capacityScore > 0)
                             factors.Add(new {
                                 key = "capacity_overcommit",
                                 weight = capacityScore,
-                                description = $"{bottleneckName ?? "Station " + bottleneckId} overcommitted in {totalOverWeeks} of next 4 weeks",
+                                description = $"{bottleneckName ?? "Station " + bottleneckId} overcommitted in {totalOverWeeks} of {roWeeks.Count} scheduled week(s)",
                             });
                     }
                 }

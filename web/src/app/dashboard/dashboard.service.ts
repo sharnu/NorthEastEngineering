@@ -180,13 +180,21 @@ export class DashboardService {
     return this.http.get<VarianceRecordsPage>('/api/dashboard/reports/variance-root-cause/records', { params: p });
   }
 
-  varianceRootCauseCsvUrl(filters: VarianceFilters): string {
-    const sp = new URLSearchParams();
-    if (filters.from)          sp.set('from', filters.from);
-    if (filters.to)            sp.set('to', filters.to);
-    if (filters.groupBy)       sp.set('groupBy', filters.groupBy);
-    if (filters.minSampleSize) sp.set('minSampleSize', String(filters.minSampleSize));
-    return `/api/dashboard/reports/variance-root-cause/csv?${sp.toString()}`;
+  /**
+   * Downloads the variance root cause CSV through HttpClient so the auth
+   * interceptor adds the JWT — a plain <a href> would 401. Returns the
+   * blob; caller decides how to surface it (browser save dialog).
+   */
+  downloadVarianceRootCauseCsv(filters: VarianceFilters): Observable<Blob> {
+    let p = new HttpParams();
+    if (filters.from)          p = p.set('from', filters.from);
+    if (filters.to)            p = p.set('to', filters.to);
+    if (filters.groupBy)       p = p.set('groupBy', filters.groupBy);
+    if (filters.minSampleSize) p = p.set('minSampleSize', String(filters.minSampleSize));
+    return this.http.get('/api/dashboard/reports/variance-root-cause/csv', {
+      params: p,
+      responseType: 'blob' as const,
+    });
   }
 
   // E18 — Customer Concentration
@@ -201,8 +209,12 @@ export class DashboardService {
       `/api/dashboard/reports/customer-concentration/trend?customerId=${customerId}`);
   }
 
-  customerConcentrationCsvUrl(period: ConcentrationPeriod): string {
-    return `/api/dashboard/reports/customer-concentration/csv?period=${period}`;
+  /** Same auth-aware pattern as variance CSV. */
+  downloadCustomerConcentrationCsv(period: ConcentrationPeriod): Observable<Blob> {
+    return this.http.get('/api/dashboard/reports/customer-concentration/csv', {
+      params: new HttpParams().set('period', period),
+      responseType: 'blob' as const,
+    });
   }
 
   // E20 — Strategic Forecasting

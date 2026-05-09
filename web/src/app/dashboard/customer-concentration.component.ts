@@ -3,6 +3,7 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import {
   DashboardService, ConcentrationPeriod, CustomerConcentrationReport, CustomerTrend,
 } from './dashboard.service';
+import { saveBlob } from './save-blob.util';
 
 const PERIODS: { value: ConcentrationPeriod; label: string }[] = [
   { value: 'last_quarter', label: 'Last quarter' },
@@ -238,11 +239,9 @@ export class CustomerConcentrationComponent implements OnInit {
   }
 
   downloadCsv(): void {
-    const a = document.createElement('a');
-    a.href = this.svc.customerConcentrationCsvUrl(this.period());
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    this.svc.downloadCustomerConcentrationCsv(this.period()).subscribe(blob => {
+      saveBlob(blob, `customer-concentration-${this.period()}.csv`);
+    });
   }
 
   private fetch(period: ConcentrationPeriod): void {
