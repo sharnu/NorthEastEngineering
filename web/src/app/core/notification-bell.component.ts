@@ -58,11 +58,11 @@ import { AuthService } from './auth.service';
     .bell-btn {
       position: relative; display: flex; align-items: center; justify-content: center;
       width: 34px; height: 34px; background: transparent;
-      border: 0.5px solid rgba(245,242,234,0.25); border-radius: 8px;
-      cursor: pointer; color: rgba(245,242,234,0.8); padding: 0;
+      border: 0.5px solid var(--topbar-border); border-radius: 8px;
+      cursor: pointer; color: var(--topbar-muted); padding: 0;
       transition: background 0.15s, color 0.15s;
     }
-    .bell-btn:hover { background: rgba(245,242,234,0.1); color: var(--paper,#f5f2ea); }
+    .bell-btn:hover { background: var(--topbar-hover); color: var(--topbar-text); }
     .bell-icon { width: 17px; height: 17px; }
 
     .badge {

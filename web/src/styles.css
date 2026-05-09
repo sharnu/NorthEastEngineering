@@ -50,10 +50,10 @@
   --info:         #0369a1;
   --topbar-bg:    #ffffff;
   --topbar-text:  #0d1b2e;
-  --topbar-sub:   rgba(13, 27, 46, 0.45);
-  --topbar-muted: rgba(13, 27, 46, 0.60);
-  --topbar-border:rgba(13, 27, 46, 0.08);
-  --topbar-hover: rgba(13, 27, 46, 0.05);
+  --topbar-sub:   #6b88a4;
+  --topbar-muted: #2d4059;
+  --topbar-border:rgba(13, 27, 46, 0.12);
+  --topbar-hover: rgba(13, 27, 46, 0.06);
   --logo-filter:  none;
   --sidebar-bg:   #ffffff;
 }
