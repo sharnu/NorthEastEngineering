@@ -66,16 +66,34 @@ function currentMonday(): string {
 /**
  * Format a week as "Week of May 11 · W20" (or "· W01 2027" when the ISO year
  * differs from the calendar year, e.g. Dec 30 falling into next ISO year).
+ * If the API didn't supply isoWeek (e.g. the week isn't in availableWeeks
+ * because nothing's scheduled there), compute it locally so the label is
+ * consistent.
  */
 function formatWeekLabel(yyyymmdd: string, isoWeek?: number, isoYear?: number): string {
   const [y, m, d] = yyyymmdd.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   const month = date.toLocaleString('default', { month: 'short' });
-  if (!isoWeek) return `Week of ${month} ${d}`;
+  if (!isoWeek) {
+    const computed = computeIsoWeek(yyyymmdd);
+    isoWeek = computed.week;
+    isoYear = computed.year;
+  }
   const wkPart = isoYear && isoYear !== y
     ? `W${String(isoWeek).padStart(2, '0')} ${isoYear}`
     : `W${String(isoWeek).padStart(2, '0')}`;
   return `Week of ${month} ${d} · ${wkPart}`;
+}
+
+/** ISO 8601 week + week-numbering year for the given yyyy-MM-dd. */
+function computeIsoWeek(yyyymmdd: string): { week: number; year: number } {
+  const [y, m, d] = yyyymmdd.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);  // Thursday of the week
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return { week, year: date.getUTCFullYear() };
 }
 
 @Component({
@@ -421,6 +439,11 @@ export class KanbanBoardComponent implements OnInit {
   // Default = current Monday (Monday-based week, computed in local time).
   // sessionStorage takes precedence so a per-tab pick survives reload.
   selectedWeek      = signal<string>(sessionStorage.getItem(WEEK_KEY) ?? currentMonday());
+  // True when selectedWeek's initial value came from sessionStorage (a stale
+  // user pick that may need reconciling), rather than the fresh "current
+  // Monday" default. We never want to snap the user away from the system
+  // default just because the current week happens to have no scheduled work.
+  private weekFromSession = sessionStorage.getItem(WEEK_KEY) !== null;
   availableWeeks    = signal<ScheduledWeekDto[]>([]);
   backlogCount      = signal(0);
 
@@ -547,11 +570,14 @@ export class KanbanBoardComponent implements OnInit {
   }
 
   /**
-   * If the persisted selectedWeek isn't in the available list (e.g. all ROs in
-   * that week have completed since last session), snap to the closest existing
-   * past-or-present week. Falls back to "all weeks" if there are none at all.
+   * If a persisted (sessionStorage) selectedWeek isn't in the available list
+   * (e.g. all ROs in that week have completed since last session), snap to the
+   * closest existing past-or-present week. Does NOT touch the system default
+   * "current Monday" — when the current week has no scheduled work, the empty
+   * banner is the right UX, not a silent teleport to a different week.
    */
   private reconcileSelectedWeek(): void {
+    if (!this.weekFromSession) return;
     const sel = this.selectedWeek();
     if (sel === '' || sel === BACKLOG) return;
 
@@ -561,6 +587,7 @@ export class KanbanBoardComponent implements OnInit {
     if (weeks.length === 0) {
       this.selectedWeek.set('');
       sessionStorage.removeItem(WEEK_KEY);
+      this.weekFromSession = false;
       return;
     }
 
@@ -609,8 +636,13 @@ export class KanbanBoardComponent implements OnInit {
 
   onWeekChange(value: string) {
     this.selectedWeek.set(value);
-    if (value) sessionStorage.setItem(WEEK_KEY, value);
-    else       sessionStorage.removeItem(WEEK_KEY);
+    if (value) {
+      sessionStorage.setItem(WEEK_KEY, value);
+      this.weekFromSession = true;   // explicit user pick — eligible for reconcile
+    } else {
+      sessionStorage.removeItem(WEEK_KEY);
+      this.weekFromSession = false;  // "All weeks" / cleared — never reconcile
+    }
     this.loadBoard(this.selectedStationId() ?? undefined);
     // Note: don't reload /weeks here — week list only changes when ROs are
     // scheduled/completed, which is signalled via SignalR or refresh().
