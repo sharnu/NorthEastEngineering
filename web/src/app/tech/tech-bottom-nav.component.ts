@@ -12,10 +12,6 @@ import { AuthService } from '../core/auth.service';
         <span class="nav-icon">&#9776;</span>
         <span class="nav-label">Tasks</span>
       </a>
-      <a routerLink="/tech/history" routerLinkActive="active" class="nav-tab">
-        <span class="nav-icon">&#128337;</span>
-        <span class="nav-label">History</span>
-      </a>
       <button class="nav-tab nav-tab-button" (click)="logout()">
         <span class="nav-icon">&#x21AA;</span>
         <span class="nav-label">Sign out</span>
