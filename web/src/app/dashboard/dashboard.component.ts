@@ -41,7 +41,6 @@ import { SchedulingComponent } from './scheduling.component';
           <span class="user-label">{{ u.fullName }} · <span class="role">{{ u.roles.join(', ') }}</span></span>
         }
         <a class="nav-link" (click)="router.navigate(['/kanban'])">Kanban Board</a>
-        <a class="nav-link" (click)="router.navigate(['/dashboard/archive'])">Archive</a>
         <app-notification-bell />
         <app-theme-switcher />
         <button class="logout" (click)="logout()">Sign out</button>
@@ -63,6 +62,7 @@ import { SchedulingComponent } from './scheduling.component';
         @if (isAdmin()) {
           <button class="tab-btn" (click)="router.navigate(['/admin'])">Admin</button>
         }
+        <button class="tab-btn" (click)="router.navigate(['/dashboard/archive'])">Archive</button>
       </div>
 
       @if (activeTab() === 'overview') {

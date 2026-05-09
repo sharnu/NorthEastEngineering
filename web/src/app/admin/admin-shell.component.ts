@@ -25,7 +25,6 @@ import { CustomerSummary } from './admin.service';
         @if (user(); as u) {
           <span class="user-label">{{ u.fullName }}</span>
         }
-        <a class="nav-link" (click)="router.navigate(['/admin/chassis-stock'])">Chassis stock</a>
         <a class="nav-link" (click)="router.navigate(['/dashboard'])">Dashboard</a>
         <app-theme-switcher />
         <button class="logout" (click)="logout()">Sign out</button>
@@ -37,6 +36,7 @@ import { CustomerSummary } from './admin.service';
         <button class="tab-btn" [class.tab-active]="tab() === 'users'"     (click)="tab.set('users')">Users</button>
         <button class="tab-btn" [class.tab-active]="tab() === 'stations'"  (click)="tab.set('stations')">Stations</button>
         <button class="tab-btn" [class.tab-active]="tab() === 'customers'" (click)="tab.set('customers')">Customers</button>
+        <button class="tab-btn" (click)="router.navigate(['/admin/chassis-stock'])">Chassis Stock</button>
       </div>
 
       <div class="tab-content">
