@@ -4,11 +4,17 @@ import {
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { DashboardService, ThroughputWeek, CalibrationRow } from './dashboard.service';
 import { catchError, of } from 'rxjs';
+import { VarianceRootCauseComponent } from './variance-root-cause.component';
+import { CustomerConcentrationComponent } from './customer-concentration.component';
+import { ForecastWidgetComponent } from './forecast-widget.component';
 
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule, DecimalPipe],
+  imports: [
+    CommonModule, DecimalPipe,
+    VarianceRootCauseComponent, CustomerConcentrationComponent, ForecastWidgetComponent,
+  ],
   template: `
     <!-- Throughput Report -->
     <section class="panel">
@@ -145,17 +151,14 @@ import { catchError, of } from 'rxjs';
       }
     </section>
 
-    <!-- Phase 2 Placeholder Cards -->
-    <div class="placeholder-grid mt-16">
-      @for (card of placeholders; track card.title) {
-        <div class="placeholder-card">
-          <div class="ph-badge">Phase 2</div>
-          <div class="ph-icon">{{ card.icon }}</div>
-          <h3 class="ph-title">{{ card.title }}</h3>
-          <p class="ph-desc">{{ card.desc }}</p>
-        </div>
-      }
-    </div>
+    <!-- E17 -->
+    <app-variance-root-cause />
+
+    <!-- E18 -->
+    <app-customer-concentration />
+
+    <!-- E20 -->
+    <app-forecast-widget />
   `,
   styles: [`
     .panel { background: white; border: 0.5px solid var(--rule); border-radius: 12px; padding: 24px; }
