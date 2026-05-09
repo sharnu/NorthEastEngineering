@@ -40,3 +40,40 @@ UUID pattern: `7a<station_id_decimal_6>-7777-7777-7777-000000000001` = owner, `7
 | `darren` | Darren Marsh | Pantech assembly (80) | Technician |
 | `greg` | Greg Sims | Compliance / QC (90) | Station Owner, QC |
 | `lisa` | Lisa Norris | Compliance / QC (90) | QC |
+
+## Migration 028 — PDF-aligned station owners
+
+Migration 028 introduces the people named in the NE Operation flow PDF and
+makes them the primary tech / station owner where the PDF says so. The
+existing mock techs above stay on their stations as secondaries.
+
+| Username | Full Name | Station | Role(s) |
+|---|---|---|---|
+| `kai`    | Kai Tan         | Robotic fabrication (25)                | Station Owner, Technician |
+| `shanks` | Shanks Williams | Body fitout, Chassis prep, Final fitment (40/50/70) | Station Owner, Technician |
+| `danny`  | Danny Galvin    | HYVA hydraulics (60)                    | Station Owner, Technician |
+| `viral`  | Viral Patel     | Pantech assembly (80)                   | Station Owner, Technician |
+| `sammy`  | Sammy Reeves    | Compliance / QC (90)                    | Station Owner, QC |
+| `sid`    | Sid Patel       | Compliance / QC (90)                    | Station Owner, QC |
+
+Station moves applied by 028 (existing users repointed to PDF-correct stations):
+
+| Username | Old station | New station |
+|---|---|---|
+| `adam`  | Body fitout B1 (40) | Fabrication line / Production line (20) |
+| `scott` | Chassis prep B3 (50) | Paint and panel (30) |
+
+Post-028 station ownership (`stations.owner_user_id`):
+
+| Station | Owner |
+|---|---|
+| MATERIAL_PROC (10) | Marcus Webb |
+| FAB_LINE (20) | Adam Miller |
+| ROBOTIC_FAB (25) | Kai Tan |
+| PAINT_PANEL (30) | Scott Barker |
+| BODY_FITOUT (40) | Shanks Williams |
+| CHASSIS_PREP (50) | Shanks Williams |
+| HYVA (60) | Danny Galvin |
+| FINAL_FITMENT (70) | Shanks Williams |
+| PANTECH (80) | Viral Patel |
+| COMPLIANCE_QC (90) | Sammy Reeves (Sid Patel is also primary tech) |

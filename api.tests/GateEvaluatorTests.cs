@@ -76,7 +76,10 @@ public class GateEvaluatorTests(ApiFixture fixture)
     [Fact]
     public async Task MergePoint_BothTracksRequired_ReadyOnlyWhenBoth()
     {
-        // PANTECH_AL: BODY = 25 → 30 → 80 → 90; CHASSIS = 50 → 60 → 70 → 90
+        // PANTECH_AL: BODY = 80 → 90 (post-027); CHASSIS = 50 → 60 → 70 → 90.
+        // BODY tasks at stations 25/30 below are seeded but not in
+        // flow_definitions; the evaluator ignores tasks with no matching
+        // flow row, so the assertion is unchanged from the pre-027 flow.
         await using var db = fixture.CreateDbContext();
         var roId = await SeedRoAsync(db, "GATE-MERGE-001", "PANTECH_AL");
 

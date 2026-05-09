@@ -408,7 +408,7 @@ public class KanbanEndpointTests(ApiFixture fixture)
     // ── GET /api/stations/{id}/technicians ───────────────────────────────────
 
     [Fact]
-    public async Task GetStationTechnicians_ReturnsPeterForFabLine()
+    public async Task GetStationTechnicians_ReturnsPrimaryForFabLine()
     {
         var client   = AuthClient(SalesUserId, "SALES");
         var response = await client.GetAsync($"/api/stations/{FabLineStationId}/technicians");
@@ -417,7 +417,10 @@ public class KanbanEndpointTests(ApiFixture fixture)
 
         var techs = await response.Content.ReadFromJsonAsync<StationTechnicianItem[]>();
         techs.Should().NotBeNull();
-        techs!.Should().Contain(t => t.FullName == "Peter Rogers" && t.IsPrimary);
+        // Migration 028 made Adam Miller the FAB_LINE primary per the
+        // NE Operation flow PDF; Peter Rogers stays as a secondary tech.
+        techs!.Should().Contain(t => t.FullName == "Adam Miller"  && t.IsPrimary);
+        techs!.Should().Contain(t => t.FullName == "Peter Rogers" && !t.IsPrimary);
     }
 
     // ── E22-S1: grouped card shape ────────────────────────────────────────────

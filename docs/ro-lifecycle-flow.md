@@ -337,3 +337,48 @@ PENDING → ASSIGNED → IN_PROGRESS ↔ PAUSED → COMPLETED
 | `TaskBlocked` | POST /api/tech/tasks/{id}/block | Supervisor |
 
 All events are persisted in the `domain_events` table with a JSONB payload for auditability.
+
+## Appendix E — Pre-production Role Ownership (per NE Operation flow PDF)
+
+Source: `NE Operation flow (1).pdf`. These are the people and roles
+responsible for each pre-production stage of the lifecycle. The system
+captures the *stages* (kanban columns) but doesn't enforce per-stage
+ownership — this table is documentation, not policy.
+
+| Stage | Activity | Responsible |
+|---|---|---|
+| RFQ → Quote | Quote preparation (new builds & accessories) | Brenton Coleby (BC), Montanah G (MG) |
+| RFQ → Quote | Repair / warranty quotes | Akshay Raikar (AR) |
+| RFQ → Quote | Quote review | Bruce Williams (BW) + Dwayne Fender (DF) |
+| PO Received | Customer PO confirmation | NEE customer |
+| Job Card Creation | New builds | BC + MG |
+| Job Card Creation | Accessories | MG + Louise K (LK) |
+| Job Card Creation | Repair / warranty | AR |
+| Job Card Creation | Review | DF + BW |
+| Enter in MPS | Section breakdown + notes | Ella + LK |
+| Enter in MPS | Chassis report | Sid Patel |
+| Enter in MPS | Weekly drafting priority | BW |
+| Drafting | Assignment + timing | BW |
+| Drafting | Forecast (monthly/quarterly/yearly) | BW + DF |
+| Customer Approval Layout | Drafter + DF preparation | (assigned drafter) + DF |
+| Customer Approval | Customer sign-off | NEE customer |
+| Job Pack Release | Build/job pack with tags | Ella |
+| Job Pack Release | Hand-off to production | Ella → Majid |
+| Final QC | PDI & compliance | Sammy Reeves + Sid Patel |
+| Final QC | Line QA & QC | Joe K |
+
+**Production line ownership** (kanban stages once production starts —
+mirrored in `station_technicians.is_primary` after migration 028):
+
+| Station | PDF role label | Owner |
+|---|---|---|
+| Material Processing / CNC | CNC | Marcus Webb |
+| Fabrication line | Production Line | Adam Miller |
+| Robotic fabrication | Robotic | Kai Tan |
+| Paint and panel | Paint & Panel | Scott Barker |
+| Body fitout (B1) | Body Fitout | Shanks Williams |
+| Chassis prep (B3) | Chassis Prep | Shanks Williams |
+| HYVA hydraulics | HYVA / HYVA Fitment | Danny Galvin |
+| Final fitment (B2) | Final Fitment | Shanks Williams |
+| Pantech assembly | Pantech | Viral Patel |
+| Vehicle compliance & final QC | Compliance & QC | Sammy Reeves + Sid Patel |
