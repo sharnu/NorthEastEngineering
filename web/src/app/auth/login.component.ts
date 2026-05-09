@@ -10,32 +10,38 @@ import { AuthService } from '../core/auth.service';
   styleUrls: ['./login.component.css'],
   template: `
     <div class="login-stage">
-      <div class="login-card">
-        <div class="brand">
-          <img class="brand-logo" src="assets/nee-logo.png" alt="North East Engineering" />
-          <span class="brand-sub">Production Platform</span>
+      <div class="login-hero" aria-hidden="true">
+        <img src="assets/nee-login-bg.jpg" alt="" />
+      </div>
+
+      <div class="login-panel">
+        <div class="login-card">
+          <div class="brand">
+            <img class="brand-logo" src="assets/nee-logo.png" alt="North East Engineering" />
+            <span class="brand-sub">Production Platform</span>
+          </div>
+
+          <form [formGroup]="form" (ngSubmit)="submit()">
+            <div class="field">
+              <label for="username">Username</label>
+              <input id="username" type="text" formControlName="username" autocomplete="username" autofocus />
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <input id="password" type="password" formControlName="password" autocomplete="current-password" />
+            </div>
+
+            @if (error()) {
+              <div class="error">{{ error() }}</div>
+            }
+
+            <button type="submit" class="primary" [disabled]="form.invalid || busy()">
+              {{ busy() ? 'Signing in…' : 'Sign in' }}
+            </button>
+          </form>
+
+          <p class="hint">Dev users: <code>sales</code>, <code>drafter</code>, <code>supervisor</code>, <code>adam</code>, <code>peter</code>, <code>kane</code>. Password: <code>nee2026</code>.</p>
         </div>
-
-        <form [formGroup]="form" (ngSubmit)="submit()">
-          <div class="field">
-            <label for="username">Username</label>
-            <input id="username" type="text" formControlName="username" autocomplete="username" autofocus />
-          </div>
-          <div class="field">
-            <label for="password">Password</label>
-            <input id="password" type="password" formControlName="password" autocomplete="current-password" />
-          </div>
-
-          @if (error()) {
-            <div class="error">{{ error() }}</div>
-          }
-
-          <button type="submit" class="primary" [disabled]="form.invalid || busy()">
-            {{ busy() ? 'Signing in…' : 'Sign in' }}
-          </button>
-        </form>
-
-        <p class="hint">Dev users: <code>sales</code>, <code>drafter</code>, <code>supervisor</code>, <code>adam</code>, <code>peter</code>, <code>kane</code>. Password: <code>nee2026</code>.</p>
       </div>
     </div>
   `,
