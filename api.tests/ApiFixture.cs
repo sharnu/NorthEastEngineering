@@ -26,11 +26,19 @@ public class ApiFixture : IAsyncLifetime
 
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
 
+    // Single data source shared across all CreateDbContext() calls in the suite.
+    // Each NpgsqlDataSource owns a connection pool; building a new one per call
+    // (the previous behaviour) leaked pools and exhausted Postgres max_connections
+    // around test ~190 with "53300: sorry, too many clients already".
+    private Npgsql.NpgsqlDataSource _dataSource = null!;
+
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
 
         await ApplyMigrationsAsync();
+
+        _dataSource = new Npgsql.NpgsqlDataSourceBuilder(_postgres.GetConnectionString()).Build();
 
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -47,6 +55,7 @@ public class ApiFixture : IAsyncLifetime
     public async Task DisposeAsync()
     {
         await Factory.DisposeAsync();
+        if (_dataSource is not null) await _dataSource.DisposeAsync();
         await _postgres.DisposeAsync();
     }
 
@@ -75,9 +84,8 @@ public class ApiFixture : IAsyncLifetime
 
     public NeeDbContext CreateDbContext()
     {
-        var dataSource = new Npgsql.NpgsqlDataSourceBuilder(_postgres.GetConnectionString()).Build();
         var opts = new DbContextOptionsBuilder<NeeDbContext>()
-            .UseNpgsql(dataSource)
+            .UseNpgsql(_dataSource)
             .UseSnakeCaseNamingConvention()
             .Options;
         return new NeeDbContext(opts);

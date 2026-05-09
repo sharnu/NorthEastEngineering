@@ -102,7 +102,7 @@ public class RoLifecycleEventsTests(ApiFixture fixture)
         var stages = await SupervisorClient().GetFromJsonAsync<StageItem[]>("/api/kanban/stages");
         var target  = stages!.First(s => s.Code == "FINAL_QC");
         var overrideResp = await SupervisorClient().PostAsJsonAsync(
-            $"/api/kanban/ros/{roId}/override-stage",
+            $"/api/kanban/ros/{roId}/force-advance",
             new { stageId = target.Id, reason = "Full lifecycle test — override to Final QC" });
         overrideResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
