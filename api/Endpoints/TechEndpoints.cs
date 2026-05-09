@@ -409,6 +409,7 @@ public static class TechEndpoints
             INotificationService notifications,
             IGateEvaluator gateEvaluator,
             IHubContext<KanbanHub> hub,
+            Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
             CancellationToken ct) =>
         {
             var currentUserId = GetUserId(principal);
@@ -512,6 +513,10 @@ public static class TechEndpoints
             // Fire-and-forget: board clients refresh on stage change or task completion
             _ = hub.Clients.All.SendAsync("KanbanUpdated", new { roId = task.RoId }, CancellationToken.None);
             _ = hub.NotifyCardUpdated(task.RoId, task.StationId);
+
+            // Forecast risk score uses recent variance + RO completion state.
+            // Invalidate the cache so the next /forecast hit reflects the latest task.
+            ReportsEndpoints.InvalidateForecastCache(cache);
 
             return Results.Ok(new
             {

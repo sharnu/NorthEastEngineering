@@ -55,6 +55,7 @@ builder.Services.AddScoped<PdfScoringService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IGateEvaluator, GateEvaluator>();
 builder.Services.AddSignalR();
+builder.Services.AddMemoryCache();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

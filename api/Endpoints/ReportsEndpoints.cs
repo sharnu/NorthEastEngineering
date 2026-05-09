@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Nee.Api.Data;
 using System.Text;
 
@@ -6,6 +7,16 @@ namespace Nee.Api.Endpoints;
 
 public static class ReportsEndpoints
 {
+    /// <summary>
+    /// Memory-cache key for the strategic forecast response. Other endpoints
+    /// (RO schedule, RO cancel, task complete) call <see cref="InvalidateForecastCache"/>
+    /// to drop this entry when the underlying signals change.
+    /// </summary>
+    public const string ForecastCacheKey = "reports.forecast.v1";
+
+    /// <summary>Drops the cached forecast response so the next /forecast hit recomputes.</summary>
+    public static void InvalidateForecastCache(IMemoryCache cache) => cache.Remove(ForecastCacheKey);
+
     public static void MapReportsEndpoints(this WebApplication app)
     {
         var grp = app.MapGroup("/api/dashboard/reports")
@@ -134,56 +145,22 @@ public static class ReportsEndpoints
                 return Results.BadRequest(new { message = "groupBy must be one of: reason, station, template, technician" });
 
             var minSize = minSampleSize.GetValueOrDefault(1);
+            var flat = await ComputeVarianceFlatAggregates(db, fromDate, toDate, key, ct);
 
-            var records = await db.VarianceRecords
-                .Where(v => v.RecordedAt >= fromDate && v.RecordedAt < toDate)
-                .Select(v => new VarianceRow
-                {
-                    RecordId       = v.Id,
-                    DeltaHours     = v.DeltaHours,
-                    DeltaPercent   = v.DeltaPercent,
-                    EstimatedHours = v.EstimatedHours,
-                    ActualHours    = v.ActualHours,
-                    ReasonCode     = v.Reason.Code,
-                    ReasonName     = v.Reason.Name,
-                    IsOverrun      = v.Reason.IsOverrun,
-                    StationId      = v.Task.StationId,
-                    StationName    = v.Task.Station.Name,
-                    TemplateCode   = v.Task.RepairOrder.TemplateCode,
-                    TechnicianId   = v.RecordedBy,
-                    TechnicianName = db.Users
-                        .Where(u => u.Id == v.RecordedBy)
-                        .Select(u => u.FullName).FirstOrDefault(),
-                })
-                .ToListAsync(ct);
-
-            // Build groupKey/groupLabel selector
-            Func<VarianceRow, (string Key, string Label)> selector = key switch
-            {
-                "reason"     => r => (r.ReasonCode,   r.ReasonName),
-                "station"    => r => (r.StationId.ToString(), r.StationName),
-                "template"   => r => (r.TemplateCode, r.TemplateCode),
-                "technician" => r => (r.TechnicianId.ToString(), r.TechnicianName ?? "Unknown"),
-                _            => r => (r.ReasonCode,   r.ReasonName),
-            };
-
-            var grouped = records
-                .GroupBy(r => selector(r))
+            var grouped = flat
+                .GroupBy(a => new { a.GroupKey, a.GroupLabel })
                 .Select(g => new
                 {
-                    GroupKey         = g.Key.Key,
-                    GroupLabel       = g.Key.Label,
-                    TotalDeltaHours  = Math.Round(g.Sum(r => r.DeltaHours), 2),
-                    SampleSize       = g.Count(),
+                    GroupKey        = g.Key.GroupKey,
+                    GroupLabel      = g.Key.GroupLabel,
+                    TotalDeltaHours = Math.Round(g.Sum(a => a.DeltaHours), 2),
+                    SampleSize      = g.Sum(a => a.Count),
                     ByReason = g
-                        .GroupBy(r => new { r.ReasonCode, r.ReasonName, r.IsOverrun })
-                        .Select(rg => new
+                        .Select(a => new
                         {
-                            ReasonCode  = rg.Key.ReasonCode,
-                            ReasonName  = rg.Key.ReasonName,
-                            IsOverrun   = rg.Key.IsOverrun,
-                            DeltaHours  = Math.Round(rg.Sum(r => r.DeltaHours), 2),
-                            Count       = rg.Count(),
+                            a.ReasonCode, a.ReasonName, a.IsOverrun,
+                            DeltaHours = Math.Round(a.DeltaHours, 2),
+                            a.Count,
                         })
                         .OrderByDescending(rg => Math.Abs(rg.DeltaHours))
                         .ToList(),
@@ -197,8 +174,8 @@ public static class ReportsEndpoints
                 GroupBy         = key,
                 From            = DateOnly.FromDateTime(fromDate),
                 To              = DateOnly.FromDateTime(toDate.AddDays(-1)),
-                TotalSampleSize = records.Count,
-                TotalDeltaHours = Math.Round(records.Sum(r => r.DeltaHours), 2),
+                TotalSampleSize = flat.Sum(a => a.Count),
+                TotalDeltaHours = Math.Round(flat.Sum(a => a.DeltaHours), 2),
                 Rows            = grouped,
             });
         }).WithName("GetVarianceRootCauseReport");
@@ -263,114 +240,114 @@ public static class ReportsEndpoints
             async (string? from, string? to, string? groupBy, int? minSampleSize,
                    NeeDbContext db, CancellationToken ct) =>
         {
-            var resp = await GetVarianceRootCauseRows(from, to, groupBy, minSampleSize, db, ct);
-            if (resp is null) return Results.BadRequest(new { message = "groupBy must be one of: reason, station, template, technician" });
+            var (fromDate, toDate) = ParseDateRange(from, to, defaultDays: 90);
+            var key = (groupBy ?? "reason").ToLowerInvariant();
+            if (key is not ("reason" or "station" or "template" or "technician"))
+                return Results.BadRequest(new { message = "groupBy must be one of: reason, station, template, technician" });
+
+            var minSize = minSampleSize.GetValueOrDefault(1);
+            var flat = await ComputeVarianceFlatAggregates(db, fromDate, toDate, key, ct);
+
+            // Group totals so the CSV's "Sample Size" / "Delta Hours" match
+            // the JSON endpoint, then emit one row per (group, reason) tuple.
+            var groupTotals = flat
+                .GroupBy(a => new { a.GroupKey, a.GroupLabel })
+                .ToDictionary(
+                    g => g.Key.GroupKey,
+                    g => (Total: g.Sum(a => a.DeltaHours), Count: g.Sum(a => a.Count)));
 
             var csv = new StringBuilder("Group,Sample Size,Delta Hours,Reason Code,Reason Name,Reason Delta Hours,Reason Count\r\n");
-            foreach (var g in resp.Rows)
+            foreach (var a in flat
+                .Where(a => groupTotals[a.GroupKey].Count >= minSize)
+                .OrderByDescending(a => Math.Abs(groupTotals[a.GroupKey].Total))
+                .ThenByDescending(a => Math.Abs(a.DeltaHours)))
             {
-                foreach (var r in g.ByReason)
-                {
-                    csv.AppendLine($"{Esc(g.GroupLabel)},{g.SampleSize},{g.TotalDeltaHours:F2},{r.ReasonCode},{Esc(r.ReasonName)},{r.DeltaHours:F2},{r.Count}");
-                }
+                var (gTotal, gCount) = groupTotals[a.GroupKey];
+                csv.AppendLine($"{Esc(a.GroupLabel)},{gCount},{gTotal:F2},{a.ReasonCode},{Esc(a.ReasonName)},{a.DeltaHours:F2},{a.Count}");
             }
-            var fname = $"variance-root-cause-{resp.From:yyyy-MM-dd}_{resp.To:yyyy-MM-dd}.csv";
+
+            var fname = $"variance-root-cause-{DateOnly.FromDateTime(fromDate):yyyy-MM-dd}_{DateOnly.FromDateTime(toDate.AddDays(-1)):yyyy-MM-dd}.csv";
             return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", fname);
         }).WithName("ExportVarianceRootCauseCsv");
     }
 
-    private record VarianceRow
-    {
-        public Guid    RecordId       { get; init; }
-        public decimal DeltaHours     { get; init; }
-        public decimal? DeltaPercent  { get; init; }
-        public decimal EstimatedHours { get; init; }
-        public decimal ActualHours    { get; init; }
-        public string  ReasonCode     { get; init; } = "";
-        public string  ReasonName     { get; init; } = "";
-        public bool    IsOverrun      { get; init; }
-        public short   StationId      { get; init; }
-        public string  StationName    { get; init; } = "";
-        public string  TemplateCode   { get; init; } = "";
-        public Guid    TechnicianId   { get; init; }
-        public string? TechnicianName { get; init; }
-    }
-
-    private record VarianceRootCauseResponse(
-        DateOnly From,
-        DateOnly To,
-        IReadOnlyList<VarianceRootCauseRow> Rows);
-
-    private record VarianceRootCauseRow(
+    /// <summary>One row per (group, reason) tuple — flat output of a SQL
+    /// GROUP BY. Both the JSON endpoint and the CSV exporter pivot this
+    /// into the nested response shape in C#. Doing the GROUP BY in Postgres
+    /// avoids loading every variance record into memory.</summary>
+    private sealed record VarianceFlatAggregate(
         string GroupKey, string GroupLabel,
-        decimal TotalDeltaHours, int SampleSize,
-        IReadOnlyList<VarianceReasonBreakdown> ByReason);
-
-    private record VarianceReasonBreakdown(
         string ReasonCode, string ReasonName, bool IsOverrun,
         decimal DeltaHours, int Count);
 
-    private static async Task<VarianceRootCauseResponse?> GetVarianceRootCauseRows(
-        string? from, string? to, string? groupBy, int? minSampleSize,
-        NeeDbContext db, CancellationToken ct)
+    /// <summary>Issues a single SQL GROUP BY with a two-key composite (group +
+    /// reason) — the group key is selected based on <paramref name="groupBy"/>.
+    /// EF Core translates each switch arm into its own query; per-arm shape
+    /// keeps the projection simple enough for the EF translator.</summary>
+    private static async Task<List<VarianceFlatAggregate>> ComputeVarianceFlatAggregates(
+        NeeDbContext db, DateTime fromDate, DateTime toDate, string key, CancellationToken ct)
     {
-        var (fromDate, toDate) = ParseDateRange(from, to, defaultDays: 90);
-        var key = (groupBy ?? "reason").ToLowerInvariant();
-        if (key is not ("reason" or "station" or "template" or "technician"))
-            return null;
+        var baseQuery = db.VarianceRecords
+            .Where(v => v.RecordedAt >= fromDate && v.RecordedAt < toDate);
 
-        var minSize = minSampleSize.GetValueOrDefault(1);
-
-        var records = await db.VarianceRecords
-            .Where(v => v.RecordedAt >= fromDate && v.RecordedAt < toDate)
-            .Select(v => new VarianceRow
-            {
-                RecordId       = v.Id,
-                DeltaHours     = v.DeltaHours,
-                DeltaPercent   = v.DeltaPercent,
-                EstimatedHours = v.EstimatedHours,
-                ActualHours    = v.ActualHours,
-                ReasonCode     = v.Reason.Code,
-                ReasonName     = v.Reason.Name,
-                IsOverrun      = v.Reason.IsOverrun,
-                StationId      = v.Task.StationId,
-                StationName    = v.Task.Station.Name,
-                TemplateCode   = v.Task.RepairOrder.TemplateCode,
-                TechnicianId   = v.RecordedBy,
-                TechnicianName = db.Users.Where(u => u.Id == v.RecordedBy).Select(u => u.FullName).FirstOrDefault(),
-            })
-            .ToListAsync(ct);
-
-        Func<VarianceRow, (string, string)> selector = key switch
+        return key switch
         {
-            "reason"     => r => (r.ReasonCode,   r.ReasonName),
-            "station"    => r => (r.StationId.ToString(), r.StationName),
-            "template"   => r => (r.TemplateCode, r.TemplateCode),
-            "technician" => r => (r.TechnicianId.ToString(), r.TechnicianName ?? "Unknown"),
-            _            => r => (r.ReasonCode,   r.ReasonName),
+            "reason" => await baseQuery
+                .GroupBy(v => new {
+                    Code     = v.Reason.Code,
+                    Name     = v.Reason.Name,
+                    Overrun  = v.Reason.IsOverrun,
+                })
+                .Select(g => new VarianceFlatAggregate(
+                    g.Key.Code, g.Key.Name,
+                    g.Key.Code, g.Key.Name, g.Key.Overrun,
+                    g.Sum(v => v.DeltaHours), g.Count()))
+                .ToListAsync(ct),
+
+            "station" => await baseQuery
+                .GroupBy(v => new {
+                    StationId   = v.Task.StationId,
+                    StationName = v.Task.Station.Name,
+                    Code        = v.Reason.Code,
+                    Name        = v.Reason.Name,
+                    Overrun     = v.Reason.IsOverrun,
+                })
+                .Select(g => new VarianceFlatAggregate(
+                    g.Key.StationId.ToString(), g.Key.StationName,
+                    g.Key.Code, g.Key.Name, g.Key.Overrun,
+                    g.Sum(v => v.DeltaHours), g.Count()))
+                .ToListAsync(ct),
+
+            "template" => await baseQuery
+                .GroupBy(v => new {
+                    TemplateCode = v.Task.RepairOrder.TemplateCode,
+                    Code         = v.Reason.Code,
+                    Name         = v.Reason.Name,
+                    Overrun      = v.Reason.IsOverrun,
+                })
+                .Select(g => new VarianceFlatAggregate(
+                    g.Key.TemplateCode, g.Key.TemplateCode,
+                    g.Key.Code, g.Key.Name, g.Key.Overrun,
+                    g.Sum(v => v.DeltaHours), g.Count()))
+                .ToListAsync(ct),
+
+            "technician" => await baseQuery
+                .Join(db.Users, v => v.RecordedBy, u => u.Id, (v, u) => new { v, u })
+                .GroupBy(x => new {
+                    TechId   = x.v.RecordedBy,
+                    TechName = x.u.FullName,
+                    Code     = x.v.Reason.Code,
+                    Name     = x.v.Reason.Name,
+                    Overrun  = x.v.Reason.IsOverrun,
+                })
+                .Select(g => new VarianceFlatAggregate(
+                    g.Key.TechId.ToString(), g.Key.TechName ?? "Unknown",
+                    g.Key.Code, g.Key.Name, g.Key.Overrun,
+                    g.Sum(x => x.v.DeltaHours), g.Count()))
+                .ToListAsync(ct),
+
+            _ => new List<VarianceFlatAggregate>(),
         };
-
-        var rows = records
-            .GroupBy(r => selector(r))
-            .Select(g => new VarianceRootCauseRow(
-                g.Key.Item1, g.Key.Item2,
-                Math.Round(g.Sum(r => r.DeltaHours), 2),
-                g.Count(),
-                g.GroupBy(r => new { r.ReasonCode, r.ReasonName, r.IsOverrun })
-                 .Select(rg => new VarianceReasonBreakdown(
-                     rg.Key.ReasonCode, rg.Key.ReasonName, rg.Key.IsOverrun,
-                     Math.Round(rg.Sum(r => r.DeltaHours), 2),
-                     rg.Count()))
-                 .OrderByDescending(rg => Math.Abs(rg.DeltaHours))
-                 .ToList()))
-            .Where(g => g.SampleSize >= minSize)
-            .OrderByDescending(g => Math.Abs(g.TotalDeltaHours))
-            .ToList();
-
-        return new VarianceRootCauseResponse(
-            DateOnly.FromDateTime(fromDate),
-            DateOnly.FromDateTime(toDate.AddDays(-1)),
-            rows);
     }
 
     // ── E18 · Customer Concentration ─────────────────────────────────────
@@ -406,27 +383,37 @@ public static class ReportsEndpoints
 
             var totalHours  = perCustomer.Sum(c => c.TotalHours);
             var totalRos    = perCustomer.Sum(c => c.RoCount);
-            decimal cum = 0;
+            var ordered = perCustomer.OrderByDescending(c => c.TotalHours).ToList();
 
-            var rows = perCustomer
-                .OrderByDescending(c => c.TotalHours)
-                .Select((c, i) =>
+            // Compute cumulative percentages first; then mark topRanked only
+            // when the top-3 cumulative crosses 60% — i.e. only when the
+            // concentration is meaningful enough to surface visually. This
+            // keeps row badges and the over-threshold banner in sync.
+            decimal[] cumulatives = new decimal[ordered.Count];
+            decimal running = 0;
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                var pct = totalHours > 0 ? Math.Round(ordered[i].TotalHours / totalHours * 100m, 1) : 0;
+                running += pct;
+                cumulatives[i] = Math.Round(running, 1);
+            }
+            var top3Dominant = ordered.Count >= 3 && cumulatives[2] > 60;
+
+            var rows = ordered.Select((c, i) =>
+            {
+                var pct = totalHours > 0 ? Math.Round(c.TotalHours / totalHours * 100m, 1) : 0;
+                return new
                 {
-                    var pct = totalHours > 0 ? Math.Round(c.TotalHours / totalHours * 100m, 1) : 0;
-                    cum += pct;
-                    return new
-                    {
-                        c.CustomerId,
-                        c.CustomerCode,
-                        c.CustomerName,
-                        c.RoCount,
-                        TotalHours        = Math.Round(c.TotalHours, 1),
-                        PercentOfTotal    = pct,
-                        CumulativePercent = Math.Round(cum, 1),
-                        TopRanked         = i < 3,
-                    };
-                })
-                .ToList();
+                    c.CustomerId,
+                    c.CustomerCode,
+                    c.CustomerName,
+                    c.RoCount,
+                    TotalHours        = Math.Round(c.TotalHours, 1),
+                    PercentOfTotal    = pct,
+                    CumulativePercent = cumulatives[i],
+                    TopRanked         = i < 3 && top3Dominant,
+                };
+            }).ToList();
 
             return Results.Ok(new
             {
@@ -533,8 +520,13 @@ public static class ReportsEndpoints
     private static void MapForecastEndpoints(RouteGroupBuilder grp)
     {
         grp.MapGet("/forecast",
-            async (NeeDbContext db, CancellationToken ct) =>
+            async (NeeDbContext db, IMemoryCache cache, CancellationToken ct) =>
         {
+            // 1h memory cache. Invalidated by RO scheduling/cancel/complete
+            // — see InvalidateForecastCache calls in those endpoints.
+            if (cache.TryGetValue(ForecastCacheKey, out object? cached) && cached is not null)
+                return Results.Ok(cached);
+
             var nowUtc = DateTime.UtcNow.Date;
             var sixtyDaysAgo = nowUtc.AddDays(-60);
             var fourWeeksOut = nowUtc.AddDays(28);
@@ -718,11 +710,13 @@ public static class ReportsEndpoints
             .OrderByDescending(r => r.RiskScore)
             .ToList();
 
-            return Results.Ok(new
+            var response = new
             {
                 ComputedAt = DateTimeOffset.UtcNow,
                 Rows = rows,
-            });
+            };
+            cache.Set(ForecastCacheKey, response, TimeSpan.FromHours(1));
+            return Results.Ok(response);
         }).WithName("GetForecastReport");
     }
 
@@ -764,10 +758,15 @@ public static class ReportsEndpoints
         return new DateTime(nowUtc.Year, q, 1, 0, 0, 0, DateTimeKind.Utc);
     }
 
-    private static string Esc(string? s) =>
-        s is null ? "" : (s.Contains(',') || s.Contains('"'))
-            ? "\"" + s.Replace("\"", "\"\"") + "\""
-            : s;
+    /// <summary>RFC 4180 CSV escape — quotes when the field contains a
+    /// comma, quote, or newline (CR or LF). Doubles inner quotes.</summary>
+    private static string Esc(string? s)
+    {
+        if (s is null) return "";
+        var needsQuoting = s.Contains(',') || s.Contains('"') ||
+                           s.Contains('\n') || s.Contains('\r');
+        return needsQuoting ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;
+    }
 }
 
 public class ThroughputWeekDto

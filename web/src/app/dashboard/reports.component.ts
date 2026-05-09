@@ -227,19 +227,6 @@ import { ForecastWidgetComponent } from './forecast-widget.component';
                         opacity: 0.7; }
     .actual-over  { background: var(--bad); }
     .actual-under { background: var(--good); }
-
-    /* ── Phase 2 placeholders ── */
-    .placeholder-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    @media (max-width: 800px) { .placeholder-grid { grid-template-columns: 1fr; } }
-    .placeholder-card { background: white; border: 0.5px dashed var(--rule); border-radius: 12px;
-                        padding: 24px; text-align: center; position: relative; }
-    .ph-badge { position: absolute; top: 16px; right: 16px; font-family: var(--mono); font-size: 9px;
-                text-transform: uppercase; letter-spacing: 0.1em; background: var(--paper-3);
-                color: var(--ink-3); padding: 3px 8px; border-radius: 20px; }
-    .ph-icon  { font-size: 28px; margin-bottom: 10px; }
-    .ph-title { font-family: var(--display); font-size: 16px; font-weight: 500; color: var(--ink);
-                margin: 0 0 8px; letter-spacing: -0.01em; }
-    .ph-desc  { font-size: 12px; color: var(--ink-3); margin: 0; line-height: 1.5; }
   `],
 })
 export class ReportsComponent implements OnInit {
@@ -268,23 +255,6 @@ export class ReportsComponent implements OnInit {
     return sel ? this.calibration().filter(r => r.templateCode === sel) : this.calibration();
   });
 
-  readonly placeholders = [
-    {
-      icon: '📊',
-      title: 'Variance Root Cause',
-      desc: 'Aggregated variance reasons across operations and technicians.',
-    },
-    {
-      icon: '🏢',
-      title: 'Customer Concentration',
-      desc: 'Revenue and volume distribution across customer accounts.',
-    },
-    {
-      icon: '🔭',
-      title: 'Strategic Forecasting',
-      desc: 'Capacity outlook vs pipeline based on scheduled ROs.',
-    },
-  ];
 
   downloadThroughputCsv(): void {
     const rows = ['Week Start,Completed,In Progress,Blocked'];

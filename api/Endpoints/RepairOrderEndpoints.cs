@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Nee.Api.Data;
 using Nee.Api.Domain;
 using Nee.Api.Domain.Events;
@@ -523,6 +524,7 @@ public static class RepairOrderEndpoints
             CancelRoRequest req,
             ClaimsPrincipal principal,
             NeeDbContext db,
+            IMemoryCache cache,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(req.Reason) || req.Reason.Trim().Length < 10)
@@ -572,6 +574,7 @@ public static class RepairOrderEndpoints
             RoLifecycleEvents.EmitRoCancelled(db, id, userId, req.Reason.Trim(), releasedChassisId);
 
             await db.SaveChangesAsync(ct);
+            ReportsEndpoints.InvalidateForecastCache(cache);
             return Results.Ok(new { releasedChassisId });
         })
         .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "ADMIN"))

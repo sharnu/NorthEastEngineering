@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Nee.Api.Data;
 using Nee.Api.Domain;
 
@@ -210,6 +211,7 @@ public static class SchedulingEndpoints
             Guid roId,
             ScheduleRoRequest req,
             NeeDbContext db,
+            IMemoryCache cache,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
@@ -253,6 +255,9 @@ public static class SchedulingEndpoints
             });
 
             await db.SaveChangesAsync(ct);
+            // Forecast depends on scheduled_start_week for capacity, projection,
+            // and risk score — drop the cache so the next /forecast hit recomputes.
+            ReportsEndpoints.InvalidateForecastCache(cache);
             return Results.Ok(new { roId, scheduledStartWeek = startWeek });
         })
         .RequireAuthorization(p => p.RequireRole("SUPERVISOR", "STATION_OWNER"))
