@@ -54,6 +54,62 @@ public class KanbanEndpointTests(ApiFixture fixture)
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    // ── GET /api/kanban?week=… ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetKanbanBoard_WeekParam_InvalidFormat_Returns400()
+    {
+        var client   = AuthClient(SalesUserId, "SALES");
+        var response = await client.GetAsync("/api/kanban?week=not-a-date");
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task GetKanbanBoard_WeekParam_NonMonday_Returns400()
+    {
+        // 2026-05-12 is a Tuesday
+        var client   = AuthClient(SalesUserId, "SALES");
+        var response = await client.GetAsync("/api/kanban?week=2026-05-12");
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task GetKanbanBoard_WeekBacklog_ReturnsOk()
+    {
+        var client   = AuthClient(SalesUserId, "SALES");
+        var response = await client.GetAsync("/api/kanban?week=backlog");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var board = await response.Content.ReadFromJsonAsync<KanbanBoardResponse>();
+        board.Should().NotBeNull();
+        // Stations are always present even when no cards match
+        board!.Stations.Should().HaveCount(11);
+    }
+
+    [Fact]
+    public async Task GetKanbanBoard_ValidMonday_ReturnsOk()
+    {
+        // 2026-05-11 is a Monday
+        var client   = AuthClient(SalesUserId, "SALES");
+        var response = await client.GetAsync("/api/kanban?week=2026-05-11");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    // ── GET /api/kanban/weeks ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetKanbanWeeks_ReturnsShape()
+    {
+        var client   = AuthClient(SalesUserId, "SALES");
+        var response = await client.GetAsync("/api/kanban/weeks");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var doc = await response.Content.ReadFromJsonAsync<KanbanWeeksResponse>();
+        doc.Should().NotBeNull();
+        doc!.Weeks.Should().NotBeNull();
+        doc.BacklogCount.Should().BeGreaterThanOrEqualTo(0);
+    }
+
     // ── GET /api/kanban?stationId=20 ──────────────────────────────────────────
 
     [Fact]
@@ -420,4 +476,7 @@ public class KanbanEndpointTests(ApiFixture fixture)
     private record StationTechnicianItem(Guid UserId, string FullName, bool IsPrimary, int SkillLevel);
     private record CustomerItem(Guid Id, string Code, string Name);
     private record CreateRoResult(Guid RoId, string RoNumber, int TasksCreated);
+
+    private record KanbanWeeksResponse(KanbanWeekItem[] Weeks, int BacklogCount);
+    private record KanbanWeekItem(string Week, int IsoWeek, int IsoYear, int RoCount);
 }

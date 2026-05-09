@@ -14,10 +14,54 @@ public static class KanbanEndpoints
     {
         var grp = app.MapGroup("/api/kanban").RequireAuthorization().WithTags("Kanban");
 
-        // GET /api/kanban[?stationId=20]
-        grp.MapGet("/", async (short? stationId, NeeDbContext db, IGateEvaluator gateEvaluator, CancellationToken ct) =>
+        // GET /api/kanban[?stationId=20][&week=2026-05-11|backlog]
+        // week filter:
+        //   omitted   → all ROs (legacy behaviour)
+        //   "backlog" → only ROs with scheduled_start_week IS NULL
+        //   yyyy-MM-dd (must be Monday) → ROs where scheduled_start_week <= week
+        //                                 AND ro.Status != "COMPLETED",
+        //                                 PLUS any RO currently at HOSPITAL stage
+        grp.MapGet("/", async (short? stationId, string? week, NeeDbContext db, IGateEvaluator gateEvaluator, CancellationToken ct) =>
         {
             var excludedStatuses = new[] { "COMPLETED", "CANCELLED" };
+
+            // Resolve the week filter to a set of RO IDs (or null = no filter)
+            HashSet<Guid>? allowedRoIds = null;
+            if (!string.IsNullOrWhiteSpace(week))
+            {
+                if (week == "backlog")
+                {
+                    var ids = await db.RepairOrders
+                        .Where(r => r.ScheduledStartWeek == null && r.Status != "COMPLETED" && r.Status != "CANCELLED")
+                        .Select(r => r.Id)
+                        .ToListAsync(ct);
+                    allowedRoIds = ids.ToHashSet();
+                }
+                else
+                {
+                    if (!DateOnly.TryParseExact(week, "yyyy-MM-dd", out var parsedWeek))
+                        return Results.BadRequest(new { message = "week must be 'backlog' or yyyy-MM-dd" });
+                    if (parsedWeek.DayOfWeek != DayOfWeek.Monday)
+                        return Results.BadRequest(new { message = "week must be a Monday" });
+
+                    // ROs scheduled for this week or earlier (carryover) and not complete,
+                    // plus any RO currently at HOSPITAL stage (id 95) regardless of schedule.
+                    var scheduledIds = await db.RepairOrders
+                        .Where(r => r.ScheduledStartWeek != null
+                                 && r.ScheduledStartWeek <= parsedWeek
+                                 && r.Status != "COMPLETED"
+                                 && r.Status != "CANCELLED")
+                        .Select(r => r.Id)
+                        .ToListAsync(ct);
+
+                    var hospitalIds = await db.RoKanbanStates
+                        .Where(s => s.CurrentStageId == 95)
+                        .Select(s => s.RoId)
+                        .ToListAsync(ct);
+
+                    allowedRoIds = scheduledIds.Concat(hospitalIds).ToHashSet();
+                }
+            }
 
             var stationsQuery = db.Stations.Where(s => s.IsActive);
             if (stationId.HasValue)
@@ -37,8 +81,21 @@ public static class KanbanEndpoints
             var stationIds = stations.Select(s => s.Id).ToList();
 
             // Load all tasks for these stations (include completed for progress display)
-            var tasks = await db.JobTasks
-                .Where(t => stationIds.Contains(t.StationId))
+            var tasksQuery = db.JobTasks
+                .Where(t => stationIds.Contains(t.StationId));
+
+            if (allowedRoIds is not null)
+            {
+                if (allowedRoIds.Count == 0)
+                    tasksQuery = tasksQuery.Where(t => false);
+                else
+                {
+                    var roIdList = allowedRoIds.ToList();
+                    tasksQuery = tasksQuery.Where(t => roIdList.Contains(t.RoId));
+                }
+            }
+
+            var tasks = await tasksQuery
                 .Select(t => new
                 {
                     t.Id,
@@ -184,6 +241,31 @@ public static class KanbanEndpoints
 
             return Results.Ok(result);
         }).WithName("GetKanbanBoard");
+
+        // GET /api/kanban/weeks — distinct scheduled_start_week values present
+        // in non-complete ROs, plus a "backlog" entry if any unscheduled ROs exist.
+        grp.MapGet("/weeks", async (NeeDbContext db, CancellationToken ct) =>
+        {
+            var live = db.RepairOrders.Where(r => r.Status != "COMPLETED" && r.Status != "CANCELLED");
+
+            var grouped = await live
+                .Where(r => r.ScheduledStartWeek != null)
+                .GroupBy(r => r.ScheduledStartWeek!.Value)
+                .Select(g => new { Week = g.Key, RoCount = g.Count() })
+                .OrderBy(x => x.Week)
+                .ToListAsync(ct);
+
+            var backlogCount = await live.CountAsync(r => r.ScheduledStartWeek == null, ct);
+
+            var weeks = grouped.Select(g => new {
+                Week     = g.Week.ToString("yyyy-MM-dd"),
+                IsoWeek  = System.Globalization.ISOWeek.GetWeekOfYear(g.Week.ToDateTime(TimeOnly.MinValue)),
+                IsoYear  = System.Globalization.ISOWeek.GetYear(g.Week.ToDateTime(TimeOnly.MinValue)),
+                RoCount  = g.RoCount,
+            }).ToList();
+
+            return Results.Ok(new { Weeks = weeks, BacklogCount = backlogCount });
+        }).WithName("GetKanbanWeeks");
 
         // GET /api/kanban/stages — list all stages for the override-stage form
         grp.MapGet("/stages", async (NeeDbContext db, CancellationToken ct) =>

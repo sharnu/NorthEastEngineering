@@ -100,6 +100,18 @@ export interface StationTechnicianDto {
   skillLevel: number;
 }
 
+export interface ScheduledWeekDto {
+  week: string;     // yyyy-MM-dd (Monday)
+  isoWeek: number;
+  isoYear: number;
+  roCount: number;
+}
+
+export interface KanbanWeeksDto {
+  weeks: ScheduledWeekDto[];
+  backlogCount: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class KanbanService {
   private http = inject(HttpClient);
@@ -110,13 +122,20 @@ export class KanbanService {
 
   // Fetches the board and updates boardSignal. Called by the board component's
   // polling loop and will be called by the SignalR KanbanUpdated listener (E25).
-  refresh(stationId?: number): void {
-    this.getBoard(stationId).subscribe(board => this.boardSignal.set(board));
+  refresh(stationId?: number, week?: string | null): void {
+    this.getBoard(stationId, week).subscribe(board => this.boardSignal.set(board));
   }
 
-  getBoard(stationId?: number): Observable<KanbanBoardDto> {
-    const url = stationId ? `/api/kanban?stationId=${stationId}` : '/api/kanban';
+  getBoard(stationId?: number, week?: string | null): Observable<KanbanBoardDto> {
+    const params: string[] = [];
+    if (stationId) params.push(`stationId=${stationId}`);
+    if (week)      params.push(`week=${encodeURIComponent(week)}`);
+    const url = params.length ? `/api/kanban?${params.join('&')}` : '/api/kanban';
     return this.http.get<KanbanBoardDto>(url);
+  }
+
+  getScheduledWeeks(): Observable<KanbanWeeksDto> {
+    return this.http.get<KanbanWeeksDto>('/api/kanban/weeks');
   }
 
   getTechnicians(stationId: number): Observable<StationTechnicianDto[]> {

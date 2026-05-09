@@ -10,7 +10,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import * as signalR from '@microsoft/signalr';
 import { AuthService } from '../core/auth.service';
 import { ThemeSwitcherComponent } from '../core/theme-switcher.component';
-import { KanbanService, KanbanStationDto, KanbanCardDto } from './kanban.service';
+import { KanbanService, KanbanStationDto, KanbanCardDto, ScheduledWeekDto } from './kanban.service';
 import { StationCardComponent } from './station-card.component';
 import { CardDrawerComponent } from './card-drawer.component';
 import { FlowRibbonComponent } from './flow-ribbon.component';
@@ -48,6 +48,21 @@ const GATE_STATES: GateStateChip[] = [
   { value: 'COMPLETE',    label: 'Complete',    activeClass: 'chip-complete'   },
 ];
 
+const WEEK_KEY = 'kanban.selectedWeek';
+const BACKLOG = 'backlog';
+
+/** Returns the Monday of the current week as `yyyy-MM-dd` in local time. */
+function currentMonday(): string {
+  const today = new Date();
+  const dow = today.getDay(); // Sunday=0, Monday=1, ...
+  const offset = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+  const yyyy = monday.getFullYear();
+  const mm = String(monday.getMonth() + 1).padStart(2, '0');
+  const dd = String(monday.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
@@ -80,8 +95,25 @@ const GATE_STATES: GateStateChip[] = [
 
     <!-- Page header + controls -->
     <div class="page-header">
-      <h1 class="page-title">Kanban Board</h1>
+      <div class="page-title-block">
+        <h1 class="page-title">Kanban Board</h1>
+        <p class="page-caption">
+          Showing {{ weekCardCount() }} card{{ weekCardCount() === 1 ? '' : 's' }} ·
+          {{ selectedWeekLabel() }}
+        </p>
+      </div>
       <div class="header-controls">
+        <select class="week-filter" [value]="selectedWeek()"
+                (change)="onWeekChange($any($event.target).value)"
+                title="Filter by scheduled week">
+          <option value="backlog">Backlog · unscheduled ({{ backlogCount() }})</option>
+          @for (w of availableWeeks(); track w.week) {
+            <option [value]="w.week">
+              {{ formatWeekOption(w) }}
+            </option>
+          }
+        </select>
+
         <select class="station-filter" (change)="onStationFilter($any($event.target).value)">
           <option value="">All stations</option>
           @for (s of allStations(); track s.stationId) {
@@ -204,8 +236,12 @@ const GATE_STATES: GateStateChip[] = [
     .page-title  { font-family: var(--display); font-size: 28px; font-weight: 500; color: var(--ink);
                    letter-spacing: -0.02em; margin: 0; }
     .header-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .station-filter { padding: 8px 10px; border: 0.5px solid var(--rule-strong); border-radius: 6px;
-                      font-size: 13px; background: var(--paper); color: var(--ink); }
+    .station-filter, .week-filter { padding: 8px 10px; border: 0.5px solid var(--rule-strong); border-radius: 6px;
+                      font-size: 13px; background: var(--paper); color: var(--ink); cursor: pointer; }
+    .week-filter { font-weight: 500; min-width: 200px; }
+    .page-title-block { display: flex; flex-direction: column; gap: 4px; }
+    .page-caption { font-size: 12px; color: var(--ink-3); margin: 0;
+                    font-family: var(--mono); }
     .refresh-btn { padding: 8px 16px; border: 0.5px solid var(--rule-strong); border-radius: 999px;
                    font-size: 13px; font-weight: 500; background: transparent; color: var(--ink); cursor: pointer;
                    transition: background 0.15s, color 0.15s;
@@ -340,6 +376,26 @@ export class KanbanBoardComponent implements OnInit {
   loadError         = signal(false);
   boardRefreshCount = signal(0);
 
+  // Week filter — persisted to sessionStorage so refresh keeps the user's choice.
+  selectedWeek      = signal<string>(sessionStorage.getItem(WEEK_KEY) ?? currentMonday());
+  availableWeeks    = signal<ScheduledWeekDto[]>([]);
+  backlogCount      = signal(0);
+
+  weekCardCount = computed(() =>
+    this.displayedStations().reduce((sum, s) => sum + s.cards.length, 0)
+  );
+
+  selectedWeekLabel = computed(() => {
+    const w = this.selectedWeek();
+    if (w === BACKLOG) return 'Backlog · unscheduled';
+    const [y, m, d] = w.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const month = date.toLocaleString('default', { month: 'short' });
+    const match = this.availableWeeks().find(x => x.week === w);
+    const iso = match ? ` · W${match.isoWeek}` : '';
+    return `Week of ${month} ${d}${iso}`;
+  });
+
   selectedCard = signal<KanbanCardDto | null>(null);
   isDrawerOpen = signal(false);
 
@@ -386,12 +442,13 @@ export class KanbanBoardComponent implements OnInit {
 
   ngOnInit() {
     this.connectRealtime();
+    this.loadWeeks();
     interval(30_000).pipe(
       startWith(0),
       switchMap(() => {
         this.isRefreshing.set(true);
         const stationId = this.selectedStationId() ?? undefined;
-        return this.svc.getBoard(stationId).pipe(
+        return this.svc.getBoard(stationId, this.selectedWeek()).pipe(
           catchError(() => { this.loadError.set(true); return of(null); }),
         );
       }),
@@ -407,6 +464,13 @@ export class KanbanBoardComponent implements OnInit {
     });
   }
 
+  loadWeeks(): void {
+    this.svc.getScheduledWeeks().subscribe(res => {
+      this.availableWeeks.set(res.weeks);
+      this.backlogCount.set(res.backlogCount);
+    });
+  }
+
   private connectRealtime(): void {
     const conn = this.hubFactory();
     conn.on('KanbanUpdated', () => this.refresh());
@@ -418,7 +482,7 @@ export class KanbanBoardComponent implements OnInit {
 
   loadBoard(stationId?: number) {
     this.isRefreshing.set(true);
-    this.svc.getBoard(stationId).pipe(
+    this.svc.getBoard(stationId, this.selectedWeek()).pipe(
       catchError(() => { this.loadError.set(true); return of(null); }),
     ).subscribe(board => {
       this.isRefreshing.set(false);
@@ -437,6 +501,20 @@ export class KanbanBoardComponent implements OnInit {
     const stationId = value ? Number(value) : undefined;
     this.selectedStationId.set(stationId ?? null);
     this.loadBoard(stationId);
+  }
+
+  onWeekChange(value: string) {
+    this.selectedWeek.set(value);
+    sessionStorage.setItem(WEEK_KEY, value);
+    this.loadBoard(this.selectedStationId() ?? undefined);
+    this.loadWeeks();  // refresh counts after a possible navigation
+  }
+
+  formatWeekOption(w: ScheduledWeekDto): string {
+    const [y, m, d] = w.week.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const month = date.toLocaleString('default', { month: 'short' });
+    return `Week of ${month} ${d} · W${w.isoWeek} (${w.roCount})`;
   }
 
   toggleBodyType(bt: string): void {
