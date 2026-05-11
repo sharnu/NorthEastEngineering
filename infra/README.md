@@ -17,6 +17,7 @@ Files in this folder:
 | `container-entrypoint.sh` | Boots Postgres → applies migrations → starts nginx → execs the API. Runs as PID 1 in the container. |
 | `nginx-in-container.conf` | nginx config for the bundled image (plain HTTP; TLS terminated by Container Apps). |
 | `deploy-aca.sh` | Local build + image push + `az containerapp create/update`. |
+| `aca-cloudshell.md` | Split-deploy guide for when `az login` is blocked locally — build/push from your laptop, run `az` commands in [shell.azure.com](https://shell.azure.com). |
 
 Wrapped by Makefile targets:
 
