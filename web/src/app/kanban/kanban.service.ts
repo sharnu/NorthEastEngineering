@@ -16,6 +16,7 @@ export interface KanbanCardTaskDto {
   notes: string | null;
   blockedReason: string | null;
   blockedAt: string | null;
+  blockedByName: string | null;
 }
 
 export interface KanbanCardDto {

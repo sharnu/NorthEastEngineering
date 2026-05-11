@@ -175,7 +175,7 @@ public static class KanbanEndpoints
                 .Select(t => t.Id)
                 .Distinct()
                 .ToList();
-            var blockReasonByTask = new Dictionary<Guid, (string? Reason, DateTimeOffset BlockedAt)>();
+            var blockReasonByTask = new Dictionary<Guid, (string? Reason, DateTimeOffset BlockedAt, string? BlockedByName)>();
             if (blockedTaskIds.Count > 0)
             {
                 var blockEvents = await db.DomainEvents
@@ -183,14 +183,39 @@ public static class KanbanEndpoints
                     .OrderByDescending(e => e.Id)
                     .Select(e => new { e.AggregateId, e.Payload, e.OccurredAt })
                     .ToListAsync(ct);
+
+                // Collect blocker user-ids so we can resolve names in one query.
+                var parsed = new List<(Guid TaskId, string? Reason, DateTimeOffset At, Guid? BlockedById)>();
                 foreach (var ev in blockEvents)
                 {
-                    if (blockReasonByTask.ContainsKey(ev.AggregateId)) continue;
+                    if (parsed.Any(p => p.TaskId == ev.AggregateId)) continue;
                     string? reason = null;
-                    if (ev.Payload.RootElement.TryGetProperty("reason", out var p)
-                        && p.ValueKind == JsonValueKind.String)
-                        reason = p.GetString();
-                    blockReasonByTask[ev.AggregateId] = (reason, ev.OccurredAt);
+                    Guid? blockedBy = null;
+                    if (ev.Payload.RootElement.TryGetProperty("reason", out var rp)
+                        && rp.ValueKind == JsonValueKind.String)
+                        reason = rp.GetString();
+                    if (ev.Payload.RootElement.TryGetProperty("blockedByUserId", out var bp)
+                        && bp.ValueKind == JsonValueKind.String
+                        && Guid.TryParse(bp.GetString(), out var bid))
+                        blockedBy = bid;
+                    parsed.Add((ev.AggregateId, reason, ev.OccurredAt, blockedBy));
+                }
+
+                var blockerIds = parsed.Where(p => p.BlockedById is not null)
+                                       .Select(p => p.BlockedById!.Value)
+                                       .Distinct()
+                                       .ToList();
+                var blockerNames = blockerIds.Count == 0
+                    ? new Dictionary<Guid, string>()
+                    : await db.Users.Where(u => blockerIds.Contains(u.Id))
+                                    .ToDictionaryAsync(u => u.Id, u => u.FullName, ct);
+
+                foreach (var p in parsed)
+                {
+                    string? name = null;
+                    if (p.BlockedById is Guid bid && blockerNames.TryGetValue(bid, out var n))
+                        name = n;
+                    blockReasonByTask[p.TaskId] = (p.Reason, p.At, name);
                 }
             }
 
@@ -275,7 +300,8 @@ public static class KanbanEndpoints
                                         FlowTrack:       t.FlowTrack,
                                         Notes:           t.Notes,
                                         BlockedReason:   t.Status == "BLOCKED" ? blk.Reason : null,
-                                        BlockedAt:       t.Status == "BLOCKED" && blk.Reason != null ? blk.BlockedAt : null
+                                        BlockedAt:       t.Status == "BLOCKED" && blk.Reason != null ? blk.BlockedAt : null,
+                                        BlockedByName:   t.Status == "BLOCKED" ? blk.BlockedByName : null
                                     );
                                 }).ToArray()
                             );
@@ -467,7 +493,8 @@ public record KanbanCardTaskDto(
     string FlowTrack,
     string? Notes,
     string? BlockedReason,
-    DateTimeOffset? BlockedAt);
+    DateTimeOffset? BlockedAt,
+    string? BlockedByName);
 
 public record KanbanCardDto(
     Guid RoId,

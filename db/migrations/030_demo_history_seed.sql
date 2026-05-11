@@ -390,6 +390,40 @@ WHERE t.ro_id IN (SELECT id FROM repair_orders WHERE ro_number LIKE 'R900%')
   AND NOT EXISTS (SELECT 1 FROM variance_records vr WHERE vr.task_id = t.id);
 
 
+-- ── 8. Block event for the Hospital RO ─────────────────────────────────────
+-- The kanban API at KanbanEndpoints.cs:170 reads the latest TaskBlocked event
+-- per BLOCKED task to populate the "Blocked because:" line in the card drawer.
+-- Without an event row the drawer renders nothing useful for R900010 — even
+-- though the task is BLOCKED — so the seed has to emit one.
+--
+-- R900010's BLOCKED task is sequence 10 (Body fitout at station 40). The
+-- task UUID follows the migration's formula: 90000010-0010-0000-0000-…
+
+INSERT INTO domain_events (event_type, aggregate_type, aggregate_id, payload, user_id, occurred_at)
+SELECT
+    'TaskBlocked',
+    'JobTask',
+    '90000010-0010-0000-0000-000000000000'::uuid,
+    jsonb_build_object(
+        'taskId',          '90000010-0010-0000-0000-000000000000',
+        'roId',            '90000010-0000-0000-0000-000000000010',
+        'roNumber',        'R900010',
+        'operationName',   'Body fitout',
+        'stationId',       40,
+        'stationName',     'Body fitout (B1)',
+        'reason',          'Chassis flitch plates not delivered — supplier ETA pushed to Wk 21. Body cannot be mounted until plates arrive.',
+        'blockedByUserId', '7b000040-7777-7777-7777-000000000001',
+        'previousStageId', 70
+    ),
+    '7b000040-7777-7777-7777-000000000001'::uuid,        -- Nathan Foley (tech at station 40)
+    '2026-05-07 15:30+00'::timestamptz
+WHERE NOT EXISTS (
+    SELECT 1 FROM domain_events
+    WHERE event_type = 'TaskBlocked'
+      AND aggregate_id = '90000010-0010-0000-0000-000000000000'::uuid
+);
+
+
 -- ============================================================================
 -- Verification queries (run after make reset && make hash-pw):
 -- ----------------------------------------------------------------------------

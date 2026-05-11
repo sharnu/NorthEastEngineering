@@ -73,7 +73,10 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
                       <div class="task-row-meta">{{ taskMeta(task) }}</div>
                       @if (task.status === 'BLOCKED' && task.blockedReason) {
                         <div class="task-row-block-reason">
-                          <strong>Blocked because:</strong> {{ task.blockedReason }}
+                          <div class="task-row-block-meta">
+                            Blocked {{ blockedAgo(task.blockedAt) }}@if (task.blockedByName) { · by {{ task.blockedByName }} }
+                          </div>
+                          <div><strong>Reason:</strong> {{ task.blockedReason }}</div>
                         </div>
                       }
                     </div>
@@ -409,10 +412,16 @@ import { FlowRibbonComponent } from './flow-ribbon.component';
     .task-row-block-reason {
       margin-top: 4px; font-size: 11px; color: var(--bad); font-family: var(--sans);
       line-height: 1.35; word-break: break-word;
+    }
+    .task-row-block-reason strong { font-weight: 600; }
+    .task-row-block-meta {
+      font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+      letter-spacing: 0.04em; margin-bottom: 2px;
+    }
+    .task-row-block-reason > div:last-child {
       display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
       -webkit-box-orient: vertical; overflow: hidden;
     }
-    .task-row-block-reason strong { font-weight: 600; }
 
     .unblock-trigger {
       display: block; width: 100%;
@@ -871,6 +880,17 @@ export class CardDrawerComponent {
   hoursDisplay(task: KanbanCardTaskDto): string {
     if (task.status === 'PENDING') return `— / ${task.estimatedHours} h`;
     return `${task.actualHours} / ${task.estimatedHours} h`;
+  }
+
+  blockedAgo(iso: string | null): string {
+    if (!iso) return '';
+    const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (diffMin < 1)  return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24)   return `${diffH}h ago`;
+    const diffD = Math.floor(diffH / 24);
+    return diffD === 1 ? '1 day ago' : `${diffD} days ago`;
   }
 
   onAdvanceClick(): void {
