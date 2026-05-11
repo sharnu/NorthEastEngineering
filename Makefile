@@ -11,7 +11,8 @@
 #   make hash-pw    re-hash the seed users' passwords via the dev endpoint
 
 .PHONY: up down seed reset api web dev test install hash-pw verify clean demo \
-        deploy deploy-bootstrap deploy-logs deploy-reset deploy-ssh
+        deploy deploy-bootstrap deploy-logs deploy-reset deploy-ssh \
+        deploy-aca-init deploy-aca deploy-aca-logs deploy-aca-url
 
 # ----- Infrastructure -----
 up:
@@ -144,3 +145,28 @@ deploy-reset:
 deploy-ssh:
 	@test -n "$$NEE_VM" || (echo "Set NEE_VM=user@host first"; exit 1)
 	ssh "$$NEE_VM"
+
+# ----- Deployment (Azure Container Apps — self-resetting demo) -----
+# Set NEE_IMAGE=<registry>/<repo> (e.g. ghcr.io/sharnu/nee) before running.
+# Optional: NEE_RG, NEE_LOCATION, NEE_APP, NEE_ENV. See infra/deploy-aca.sh.
+
+# First-time setup: creates resource group + Container Apps environment + app,
+# generates a JWT secret. Idempotent on the RG/env, opinionated on the app.
+deploy-aca-init:
+	@test -n "$$NEE_IMAGE" || (echo "Set NEE_IMAGE=<registry>/<repo> first"; exit 1)
+	ACTION=init bash infra/deploy-aca.sh
+
+# Routine deploy: builds image, pushes, updates the container app with a new revision.
+deploy-aca:
+	@test -n "$$NEE_IMAGE" || (echo "Set NEE_IMAGE=<registry>/<repo> first"; exit 1)
+	bash infra/deploy-aca.sh
+
+# Tail the container's stdout/stderr (entrypoint + API + nginx access log).
+deploy-aca-logs:
+	az containerapp logs show -n $${NEE_APP:-nee} -g $${NEE_RG:-nee-rg} --follow --tail 100
+
+# Print the app's public URL.
+deploy-aca-url:
+	@az containerapp show -n $${NEE_APP:-nee} -g $${NEE_RG:-nee-rg} \
+		--query properties.configuration.ingress.fqdn -o tsv \
+		| sed 's|^|https://|'

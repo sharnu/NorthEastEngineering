@@ -1,14 +1,31 @@
-# Deploying NEE to an Azure VM
+# Deploying NEE
 
-This folder holds everything needed to run the platform on a single Azure VM:
+Two supported targets, pick based on whether demo state needs to persist:
+
+| Target | Best for | Cost | Persistence |
+|---|---|---|---|
+| **Azure VM (B1s)** | Long-running demo, customer pilot, anything where state matters | Free for 12 months, ~$10/mo after | Persistent — DB and uploads survive restarts |
+| **Azure Container Apps** | Always-free public demo URL; every visitor gets the seeded state | $0 forever (within free allowance) | **Ephemeral** — every cold start re-seeds |
+
+Files in this folder:
 
 | File | Purpose |
 |---|---|
 | `vm-bootstrap.sh` | One-shot setup for a fresh Ubuntu 22.04 VM (Docker, .NET runtime, nginx, swap, systemd unit, firewall). Idempotent. |
-| `deploy.sh` | Local build + rsync + remote service restart. Used for every code deploy. |
+| `deploy.sh` | Local build + rsync + remote service restart. Used for every VM deploy. |
+| `Dockerfile` | Single-container image: Postgres + .NET API + nginx + Angular bundle. Powers the Container Apps path. |
+| `container-entrypoint.sh` | Boots Postgres → applies migrations → starts nginx → execs the API. Runs as PID 1 in the container. |
+| `nginx-in-container.conf` | nginx config for the bundled image (plain HTTP; TLS terminated by Container Apps). |
+| `deploy-aca.sh` | Local build + image push + `az containerapp create/update`. |
 
-The Makefile in the repo root wraps both scripts:
-`make deploy-bootstrap`, `make deploy`, `make deploy-logs`, `make deploy-reset`, `make deploy-ssh`.
+Wrapped by Makefile targets:
+
+- **VM**: `make deploy-bootstrap`, `make deploy`, `make deploy-logs`, `make deploy-reset`, `make deploy-ssh`
+- **Container Apps**: `make deploy-aca-init`, `make deploy-aca`, `make deploy-aca-logs`, `make deploy-aca-url`
+
+---
+
+# Path 1 · Azure VM
 
 ## Architecture on the VM
 
@@ -221,3 +238,152 @@ ssh $NEE_VM 'docker logs nee-postgres | tail -50'
 ```
 A migration syntax error will halt the entrypoint and leave the container
 unhealthy. Fix the SQL locally, `make deploy`, then `make deploy-reset`.
+
+---
+
+# Path 2 · Azure Container Apps (self-resetting demo)
+
+The whole stack — Postgres, .NET API, nginx, Angular static — is packaged
+into a single image. On Container Apps with `min-replicas=0`, the container
+sleeps when idle and cold-starts fresh on the next request. Because the
+filesystem is ephemeral by default, every cold start applies all migrations
+from scratch — so each visitor lands on a clean, seeded demo.
+
+This stays inside the always-free Container Apps allowance
+(180k vCPU-sec/month) for sporadic traffic.
+
+## Architecture inside the container
+
+```
+┌───────── nee container ──────────┐        Azure Container Apps
+│  /entrypoint.sh (PID 1)          │        (terminates TLS, scales 0↔1)
+│  ├─ pg_ctl start  (background)   │ ─── exposes :80 ───▶ https://nee.<env>.azurecontainerapps.io
+│  ├─ apply migrations once        │
+│  ├─ nginx        (background)    │
+│  ├─ hash passwords (one-shot)    │
+│  └─ exec dotnet Nee.Api.dll      │
+│                                  │
+│  Postgres → 127.0.0.1:5432       │
+│  API      → 127.0.0.1:5000       │
+│  nginx    → 0.0.0.0:80           │
+└──────────────────────────────────┘
+```
+
+## Prerequisites
+
+- Azure CLI (`az`) logged in (`az login`)
+- Docker locally
+- A container registry you can push to:
+  - **GHCR** (free for public images): `docker login ghcr.io -u <user>` with a personal access token
+  - **Docker Hub** (free for public images): `docker login`
+  - **Azure Container Registry** (Basic ~$5/mo if you want it private in-Azure)
+
+## One-time setup
+
+```bash
+export NEE_IMAGE=ghcr.io/<your-user>/nee     # or docker.io/<your-user>/nee
+make deploy-aca-init
+```
+
+`deploy-aca-init` will:
+
+1. `npm run build` + `dotnet publish` locally
+2. `docker build` the single-container image
+3. `docker push` two tags: a git-sha tag and `:latest`
+4. Create the resource group (`nee-rg`) and Container Apps environment (`nee-env`) if they don't exist
+5. Generate a JWT secret and store it as a Container Apps secret
+6. `az containerapp create` the `nee` app with:
+   - `--cpu 0.5 --memory 1Gi`
+   - `--min-replicas 0 --max-replicas 1`
+   - `--ingress external --target-port 80`
+   - Env vars wiring `ConnectionStrings__Postgres`, `Jwt__Secret`, etc.
+
+Output: a `https://nee.<random>.<region>.azurecontainerapps.io` URL.
+
+## Routine deploy
+
+```bash
+make deploy-aca
+```
+
+Build → push → `az containerapp update` with the new image tag. Container
+Apps creates a new revision and shifts 100% traffic over. Old revision
+stays around for instant rollback (`az containerapp revision activate …`).
+
+## Common operations
+
+| Want to… | Command |
+|---|---|
+| Print the public URL | `make deploy-aca-url` |
+| Tail container logs | `make deploy-aca-logs` |
+| Trigger a fresh cold-start | Visit the URL after 5+ min idle |
+| Force restart | `az containerapp revision restart -n nee -g nee-rg --revision <name>` |
+| List revisions / roll back | `az containerapp revision list -n nee -g nee-rg -o table` |
+
+## Cost math
+
+Container Apps always-free allowance per subscription:
+
+- 180,000 vCPU-seconds / month
+- 360,000 GiB-seconds / month
+- 2,000,000 HTTP requests / month
+
+At 0.5 vCPU / 1 GiB, the free budget covers ~100 hours/month of
+active runtime. With `min-replicas=0`, you only burn budget while
+actively serving requests — a demo URL visited a few times a day
+costs **$0**.
+
+The registry adds cost only if you choose ACR Basic (~$5/mo). GHCR and
+Docker Hub are free for public repositories.
+
+## Trade-offs vs the VM
+
+| | VM | Container Apps |
+|---|---|---|
+| Cold-start delay | none | 15–30 s after idle |
+| Demo data persistence | yes | **no — resets on each cold start** |
+| File uploads | persist | **lost on cold start** |
+| HTTPS | manual (certbot) | automatic |
+| Custom domain | nginx + DNS | one `az` command |
+| Routine deploy | rsync | docker push + az update |
+| Steady-state cost | $7/mo after trial | $0 forever |
+
+If a customer needs to retain entered data between visits, use the VM.
+If the goal is "a public URL that always shows the seeded demo state",
+Container Apps is the better fit.
+
+## Adding persistence (optional, ~$1/mo)
+
+To turn the self-resetting demo into a persistent app:
+
+1. Create an Azure Files share in a storage account (first 5 GB free on a new account).
+2. `az containerapp env storage set` to expose it to the environment.
+3. Attach a volume mount in the container app: `mountPath: /var/lib/postgresql/data`, `storageType: AzureFile`.
+4. Set `--min-replicas 1` so the DB is never killed mid-flight.
+
+Expect **noticeable slowdown** — Postgres on SMB-backed storage is fine for
+this scope but not snappy. And keeping a replica alive 24/7 puts you past
+the free vCPU allowance (≈ $11/mo for vCPU + memory).
+
+## Troubleshooting
+
+**Image push fails with "denied: requested access denied".**
+You're not logged in to the registry. `docker login ghcr.io -u <user>`
+with a GitHub PAT that has `write:packages`.
+
+**`make deploy-aca-init` fails on `az containerapp create`.**
+The Container Apps extension isn't installed: `az extension add -n containerapp`.
+
+**Browser shows "Application Error" or 503.**
+Container hasn't booted yet. `make deploy-aca-logs` to watch. First cold
+start is slower than subsequent ones because the image layer cache is cold.
+
+**Login fails with "Invalid credentials" right after a cold start.**
+Password-hashing runs in the background ~5–15s after the API comes up. Wait
+a moment and retry. The marker file ensures it doesn't run twice on the
+same data volume.
+
+**Demo data unexpectedly persists across visits.**
+Container Apps may be keeping the replica warm if there's been recent
+traffic — that's not a bug, just no cold-start happened. Either wait 5+ min
+idle or restart the revision manually.
