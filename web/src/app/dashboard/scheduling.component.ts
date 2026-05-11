@@ -688,7 +688,7 @@ export class SchedulingComponent implements OnInit {
   private nextMonday(from: Date): Date {
     const d = new Date(from);
     const day = d.getDay(); // 0=Sun, 1=Mon
-    const daysAhead = day === 1 ? 7 : (8 - day) % 7;
+    const daysAhead = day === 1 ? 0 : (8 - day) % 7;
     d.setDate(d.getDate() + daysAhead);
     d.setHours(0, 0, 0, 0);
     return d;
