@@ -10,7 +10,8 @@
 #   make test       run all tests
 #   make hash-pw    re-hash the seed users' passwords via the dev endpoint
 
-.PHONY: up down seed reset api web dev test install hash-pw verify clean demo
+.PHONY: up down seed reset api web dev test install hash-pw verify clean demo \
+        deploy deploy-bootstrap deploy-logs deploy-reset deploy-ssh
 
 # ----- Infrastructure -----
 up:
@@ -98,3 +99,48 @@ verify:
 clean:
 	rm -rf api/bin api/obj
 	rm -rf web/node_modules web/dist
+
+# ----- Deployment (Azure VM) -----
+# Set NEE_VM=user@host  (e.g. azureuser@20.213.45.67) before running any of these.
+# Optional: NEE_REMOTE=/opt/nee  (defaults to /opt/nee on the VM)
+
+# One-shot setup on a fresh Ubuntu 22.04 VM — installs Docker, .NET, nginx,
+# swap, systemd unit. Run once; safe to re-run.
+deploy-bootstrap:
+	@test -n "$$NEE_VM" || (echo "Set NEE_VM=user@host first"; exit 1)
+	scp infra/vm-bootstrap.sh "$$NEE_VM":~/vm-bootstrap.sh
+	ssh "$$NEE_VM" 'bash ~/vm-bootstrap.sh'
+	@echo "VM bootstrapped. Now: make deploy"
+
+# Build locally, rsync to VM, restart the API service. Use this for routine
+# code deploys after the bootstrap.
+deploy:
+	@test -n "$$NEE_VM" || (echo "Set NEE_VM=user@host first"; exit 1)
+	bash infra/deploy.sh
+
+# Tail the API logs on the VM.
+deploy-logs:
+	@test -n "$$NEE_VM" || (echo "Set NEE_VM=user@host first"; exit 1)
+	ssh -t "$$NEE_VM" 'sudo journalctl -u nee-api -f --output=cat'
+
+# Wipe and rebuild the demo database on the VM, then hash passwords.
+# Destroys all data — confirm before running.
+deploy-reset:
+	@test -n "$$NEE_VM" || (echo "Set NEE_VM=user@host first"; exit 1)
+	@echo "About to destroy the remote database on $$NEE_VM. Ctrl-C to abort."
+	@sleep 3
+	ssh "$$NEE_VM" 'set -e; \
+		cd /opt/nee && docker compose down -v && docker compose up -d; \
+		echo "Waiting for Postgres..."; \
+		for i in 1 2 3 4 5 6 7 8 9 10 11 12; do \
+			if docker exec nee-postgres pg_isready -U nee -d nee >/dev/null 2>&1; then break; fi; \
+			sleep 1; \
+		done; \
+		sudo systemctl restart nee-api; \
+		sleep 3; \
+		curl -fsS -X POST http://localhost/api/dev/reseed-passwords && echo'
+
+# Shortcut to SSH into the VM.
+deploy-ssh:
+	@test -n "$$NEE_VM" || (echo "Set NEE_VM=user@host first"; exit 1)
+	ssh "$$NEE_VM"
