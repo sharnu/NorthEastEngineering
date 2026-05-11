@@ -16,6 +16,7 @@ interface SchedulingRow {
   roNumber: string;
   rego: string | null;
   sourceRoNumber: string | null;
+  status: string;
   jobTypeName: string | null;
   bodyType: string | null;
   customerName: string;
@@ -130,8 +131,10 @@ interface CapacityResponse {
 
                 <!-- Schedule action -->
                 <td style="white-space:nowrap">
-                  <button class="btn-schedule" [disabled]="!row.gates.allGreen"
-                    (click)="row.gates.allGreen && openSchedule($event, row.roId)">
+                  <button class="btn-schedule"
+                    [disabled]="!row.gates.allGreen || isPastWeekLocked(row)"
+                    [title]="isPastWeekLocked(row) ? 'Already underway — past schedule is fixed' : ''"
+                    (click)="row.gates.allGreen && !isPastWeekLocked(row) && openSchedule($event, row.roId)">
                     {{ row.scheduledStartWeek ? 'Reschedule' : 'Schedule' }}
                   </button>
                 </td>
@@ -683,6 +686,16 @@ export class SchedulingComponent implements OnInit {
   private firstOfCurrentMonth(): Date {
     const n = new Date();
     return new Date(n.getFullYear(), n.getMonth(), 1);
+  }
+
+  // Past-week ROs that have already started shouldn't be "rescheduled" — the
+  // schedule is historical at that point. ON_HOLD (Hospital) is the exception:
+  // a blocked RO can legitimately be replanned forward to a future week.
+  isPastWeekLocked(row: SchedulingRow): boolean {
+    if (!row.scheduledStartWeek) return false;
+    if (row.status === 'ON_HOLD') return false;
+    const todayMonday = this.nextMonday(new Date());
+    return row.scheduledStartWeek < this.toLocalIso(todayMonday);
   }
 
   private nextMonday(from: Date): Date {
